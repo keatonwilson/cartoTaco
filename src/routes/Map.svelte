@@ -7,6 +7,9 @@
   
     mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN';
   
+    /**
+   * @type {{ remove: () => any; }}
+   */
     let map;
   
     onMount(() => {
@@ -17,6 +20,9 @@
         zoom: 9
       });
   
+      /**
+       * @type {any[]}
+       */
       const currentLocations = get(locations);
       currentLocations.forEach(location => {
         new mapboxgl.Marker()
@@ -29,6 +35,9 @@
     });
   
     $: {
+      /**
+       * @type {any[]}
+       */
       const currentLocations = get(locations);
       if (map && currentLocations) {
         currentLocations.forEach(location => {
