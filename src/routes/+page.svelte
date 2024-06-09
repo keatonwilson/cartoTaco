@@ -1,2 +1,15 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to read the documentation</p>
+<!-- src/routes/index.svelte -->
+<script>
+    import Map from './Map.svelte';
+    import Card from '../components/Card.svelte';
+    import { locations } from '../lib/stores';
+  </script>
+  
+  <main>
+    <Map />
+  
+    {#each $locations as location}
+      <Card name={location.name} description={location.description} />
+    {/each}
+  </main>
+  
