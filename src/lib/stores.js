@@ -16,19 +16,19 @@ import { supabase } from './supabase';
 /**
  * @type {import('svelte/store').Writable<Location[]>}
  */
-export const locations = writable([]);
+export const sites = writable([]);
 
 /**
  * Fetch locations from the database and update the store.
  */
-export async function fetchLocations() {
-  let { data, error } = await supabase.from('locations').select('*');
+export async function fetchSites() {
+  let { data, error } = await supabase.from('sites').select('*');
   if (error) {
-    console.error('Error fetching locations:', error);
+    console.error('Error fetching sites:', error);
   } else {
     // Use the set method of the writable store to update the state
-    locations.set(data || []);
+    sites.set(data || []);
   }
 }
 
-fetchLocations();
+fetchSites();

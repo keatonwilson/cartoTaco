@@ -2,10 +2,10 @@
 <script>
     import { onMount } from 'svelte';
     import mapboxgl from 'mapbox-gl';
-    import { locations } from '../lib/stores';
+    import { sites } from '../lib/stores';
     import { get } from 'svelte/store';
   
-    mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN';
+    mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_KEY;
   
     /**
    * @type {{ remove: () => any; }}
@@ -23,11 +23,11 @@
       /**
        * @type {any[]}
        */
-      const currentLocations = get(locations);
-      currentLocations.forEach(location => {
+      const currentSites = get(sites);
+      currentSites.forEach(site => {
         new mapboxgl.Marker()
-          .setLngLat([location.longitude, location.latitude])
-          .setPopup(new mapboxgl.Popup().setHTML(`<h3>${location.name}</h3><p>${location.description}</p>`))
+          .setLngLat([site.lon_1, site.lat_1])
+          .setPopup(new mapboxgl.Popup().setHTML(`<h3>${site.name}</h3><p>${site.description}</p>`))
           .addTo(map);
       });
   
@@ -38,12 +38,12 @@
       /**
        * @type {any[]}
        */
-      const currentLocations = get(locations);
-      if (map && currentLocations) {
-        currentLocations.forEach(location => {
+      const currentSites = get(sites);
+      if (map && currentSites) {
+        currentSites.forEach(site => {
           new mapboxgl.Marker()
-            .setLngLat([location.longitude, location.latitude])
-            .setPopup(new mapboxgl.Popup().setHTML(`<h3>${location.name}</h3><p>${location.description}</p>`))
+            .setLngLat([site.lon_1, site.lat_1])
+            .setPopup(new mapboxgl.Popup().setHTML(`<h3>${site.name}</h3><p>${site.description}</p>`))
             .addTo(map);
         });
       }
