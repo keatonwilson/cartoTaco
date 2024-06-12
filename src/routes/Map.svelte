@@ -16,21 +16,9 @@
       map = new mapboxgl.Map({
         container: 'map',
         style: 'mapbox://styles/mapbox/streets-v11',
-        center: [-74.5, 40],
+        center: [-110.97, 32.16],
         zoom: 9
       });
-  
-      /**
-       * @type {any[]}
-       */
-      const currentSites = get(sites);
-      currentSites.forEach(site => {
-        new mapboxgl.Marker()
-          .setLngLat([site.lon_1, site.lat_1])
-          .setPopup(new mapboxgl.Popup().setHTML(`<h3>${site.name}</h3><p>${site.description}</p>`))
-          .addTo(map);
-      });
-  
       return () => map.remove();
     });
   
@@ -38,7 +26,7 @@
       /**
        * @type {any[]}
        */
-      const currentSites = get(sites);
+      const currentSites = $sites;
       if (map && currentSites) {
         currentSites.forEach(site => {
           new mapboxgl.Marker()

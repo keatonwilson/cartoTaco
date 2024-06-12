@@ -23,7 +23,6 @@ export const sites = writable([]);
  */
 export async function fetchSites() {
   let { data, error } = await supabase.from('sites').select();
-  console.log(data);
   if (error) {
     console.error('Error fetching sites:', error);
   } else {

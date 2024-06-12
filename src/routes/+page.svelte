@@ -9,7 +9,7 @@
     <Map />
   
     {#each $sites as location}
-      <Card name={sites.name} description={sites.description} />
+      <Card name={location.name} description={location.type} />
     {/each}
   </main>
   
