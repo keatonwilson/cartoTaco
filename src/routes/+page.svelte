@@ -2,14 +2,14 @@
 <script>
     import Map from './Map.svelte';
     import Card from '../components/Card.svelte';
-    import { locations } from '../lib/stores';
+    import { sites } from '../lib/stores';
   </script>
   
   <main>
     <Map />
   
-    {#each $locations as location}
-      <Card name={location.name} description={location.description} />
+    {#each $sites as location}
+      <Card name={sites.name} description={sites.description} />
     {/each}
   </main>
   

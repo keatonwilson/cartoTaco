@@ -22,7 +22,8 @@ export const sites = writable([]);
  * Fetch locations from the database and update the store.
  */
 export async function fetchSites() {
-  let { data, error } = await supabase.from('sites').select('*');
+  let { data, error } = await supabase.from('sites').select();
+  console.log(data);
   if (error) {
     console.error('Error fetching sites:', error);
   } else {
