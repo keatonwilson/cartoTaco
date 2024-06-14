@@ -3,7 +3,7 @@
     import { onMount } from 'svelte';
     import mapboxgl from 'mapbox-gl';
     import { sites } from '../lib/stores';
-    import { get } from 'svelte/store';
+    import 'mapbox-gl/dist/mapbox-gl.css';
   
     mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_KEY;
   
@@ -13,12 +13,30 @@
     let map;
   
     onMount(() => {
+
       map = new mapboxgl.Map({
         container: 'map',
-        style: 'mapbox://styles/mapbox/streets-v11',
+        style: 'mapbox://styles/mapbox/standard',
         center: [-110.97, 32.16],
         zoom: 9
       });
+
+      /**
+      * @type {any[]}
+      */
+      const currentSites = $sites;
+      
+      if (map && currentSites) {
+        currentSites.forEach(site => {
+          
+          const marker = new mapboxgl.Marker()
+            .setLngLat([site.lon_1, site.lat_1])
+            .setPopup(new mapboxgl.Popup().setHTML(`<h3>${site.name}</h3><p>${site.type}</p>`))
+           
+          marker.addTo(map);
+        });
+      }
+
       return () => map.remove();
     });
   
@@ -31,7 +49,7 @@
         currentSites.forEach(site => {
           new mapboxgl.Marker()
             .setLngLat([site.lon_1, site.lat_1])
-            .setPopup(new mapboxgl.Popup().setHTML(`<h3>${site.name}</h3><p>${site.description}</p>`))
+            .setPopup(new mapboxgl.Popup().setHTML(`<h3>${site.name}</h3><p>${site.type}</p>`))
             .addTo(map);
         });
       }
