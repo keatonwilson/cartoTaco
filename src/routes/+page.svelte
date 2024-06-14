@@ -7,9 +7,5 @@
   
   <main>
     <Map />
-  
-    {#each $sites as location}
-      <Card name={location.name} description={location.type} />
-    {/each}
   </main>
   
