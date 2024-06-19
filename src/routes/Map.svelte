@@ -1,7 +1,7 @@
 <script>
   import { onMount } from "svelte";
   import mapboxgl from "mapbox-gl";
-  import { sites } from "../lib/stores";
+  import { sites, descrips } from "../lib/stores";
   import "mapbox-gl/dist/mapbox-gl.css";
   import PopupContent from "../components/Card.svelte";
 
@@ -10,6 +10,7 @@
     markers.forEach((marker) => marker.remove());
     markers = [];
 
+    
     if (map && currentSites) {
       currentSites.forEach((site) => {
         const marker = new mapboxgl.Marker()

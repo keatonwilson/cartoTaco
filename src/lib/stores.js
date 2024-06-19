@@ -32,3 +32,23 @@ export async function fetchSites() {
 }
 
 fetchSites();
+
+/**
+ * @type {import('svelte/store').Writable<Location[]>}
+ */
+export const descrips = writable([]);
+
+/**
+ * Fetch locations from the database and update the store.
+ */
+export async function fetchDescrips() {
+  let { data, error } = await supabase.from('descriptions').select();
+  if (error) {
+    console.error('Error fetching descriptions:', error);
+  } else {
+    // Use the set method of the writable store to update the state
+    descrips.set(data || []);
+  }
+}
+
+fetchDescrips();
