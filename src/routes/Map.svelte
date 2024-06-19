@@ -4,35 +4,43 @@
   import mapboxgl from "mapbox-gl";
   import { sites } from "../lib/stores";
   import "mapbox-gl/dist/mapbox-gl.css";
-  import Card from "../components/Card.svelte";
-  import { getContext } from "svelte";
-
-  /**
-   * Function that creates a new card
-   * @param {{ name: any; type: any; }} site
-   */
-  function createPopupElement(site) {
-    const popupDiv = document.createElement("div");
-    new Card({
-      target: popupDiv,
-      props: {
-        name: site.name,
-        type: site.type
-      },
-    });
-    return popupDiv;
-  }
+  import PopupContent from "../components/Card.svelte";
 
   const updateMarkers = (/** @type {any[]} */ currentSites) => {
-      if (map && currentSites) {
-        currentSites.forEach(site => {
-          new mapboxgl.Marker()
-            .setLngLat([site.lon_1, site.lat_1])
-            .setPopup(new mapboxgl.Popup().setDOMContent(createPopupElement(site)))
-            .addTo(map);
-        });
-      }
-    };
+    // Remove existing markers
+    markers.forEach((marker) => marker.remove());
+    markers = [];
+
+    if (map && currentSites) {
+      currentSites.forEach((site) => {
+        const marker = new mapboxgl.Marker()
+          .setLngLat([site.lon_1, site.lat_1])
+          .setPopup(
+            new mapboxgl.Popup().setDOMContent(
+              createPopupContent({
+                name: site.name,
+                type: site.type
+              })
+            )
+          )
+          .addTo(map);
+
+        markers.push(marker);
+      });
+    }
+  };
+
+  /**
+   * @param {any} data
+   */
+  function createPopupContent(data) {
+    const popupElement = document.createElement("div");
+    new PopupContent({
+      target: popupElement,
+      props: { data },
+    });
+    return popupElement;
+  }
 
   mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_KEY;
 
@@ -40,6 +48,10 @@
    * @type {{ remove: () => any; }}
    */
   let map;
+  /**
+   * @type {any[]}
+   */
+  let markers = [];
 
   onMount(() => {
     map = new mapboxgl.Map({
@@ -52,13 +64,11 @@
     updateMarkers($sites);
 
     return () => map.remove();
-
   });
 
   $: {
     updateMarkers($sites);
   }
-
 </script>
 
 <div id="map"></div>
