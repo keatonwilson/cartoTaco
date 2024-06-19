@@ -1,13 +1,14 @@
 <script>
   import RadarChart from './RadarChart.svelte';
-  import { getTopFive } from '$lib/dataWrangling.js';
+  import { getTopFive, percentageOfMaxArray } from '$lib/dataWrangling.js';
 
   // setup
   export let data;
 
   const menuArray = getTopFive(data.menuItems);
-  const topFiveItems = menuArray.map(subArray => subArray[0]);
+  const topFiveItems = menuArray.map(subArray => subArray[0].);
   const topFiveValues = menuArray.map(subArray => subArray[1]);
+  // const topFiveValuesNorm = percentageOfMaxArray(topFiveValues);
   
   let showLongDescription = false;
 

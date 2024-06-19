@@ -37,3 +37,13 @@ export function getTopFive(arr) {
     // Strip the '_perc' suffix from the keys
     return topFive.map(([key, value]) => [key.replace('_perc', ''), value]);
 }
+
+export function percentageOfMaxArray(arr) {
+    // Step 1: Find the maximum value in the array
+    const max = Math.max(...arr);
+
+    // Step 2: Calculate the percentage of the maximum for each value in the array
+    const percentageArray = arr.map(value => (value / max) * 100);
+
+    return percentageArray;
+}
