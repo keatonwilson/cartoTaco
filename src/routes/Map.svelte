@@ -10,7 +10,6 @@
     markers.forEach((marker) => marker.remove());
     markers = [];
 
-    
     if (map && currentSites) {
       currentSites.forEach((site) => {
         const marker = new mapboxgl.Marker()
@@ -19,7 +18,9 @@
             new mapboxgl.Popup().setDOMContent(
               createPopupContent({
                 name: site.name,
-                type: site.type
+                type: site.type,
+                shortDescription: site.short_descrip,
+                longDescription: site.long_descrip
               })
             )
           )
@@ -61,12 +62,14 @@
       zoom: 9,
     });
 
-    let siteData = $tacoStore;
-    updateMarkers(siteData.sites);
+    updateMarkers($tacoStore);
 
     return () => map.remove();
   });
 
+  $: {
+    updateMarkers($tacoStore);
+  }
 </script>
 
 <div id="map"></div>

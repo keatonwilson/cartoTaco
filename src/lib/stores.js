@@ -2,7 +2,23 @@
 import { writable } from 'svelte/store';
 import { supabase } from './supabase';
 
-export const tacoStore = writable({ sites: [], descriptions: [] });
+function combineArrays(...arrays) {
+  const combinedMap = new Map();
+
+  arrays.forEach(array => {
+    array.forEach(item => {
+      if (combinedMap.has(item.est_id)) {
+        combinedMap.set(item.est_id, { ...combinedMap.get(item.est_id), ...item });
+      } else {
+        combinedMap.set(item.est_id, { ...item });
+      }
+    });
+  });
+
+  return Array.from(combinedMap.values());
+}
+
+export const tacoStore = writable({ combinedSites: [] });
 
 export async function fetchData() {
   // Fetch sites
@@ -25,8 +41,10 @@ export async function fetchData() {
     descriptions: descriptionsData || []
   };
 
+  const aggregate = combineArrays(combinedData.sites, combinedData.descriptions);
+
   // Use the set method of the writable store to update the state
-  tacoStore.set(combinedData);
+  tacoStore.set(aggregate);
 }
 
 fetchData();
