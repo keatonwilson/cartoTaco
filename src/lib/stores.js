@@ -1,7 +1,10 @@
 // src/lib/stores.js
+
+// imports
 import { writable } from 'svelte/store';
 import { supabase } from './supabase';
 
+// combine arrays function to do data merges
 function combineArrays(...arrays) {
   const combinedMap = new Map();
 
@@ -18,8 +21,10 @@ function combineArrays(...arrays) {
   return Array.from(combinedMap.values());
 }
 
+// export a writable store for core data
 export const tacoStore = writable({ combinedSites: [] });
 
+// async fetch data function (currently sites and descriptions)
 export async function fetchData() {
   // Fetch sites
   let { data: sitesData, error: sitesError } = await supabase.from('sites').select();
@@ -48,3 +53,6 @@ export async function fetchData() {
 }
 
 fetchData();
+
+// track whether a popup is open or not
+export const activePopup = writable(null);
