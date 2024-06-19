@@ -6,7 +6,7 @@
   export let data;
 
   const menuArray = getTopFive(data.menuItems);
-  const topFiveItems = menuArray.map(subArray => subArray[0].);
+  const topFiveItems = menuArray.map(subArray => subArray[0]);
   const topFiveValues = menuArray.map(subArray => subArray[1]);
   // const topFiveValuesNorm = percentageOfMaxArray(topFiveValues);
   
