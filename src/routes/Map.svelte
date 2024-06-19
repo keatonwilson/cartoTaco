@@ -1,4 +1,3 @@
-<!-- src/routes/Map.svelte -->
 <script>
   import { onMount } from "svelte";
   import mapboxgl from "mapbox-gl";
@@ -78,4 +77,19 @@
     width: 100%;
     height: 100vh;
   }
+
+  :global(.mapboxgl-popup) {
+    width: 800px !important; /* Change the maximum width */
+    max-width: none !important;
+  }
+
+  :global(.mapboxgl-popup-content) {
+    padding: 20px; /* Adjust padding */
+    font-size: 14px; /* Adjust font size */
+  }
+
+  :global(.mapboxgl-popup-tip) {
+    border-width: 10px; /* Adjust the size of the popup tip */
+  }
 </style>
+
