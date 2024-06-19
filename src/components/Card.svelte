@@ -1,13 +1,5 @@
 <script>
-  /**
-   * @typedef {Object} Data
-   * @property {string} name - The name of the popup.
-   * @property {string} type - The type/description of the popup.
-   * @property {string} shortDescription - A short description for the popup.
-   * @property {string} longDescription - A long description for the popup.
-   */
 
-  /** @type {Data} */
   export let data;
 
   let showLongDescription = false;

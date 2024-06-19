@@ -2,53 +2,31 @@
 import { writable } from 'svelte/store';
 import { supabase } from './supabase';
 
-/**
- * @typedef {Object} Location
- * @property {number} id
- * @property {string} name
- * @property {string} address
- * @property {string} city
- * @property {string} state
- * @property {string} zip
- * @property {string} description
- */
+export const tacoStore = writable({ sites: [], descriptions: [] });
 
-/**
- * @type {import('svelte/store').Writable<Location[]>}
- */
-export const sites = writable([]);
-
-/**
- * Fetch locations from the database and update the store.
- */
-export async function fetchSites() {
-  let { data, error } = await supabase.from('sites').select();
-  if (error) {
-    console.error('Error fetching sites:', error);
-  } else {
-    // Use the set method of the writable store to update the state
-    sites.set(data || []);
+export async function fetchData() {
+  // Fetch sites
+  let { data: sitesData, error: sitesError } = await supabase.from('sites').select();
+  if (sitesError) {
+    console.error('Error fetching sites:', sitesError);
+    sitesData = [];
   }
+
+  // Fetch descriptions
+  let { data: descriptionsData, error: descriptionsError } = await supabase.from('descriptions').select();
+  if (descriptionsError) {
+    console.error('Error fetching descriptions:', descriptionsError);
+    descriptionsData = [];
+  }
+
+  // Combine data
+  const combinedData = {
+    sites: sitesData || [],
+    descriptions: descriptionsData || []
+  };
+
+  // Use the set method of the writable store to update the state
+  tacoStore.set(combinedData);
 }
 
-fetchSites();
-
-/**
- * @type {import('svelte/store').Writable<Location[]>}
- */
-export const descrips = writable([]);
-
-/**
- * Fetch locations from the database and update the store.
- */
-export async function fetchDescrips() {
-  let { data, error } = await supabase.from('descriptions').select();
-  if (error) {
-    console.error('Error fetching descriptions:', error);
-  } else {
-    // Use the set method of the writable store to update the state
-    descrips.set(data || []);
-  }
-}
-
-fetchDescrips();
+fetchData();

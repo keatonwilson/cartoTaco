@@ -2,7 +2,7 @@
 <script>
     import Map from './Map.svelte';
     import Card from '../components/Card.svelte';
-    import { sites } from '../lib/stores';
+    import { tacoStore } from '../lib/stores';
   </script>
   
   <main>

@@ -1,7 +1,7 @@
 <script>
   import { onMount } from "svelte";
   import mapboxgl from "mapbox-gl";
-  import { sites, descrips } from "../lib/stores";
+  import { tacoStore } from "../lib/stores";
   import "mapbox-gl/dist/mapbox-gl.css";
   import PopupContent from "../components/Card.svelte";
 
@@ -61,14 +61,12 @@
       zoom: 9,
     });
 
-    updateMarkers($sites);
+    let siteData = $tacoStore;
+    updateMarkers(siteData.sites);
 
     return () => map.remove();
   });
 
-  $: {
-    updateMarkers($sites);
-  }
 </script>
 
 <div id="map"></div>
