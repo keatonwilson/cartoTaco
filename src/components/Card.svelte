@@ -1,21 +1,20 @@
 <script>
   import RadarChart from './RadarChart.svelte';
+  import { getTopFive } from '$lib/dataWrangling.js';
 
+  // setup
   export let data;
-  let radarChartRef;
-  let showChart = false;
 
+  const menuArray = getTopFive(data.menuItems);
+  const topFiveItems = menuArray.map(subArray => subArray[0]);
+  const topFiveValues = menuArray.map(subArray => subArray[1]);
+  
   let showLongDescription = false;
 
   function toggleLongDescription() {
     showLongDescription = !showLongDescription;
   }
 
-  $: if (showChart) {
-    radarChartRef.renderChart();
-  }
-
-  console.log('Rendering PopupContent with data:', data);
 </script>
 
 <style>
@@ -73,7 +72,7 @@
         {showLongDescription ? 'Show less' : 'Read more'}
       </span>
     </div>
-    <RadarChart />
+    <RadarChart labels={topFiveItems} data={topFiveValues}/>
   </div>
   <div class="right-panel" id="chart"></div>
 </div>

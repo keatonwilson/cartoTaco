@@ -4,7 +4,7 @@
   import { tacoStore } from '../lib/stores';
   import 'mapbox-gl/dist/mapbox-gl.css';
   import PopupContent from '../components/Card.svelte';
-  import { activePopup } from '../lib/stores';
+  import { filterObjectByKeySubstring } from '../lib/dataWrangling.js';
 
   let map;
   let markers = [];
@@ -19,6 +19,10 @@
     markers = [];
     if (map && currentSites) {
       currentSites.forEach((site) => {
+        
+        // get menu percentages
+        const menuPercs = filterObjectByKeySubstring(site, "perc");
+
         const marker = new mapboxgl.Marker()
           .setLngLat([site.lon_1, site.lat_1])
           .setPopup(
@@ -27,7 +31,8 @@
                 name: site.name,
                 type: site.type,
                 shortDescription: site.short_descrip,
-                longDescription: site.long_descrip,
+                longDescription: site.long_descrip, 
+                menuItems: menuPercs
               })
             )
           )
@@ -40,7 +45,6 @@
 
   function createPopupContent(data) {
     const popupElement = document.createElement('div');
-    console.log('Creating popup content for:', data);
     new PopupContent({
       target: popupElement,
       props: { data },
@@ -58,15 +62,6 @@
     });
 
     updateMarkers($tacoStore);
-
-    // track popup open or not
-    map.on('popupopen', (e) => {
-      activePopup.set(e.target);
-    });
-
-    map.on('popupclose', () => {
-      activePopup.set(null);
-    });
 
     return () => map.remove();
   });
