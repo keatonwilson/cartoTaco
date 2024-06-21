@@ -3,57 +3,14 @@
   import mapboxgl from 'mapbox-gl';
   import { tacoStore } from '../lib/stores';
   import 'mapbox-gl/dist/mapbox-gl.css';
-  import PopupContent from '../components/Card.svelte';
-  import { filterObjectByKeySubstring } from '../lib/dataWrangling.js';
-
+  import { updateMarkers } from "../lib/mapping.js"
+  
   let map;
   let markers = [];
 
   mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_KEY;
 
-  const updateMarkers = (currentSites) => {
-    if (!Array.isArray(currentSites)) {
-      currentSites = [];
-    }
-    markers.forEach((marker) => marker.remove());
-    markers = [];
-    if (map && currentSites) {
-      currentSites.forEach((site) => {
-        
-        // get menu percentages
-        const menuPercs = filterObjectByKeySubstring(site, "perc");
-
-        const marker = new mapboxgl.Marker()
-          .setLngLat([site.lon_1, site.lat_1])
-          .setPopup(
-            new mapboxgl.Popup().setDOMContent(
-              createPopupContent({
-                name: site.name,
-                type: site.type,
-                shortDescription: site.short_descrip,
-                longDescription: site.long_descrip, 
-                menuItems: menuPercs
-              })
-            )
-          )
-          .addTo(map);
-
-        markers.push(marker);
-      });
-    }
-  };
-
-  function createPopupContent(data) {
-    const popupElement = document.createElement('div');
-    new PopupContent({
-      target: popupElement,
-      props: { data },
-    });
-    return popupElement;
-  }
-
   onMount(() => {
-
     map = new mapboxgl.Map({
       container: 'map',
       style: 'mapbox://styles/mapbox/standard',
@@ -61,15 +18,14 @@
       zoom: 9,
     });
 
-    updateMarkers($tacoStore);
+    updateMarkers($tacoStore, map, markers);
 
     return () => map.remove();
   });
 
   $: {
-    updateMarkers($tacoStore);
+    updateMarkers($tacoStore, map, markers);
   }
-
 </script>
 
 <div id="map"></div>
