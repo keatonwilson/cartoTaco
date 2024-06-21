@@ -47,3 +47,47 @@ export function percentageOfMaxArray(arr) {
 
     return percentageArray;
 }
+
+export function convertHoursData(startTimes, endTimes) {
+    // Mapping of day prefixes to single letters
+    const dayMap = {
+      mon: 'M',
+      tue: 'T',
+      wed: 'W',
+      thu: 'T',
+      fri: 'F',
+      sat: 'S',
+      sun: 'S'
+    };
+  
+    // Initialize the result array
+    let result = [];
+  
+    // Iterate through the start times array
+    for (let i = 0; i < startTimes.length; i++) {
+      let dayPrefix = startTimes[i][0].split('_')[0]; // Extract the day prefix
+      let day = dayMap[dayPrefix]; // Get the corresponding single letter day
+      let openTime = startTimes[i][1].split(':')[0]; // Extract the open hour
+      let endTime = endTimes[i][1]; // Extract the end time
+  
+      // Determine the close time and closed status
+      let closeTime, closed;
+      if (endTime === "NA") {
+        closeTime = '';
+        closed = true;
+      } else {
+        closeTime = endTime.split(':')[0]; // Extract the close hour
+        closed = false;
+      }
+  
+      // Push the transformed object into the result array
+      result.push({
+        day: day,
+        open: openTime,
+        close: closeTime,
+        closed: closed
+      });
+    }
+  
+    return result;
+  }

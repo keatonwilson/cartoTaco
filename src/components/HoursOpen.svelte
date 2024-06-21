@@ -1,13 +1,10 @@
 <script>
-    export let hours = [
-      { day: 'M', open: '8', close: '8', closed: false },
-      { day: 'T', open: '8', close: '8', closed: false },
-      { day: 'W', open: '8', close: '8', closed: false },
-      { day: 'T', open: '8', close: '8', closed: false },
-      { day: 'F', open: '8', close: '8', closed: false },
-      { day: 'S', open: '8', close: '8', closed: false },
-      { day: 'S', open: '', close: '', closed: true }
-    ];
+    import { convertHoursData } from "$lib/dataWrangling";
+    export let startHours;
+    export let endHours;
+
+    const convertedHours = convertHoursData(startHours, endHours);
+    
   </script>
   
   <style>
@@ -41,7 +38,7 @@
   
   <div class="container">
     <div class="days">
-      {#each hours as {day, open, close, closed}, i}
+      {#each convertedHours as {day, open, close, closed}, i}
         <div class="day {closed ? 'closed' : ''}">
           <div>{closed ? '' : open}</div>
           <div class="day-letter">{day}</div>

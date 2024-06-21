@@ -5,12 +5,15 @@
   // setup
   export let data;
 
-  console.log(data);
+  // smaller pieces of data
   const menuArray = getTopFive(data.menuItems);
   const topFiveItems = menuArray.map(subArray => subArray[0]);
   const topFiveValues = menuArray.map(subArray => subArray[1]);
   // const topFiveValuesNorm = percentageOfMaxArray(topFiveValues);
   
+  const startHours = data.startHours;
+  const endHours = data.endHours;
+
   let showLongDescription = false;
 
   function toggleLongDescription() {
@@ -64,7 +67,7 @@
 <div id="popup-content">
   <div class="left-panel">
     <h2>{data.name}</h2>
-    <HoursOpen />
+    <HoursOpen {startHours} {endHours}/>
     <p>{data.type}</p>
     <div class="description">
       <p>{data.shortDescription}</p>

@@ -48,7 +48,6 @@ export async function fetchData() {
   }
 
   // fetch menu data
-  // Fetch descriptions
   let { data: menuData, error: menuError } = await supabase
     .from("menu")
     .select();
@@ -57,20 +56,30 @@ export async function fetchData() {
     menuData = [];
   }
 
+  // fetch menu data
+  let { data: hoursData, error: hoursError } = await supabase
+    .from("hours")
+    .select();
+  if (descriptionsError) {
+    console.error("Error fetching hours data:", hoursError);
+    hoursData = [];
+  }
+
   // Combine data
   const combinedData = {
     sites: sitesData || [],
     descriptions: descriptionsData || [],
-    menu: menuData || []
+    menu: menuData || [], 
+    hours: hoursData || [],
   };
 
   const aggregate = combineArrays(
     combinedData.sites,
     combinedData.descriptions,
-    combinedData.menu
+    combinedData.menu,
+    combinedData.hours
   );
 
-  console.log(aggregate);
   // Use the set method of the writable store to update the state
   tacoStore.set(aggregate);
 }

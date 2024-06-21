@@ -10,8 +10,13 @@ export const updateMarkers = (currentSites, map, markers) => {
     markers = [];
     if (map && currentSites) {
       currentSites.forEach((site) => {
+
         // Get menu percentages
         const menuPercs = filterObjectByKeySubstring(site, "perc");
+        
+        // Get hours
+        const startHours = filterObjectByKeySubstring(site, "start");
+        const endHours = filterObjectByKeySubstring(site, "end");
 
         const marker = new mapboxgl.Marker()
           .setLngLat([site.lon_1, site.lat_1])
@@ -23,7 +28,9 @@ export const updateMarkers = (currentSites, map, markers) => {
                   type: site.type,
                   shortDescription: site.short_descrip,
                   longDescription: site.long_descrip,
-                  menuItems: menuPercs
+                  menuItems: menuPercs, 
+                  startHours: startHours, 
+                  endHours: endHours
                 })
               )
           )
