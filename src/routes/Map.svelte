@@ -42,7 +42,7 @@
   }
 
   :global(.mapboxgl-popup-content) {
-    padding: 20px;
+    padding: 10px;
     font-size: 14px;
   }
 
