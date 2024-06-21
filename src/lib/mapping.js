@@ -31,7 +31,7 @@ export const updateMarkers = (currentSites, map, markers) => {
 
         // Adjust popup position on open
         marker.getPopup().on('open', () => {
-          adjustPopupPosition(marker.getPopup());
+          adjustPopupPosition(marker.getPopup(), map);
         });
 
         markers.push(marker);
@@ -48,7 +48,7 @@ export const updateMarkers = (currentSites, map, markers) => {
     return popupElement;
   }
 
-  function adjustPopupPosition(popup) {
+  function adjustPopupPosition(popup, map) {
     const popupElement = popup._content;
     const mapContainer = map.getContainer();
     const mapRect = mapContainer.getBoundingClientRect();

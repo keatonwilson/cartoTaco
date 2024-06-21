@@ -1,10 +1,11 @@
 <script>
   import RadarChart from './RadarChart.svelte';
   import { getTopFive, percentageOfMaxArray } from '$lib/dataWrangling.js';
-
+  import HoursOpen from './HoursOpen.svelte';
   // setup
   export let data;
 
+  console.log(data);
   const menuArray = getTopFive(data.menuItems);
   const topFiveItems = menuArray.map(subArray => subArray[0]);
   const topFiveValues = menuArray.map(subArray => subArray[1]);
@@ -33,11 +34,11 @@
   }
 
   .left-panel {
-    width: 30%;
+    width: 40%;
   }
 
   .right-panel {
-    width: 70%;
+    width: 60%;
   }
 
   .description {
@@ -63,6 +64,7 @@
 <div id="popup-content">
   <div class="left-panel">
     <h2>{data.name}</h2>
+    <HoursOpen />
     <p>{data.type}</p>
     <div class="description">
       <p>{data.shortDescription}</p>
