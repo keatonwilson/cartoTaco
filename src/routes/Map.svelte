@@ -44,6 +44,8 @@
   :global(.mapboxgl-popup-content) {
     padding: 10px;
     font-size: 14px;
+    border-radius: 2%;
+    opacity: 0.95;
   }
 
   :global(.mapboxgl-popup-tip) {

@@ -87,7 +87,7 @@
       text-shadow: 0 0 5px currentColor;
     }
     50% {
-      text-shadow: 0 0 20px currentColor;
+      text-shadow: 0 0 8px currentColor;
     }
     100% {
       text-shadow: 0 0 5px currentColor;
