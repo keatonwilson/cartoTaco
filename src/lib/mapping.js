@@ -17,6 +17,9 @@ export const updateMarkers = (currentSites, map, markers) => {
         // Get hours
         const startHours = filterObjectByKeySubstring(site, "start");
         const endHours = filterObjectByKeySubstring(site, "end");
+        
+        // get overall heat
+        const overallHeat = filterObjectByKeySubstring(site, "heat_overall");
 
         const marker = new mapboxgl.Marker()
           .setLngLat([site.lon_1, site.lat_1])
