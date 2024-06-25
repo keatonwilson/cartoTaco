@@ -14,8 +14,8 @@
   
   const startHours = data.startHours;
   const endHours = data.endHours;
-
-  let spiceValue = 6;
+  
+  const spiceValue = data.heatOverall;
 
   let showLongDescription = false;
 
@@ -105,7 +105,9 @@
   </div>
   <div class="right-panel" id="chart">
     <div class="top-row">
-      <div class='protein-chart-container'></div>
+      <div class='protein-chart-container'>
+        <!-- <RadarChart labels={} data={}/> -->
+      </div>
       <div class="right-box">
         <SpiceGauge {spiceValue} />
       </div>

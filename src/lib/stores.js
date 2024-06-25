@@ -65,7 +65,7 @@ export async function fetchData() {
     hoursData = [];
   }
 
-    // fetch salsa data
+  // fetch salsa data
   let { data: salsaData, error: salsaError } = await supabase
     .from("salsa")
     .select();
@@ -74,21 +74,32 @@ export async function fetchData() {
     salsaData = [];
   }
 
+  // fetch protein data
+  // let { data: proteinData, error: proteinError } = await supabase
+  //   .from("protein")
+  //   .select();
+  // if (descriptionsError) {
+  //   console.error("Error fetching protein data:", proteinError);
+  //   proteinData = [];
+  // }
+
   // Combine data
   const combinedData = {
     sites: sitesData || [],
     descriptions: descriptionsData || [],
-    menu: menuData || [], 
+    menu: menuData || [],
     hours: hoursData || [],
     salsa: salsaData || []
+    // protein: proteinData || [],
   };
 
   const aggregate = combineArrays(
     combinedData.sites,
     combinedData.descriptions,
     combinedData.menu,
-    combinedData.hours, 
-    combinedData.salsa
+    combinedData.hours,
+    combinedData.salsa,
+    // combinedData.protein
   );
 
   // Use the set method of the writable store to update the state

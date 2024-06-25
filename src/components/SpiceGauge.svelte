@@ -10,10 +10,14 @@
 
   onMount(() => {
     function initializeChart() {
-      if (
-        gaugeContainer.clientWidth === 0 ||
-        gaugeContainer.clientHeight === 0
-      ) {
+      // Check if gaugeContainer is null
+      if (!gaugeContainer) {
+        requestAnimationFrame(initializeChart);
+        return;
+      }
+
+      // Check if gaugeContainer has dimensions
+      if (gaugeContainer.clientWidth === 0 || gaugeContainer.clientHeight === 0) {
         requestAnimationFrame(initializeChart);
         return;
       }
