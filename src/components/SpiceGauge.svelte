@@ -99,11 +99,11 @@
   }
 </script>
 
-<div bind:this={gaugeContainer} style="width: 100%; height: 200px;"></div>
+<div bind:this={gaugeContainer} style="width: 100%; height: 150px;"></div>
 
 <style>
   div {
-    max-width: 200px;
-    max-height: 200px;
+    max-width: 150px;
+    max-height: 150px;
   }
 </style>
