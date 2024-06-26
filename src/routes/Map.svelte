@@ -3,8 +3,8 @@
   import mapboxgl from 'mapbox-gl';
   import { tacoStore } from '../lib/stores';
   import 'mapbox-gl/dist/mapbox-gl.css';
-  import { updateMarkers } from "../lib/mapping.js"
-  
+  import { updateMarkers } from "../lib/mapping.js";
+
   let map;
   let markers = [];
 
@@ -29,11 +29,21 @@
 </script>
 
 <div id="map"></div>
+<img id="logo" src="/color_light_bg.png" alt="Logo">
 
 <style>
   #map {
     width: 100%;
     height: 100vh;
+  }
+
+  #logo {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 250px; /* Adjust the width as needed */
+    height: auto;
+    z-index: 1;
   }
 
   :global(.mapboxgl-popup) {
