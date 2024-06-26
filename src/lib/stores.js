@@ -4,24 +4,19 @@
 import { writable } from "svelte/store";
 import { supabase } from "./supabase";
 
-// combine arrays function to do data merges
-function combineArrays(...arrays) {
-  const combinedMap = new Map();
+function combineArraysByEstId(arrays, names) {
+  const combined = {};
 
-  arrays.forEach((array) => {
-    array.forEach((item) => {
-      if (combinedMap.has(item.est_id)) {
-        combinedMap.set(item.est_id, {
-          ...combinedMap.get(item.est_id),
-          ...item,
-        });
-      } else {
-        combinedMap.set(item.est_id, { ...item });
-      }
+  arrays.forEach((array, index) => {
+    array.forEach(item => {
+      const est_id = item.est_id;
+      combined[est_id] = combined[est_id] || {};
+      combined[est_id][names[index]] = { ...item };
+      delete combined[est_id][names[index]].est_id;
     });
   });
 
-  return Array.from(combinedMap.values());
+  return Object.keys(combined).map(est_id => ({ est_id: parseInt(est_id), ...combined[est_id] }));
 }
 
 // export a writable store for core data
@@ -37,6 +32,7 @@ export async function fetchData() {
     console.error("Error fetching sites:", sitesError);
     sitesData = [];
   }
+
 
   // Fetch descriptions
   let { data: descriptionsData, error: descriptionsError } = await supabase
@@ -75,32 +71,18 @@ export async function fetchData() {
   }
 
   // fetch protein data
-  // let { data: proteinData, error: proteinError } = await supabase
-  //   .from("protein")
-  //   .select();
-  // if (descriptionsError) {
-  //   console.error("Error fetching protein data:", proteinError);
-  //   proteinData = [];
-  // }
+  let { data: proteinData, error: proteinError } = await supabase
+    .from("protein")
+    .select();
+  if (descriptionsError) {
+    console.error("Error fetching protein data:", proteinError);
+    proteinData = [];
+  }
 
-  // Combine data
-  const combinedData = {
-    sites: sitesData || [],
-    descriptions: descriptionsData || [],
-    menu: menuData || [],
-    hours: hoursData || [],
-    salsa: salsaData || []
-    // protein: proteinData || [],
-  };
-
-  const aggregate = combineArrays(
-    combinedData.sites,
-    combinedData.descriptions,
-    combinedData.menu,
-    combinedData.hours,
-    combinedData.salsa,
-    // combinedData.protein
-  );
+  // combine data
+  const combinedArray = [sitesData, descriptionsData, menuData, hoursData, salsaData, proteinData];
+  const namesArray = ["site", "descriptions", "menu", "hours", "salsa", "protein"];
+  const aggregate = combineArraysByEstId(combinedArray, namesArray);
 
   // Use the set method of the writable store to update the state
   tacoStore.set(aggregate);

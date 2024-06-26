@@ -6,32 +6,33 @@ export const updateMarkers = (currentSites, map, markers) => {
     if (!Array.isArray(currentSites)) {
       currentSites = [];
     }
+    
     markers.forEach((marker) => marker.remove());
     markers = [];
     if (map && currentSites) {
       currentSites.forEach((site) => {
-
+        
         // Get menu percentages
-        const menuPercs = filterObjectByKeySubstring(site, "perc");
+        const menuPercs = filterObjectByKeySubstring(site.menu, "perc");
         
         // Get hours
-        const startHours = filterObjectByKeySubstring(site, "start");
-        const endHours = filterObjectByKeySubstring(site, "end");
+        const startHours = filterObjectByKeySubstring(site.hours, "start");
+        const endHours = filterObjectByKeySubstring(site.hours, "end");
 
         const marker = new mapboxgl.Marker()
-          .setLngLat([site.lon_1, site.lat_1])
+          .setLngLat([site.site.lon_1, site.site.lat_1])
           .setPopup(
             new mapboxgl.Popup()
               .setDOMContent(
                 createPopupContent({
-                  name: site.name,
-                  type: site.type,
-                  shortDescription: site.short_descrip,
-                  longDescription: site.long_descrip,
+                  name: site.site.name,
+                  type: site.site.type,
+                  shortDescription: site.descriptions.short_descrip,
+                  longDescription: site.descriptions.long_descrip,
                   menuItems: menuPercs, 
                   startHours: startHours, 
                   endHours: endHours, 
-                  heatOverall: site.heat_overall
+                  heatOverall: site.salsa.heat_overall
                 })
               )
           )
