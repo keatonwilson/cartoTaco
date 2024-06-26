@@ -40,6 +40,9 @@
               display: false,
             },
           },
+          layout: {
+            padding: 0
+          },
           scales: {
             r: {
               angleLines: {
@@ -69,7 +72,7 @@
 
 <style>
   canvas {
-    max-width: 100%;
+    max-width: 250px;
     height: auto;
   }
 </style>
