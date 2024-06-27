@@ -34,7 +34,8 @@ export const updateMarkers = (currentSites, map, markers) => {
                   startHours: startHours, 
                   endHours: endHours, 
                   heatOverall: site.salsa.heat_overall,
-                  menuProtein: proteinPercs
+                  menuProtein: proteinPercs, 
+                  salsaCount: site.salsa.total_num
                 })
               )
           )

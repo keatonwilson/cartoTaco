@@ -77,6 +77,9 @@
         <SpiceGauge {spiceValue} />
       </div>
     </div>
+    <div class='salsa-count'>
+      <h3>Salsa Count: {data.salsaCount}</h3>
+    </div>
   </div>
 </div>
 
