@@ -126,12 +126,14 @@
   .top-row {
     display: flex;
     width: 100%;
-    max-height: 250px;
+    max-height: 40%;
   }
 
   .protein-chart-container {
+    display: flex;
+    justify-content: center;
     width: 65%;
-    padding: 5%;
+    padding: 2%;
   }
 
   .right-box {
