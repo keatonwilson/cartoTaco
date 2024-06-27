@@ -6,9 +6,15 @@
 
   export let data;
 
+  // radar chart menu data
   const menuArray = getTopFive(data.menuItems);
   const topFiveItems = menuArray.map((subArray) => subArray[0]);
   const topFiveValues = menuArray.map((subArray) => subArray[1]);
+
+  // radar chart protein data
+  const proteinArray = getTopFive(data.menuProtein);
+  const topFivePItems = proteinArray.map((subArray) => subArray[0]);
+  const topFivePValues = proteinArray.map((subArray) => subArray[1]);
 
   const startHours = data.startHours;
   const endHours = data.endHours;
@@ -65,7 +71,7 @@
   <div class="right-panel" id="chart">
     <div class="top-row">
       <div class="protein-chart-container">
-        <!-- <RadarChart labels={} data={}/> -->
+        <RadarChart labels={topFivePItems} data={topFivePValues}/>
       </div>
       <div class="right-box">
         <SpiceGauge {spiceValue} />
@@ -120,10 +126,12 @@
   .top-row {
     display: flex;
     width: 100%;
+    max-height: 250px;
   }
 
   .protein-chart-container {
     width: 65%;
+    padding: 5%;
   }
 
   .right-box {

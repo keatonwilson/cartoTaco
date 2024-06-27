@@ -12,9 +12,10 @@ export const updateMarkers = (currentSites, map, markers) => {
     if (map && currentSites) {
       currentSites.forEach((site) => {
         
-        // Get menu percentages
+        // Get menu and protein percentages
         const menuPercs = filterObjectByKeySubstring(site.menu, "perc");
-        
+        const proteinPercs = filterObjectByKeySubstring(site.protein, "perc");
+
         // Get hours
         const startHours = filterObjectByKeySubstring(site.hours, "start");
         const endHours = filterObjectByKeySubstring(site.hours, "end");
@@ -32,7 +33,8 @@ export const updateMarkers = (currentSites, map, markers) => {
                   menuItems: menuPercs, 
                   startHours: startHours, 
                   endHours: endHours, 
-                  heatOverall: site.salsa.heat_overall
+                  heatOverall: site.salsa.heat_overall,
+                  menuProtein: proteinPercs
                 })
               )
           )
