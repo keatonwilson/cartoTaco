@@ -35,7 +35,8 @@ export const updateMarkers = (currentSites, map, markers) => {
                   endHours: endHours, 
                   heatOverall: site.salsa.heat_overall,
                   menuProtein: proteinPercs, 
-                  salsaCount: site.salsa.total_num
+                  salsaCount: site.salsa.total_num, 
+                  tortillaType: site.menu.flour_corn
                 })
               )
           )

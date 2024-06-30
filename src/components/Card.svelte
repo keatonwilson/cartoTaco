@@ -3,6 +3,7 @@
   import { getTopFive, percentageOfMaxArray } from "$lib/dataWrangling.js";
   import HoursOpen from "./HoursOpen.svelte";
   import SpiceGauge from "./SpiceGauge.svelte";
+  import IconHighlight from "./IconHighlight.svelte";
 
   export let data;
 
@@ -16,11 +17,14 @@
   const topFivePItems = proteinArray.map((subArray) => subArray[0]);
   const topFivePValues = proteinArray.map((subArray) => subArray[1]);
 
+  // hours
   const startHours = data.startHours;
   const endHours = data.endHours;
 
+  // spice level
   const spiceValue = data.heatOverall;
 
+  // defauly show long description
   let showLongDescription = false;
 
   function toggleLongDescription() {
@@ -35,28 +39,7 @@
     </h2>
     <HoursOpen {startHours} {endHours} />
     <h2 class="text-m font-semibold text-gray-800 my-2">Type</h2>
-    <!-- Three icons with dynamic gray go here -->
-    <div class="icons">
-      <img
-        src="/shop_icon.svg"
-        alt="Taco Shop"
-        class:highlight={data.type === "Brick and Mortar"}
-        class="icon"
-      />
-      <img
-        src="/stand_icon.svg"
-        alt="Taco Stand"
-        class:highlight={data.type === "Stand"}
-        class="icon"
-      />
-      <img
-        src="/truck_icon.svg"
-        alt="Taco Truck"
-        class:highlight={data.type === "Truck"}
-        class="icon"
-      />
-    </div>
-
+    <IconHighlight type="siteType" data={data.type}/>
     <div class="description">
       <h2 class="text-m font-semibold text-gray-800 my-2">Description</h2>
       <p>{data.shortDescription}</p>
@@ -82,20 +65,7 @@
         <h2 class="text-m font-semibold text-gray-800" id="spicy-label">Spiciness</h2>
         <SpiceGauge {spiceValue} />
         <h2 class="text-m font-semibold text-gray-800 my-2">Tortilla Type</h2>
-        <div class="icons">
-          <img
-            src="/corn.svg"
-            alt="Corn"
-            class:highlight={data.type === "Brick and Mortar"}
-            class="icon"
-          />
-          <img
-            src="/wheat.svg"
-            alt="Wheat"
-            class:highlight={data.type === "Stand"}
-            class="icon"
-          />
-        </div>
+        <IconHighlight type="tortilla" data={data.tortillaType}/>
       </div>
     </div>
   </div>
@@ -175,21 +145,7 @@
     padding-top: 0px;
   }
 
-  .icons {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 10px;
-  }
 
-  .icon {
-    width: 50px;
-    height: 50px;
-    opacity: 0.3; /* Default faded */
-  }
-
-  .icon.highlight {
-    opacity: 1; /* Highlighted icon */
-  }
 
   .radar-chart-container {
     display: flex;
