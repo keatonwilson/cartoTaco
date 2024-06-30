@@ -26,20 +26,27 @@
   // Mapping day letter to number
   function dayToNumber(day) {
     const dayMap = {
-      S: 0, // Assuming first 'S' is Sunday
-      M: 1,
-      T: 2, // Assuming first 'T' is Tuesday
-      W: 3,
-      T: 4, // Assuming second 'T' is Thursday
-      F: 5,
-      S: 6, // Assuming second 'S' is Saturday
+      Su: 0,
+      Mo: 1,
+      Tu: 2,
+      We: 3,
+      Th: 4,
+      Fr: 5,
+      Sa: 6,
     };
     return dayMap[day];
   }
 
   // Determine if the business is open now
   let openNow = isOpen(currentDay, currentTime);
+  console.log(openNow);
+  console.log(currentDay);
+  console.log(currentTime);
+  console.log(startHours);
+  console.log(endHours);
 </script>
+
+
 <style>
   .container {
     display: flex;
@@ -93,10 +100,10 @@
       text-shadow: 0 0 5px currentColor;
     }
   }
-  </style>
-  
-  <div>
-    <h2 class="text-m font-semibold text-gray-800 mb-2">Hours</h2>
+</style>
+
+<div>
+  <h2 class="text-m font-semibold text-gray-800 mb-2">Hours</h2>
   <div class="container">
     <div class="days">
       {#each convertedHours as {day, open, close, closed}, i}
@@ -112,3 +119,4 @@
     </div>
   </div>
 </div>
+

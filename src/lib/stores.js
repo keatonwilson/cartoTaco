@@ -85,7 +85,6 @@ export async function fetchData() {
   const namesArray = ["site", "descriptions", "menu", "hours", "salsa", "protein"];
   const aggregate = combineArraysByEstId(combinedArray, namesArray);
 
-  console.log(aggregate);
   // Use the set method of the writable store to update the state
   tacoStore.set(aggregate);
 }
