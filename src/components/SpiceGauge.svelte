@@ -32,10 +32,10 @@
             max: 10,
             splitNumber: 5, // Fewer ticks
             center: ["50%", "50%"], // Center the gauge vertically
-            radius: "80%", // Adjust the radius to reduce whitespace
+            radius: "65%", // Adjust the radius to reduce whitespace
             axisLine: {
               lineStyle: {
-                width: 10, // Thinner gauge line
+                width: 4, // Thinner gauge line
                 color: [
                   [0.3, "#FFD700"],
                   [0.7, "#FF6E76"],
@@ -44,7 +44,7 @@
               },
             },
             pointer: {
-              width: 4, // Thinner pointer
+              width: 2, // Thinner pointer
               length: '50%',
               itemStyle: {
                 color: "auto",
@@ -67,7 +67,7 @@
             },
             detail: {
               formatter: "{value}",
-              fontSize: 20, // Larger font size for the value
+              fontSize: 25, // Larger font size for the value
               offsetCenter: [0, "60%"], // Position the value inside the gauge
             },
             data: [{ value: spiceValue }],

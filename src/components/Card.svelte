@@ -30,9 +30,11 @@
 
 <div id="popup-content">
   <div class="left-panel">
-    <h2>{data.name}</h2>
+    <h2 class="text-2xl font-semibold text-gray-800 mb-4">
+      {data.name}
+    </h2>
     <HoursOpen {startHours} {endHours} />
-
+    <h2 class="text-m font-semibold text-gray-800 my-2">Type</h2>
     <!-- Three icons with dynamic gray go here -->
     <div class="icons">
       <img
@@ -56,6 +58,7 @@
     </div>
 
     <div class="description">
+      <h2 class="text-m font-semibold text-gray-800 my-2">Description</h2>
       <p>{data.shortDescription}</p>
       <div class="long-description" class:visible={showLongDescription}>
         <p>{data.longDescription}</p>
@@ -64,6 +67,7 @@
         {showLongDescription ? "Show less" : "Read more"}
       </span>
     </div>
+    <h2 class="text-m font-semibold text-gray-800 my-2">Menu Summary</h2>
     <div class="radar-chart-container">
       <RadarChart labels={topFiveItems} data={topFiveValues} />
     </div>
@@ -71,19 +75,34 @@
   <div class="right-panel" id="chart">
     <div class="top-row">
       <div class="protein-chart-container">
-        <RadarChart labels={topFivePItems} data={topFivePValues}/>
+        <h2 class="text-m font-semibold text-gray-800 my-2">Protein</h2>
+        <RadarChart labels={topFivePItems} data={topFivePValues} />
       </div>
       <div class="right-box">
+        <h2 class="text-m font-semibold text-gray-800" id="spicy-label">Spiciness</h2>
         <SpiceGauge {spiceValue} />
+        <h2 class="text-m font-semibold text-gray-800 my-2">Tortilla Type</h2>
+        <div class="icons">
+          <img
+            src="/corn.svg"
+            alt="Corn"
+            class:highlight={data.type === "Brick and Mortar"}
+            class="icon"
+          />
+          <img
+            src="/wheat.svg"
+            alt="Wheat"
+            class:highlight={data.type === "Stand"}
+            class="icon"
+          />
+        </div>
       </div>
-    </div>
-    <div class='salsa-count'>
-      <h3>Salsa Count: {data.salsaCount}</h3>
     </div>
   </div>
 </div>
 
 <style>
+
   #popup-content {
     display: flex;
     width: 100%;
@@ -109,6 +128,13 @@
 
   .description {
     margin-top: 10px;
+    color: #34495e;
+    background-color: #ecf0f1;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: left;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.2s;
   }
 
   .long-description {
@@ -130,10 +156,12 @@
     display: flex;
     width: 100%;
     max-height: 40%;
+    border-bottom: 1px solid lightgray;
   }
 
   .protein-chart-container {
     display: flex;
+    flex-direction: column;
     justify-content: center;
     width: 65%;
     padding: 2%;
@@ -143,10 +171,8 @@
     width: 35%;
     display: flex;
     flex-direction: column;
-  }
-
-  .right-box > * {
-    flex: 1;
+    justify-content: start;
+    padding-top: 0px;
   }
 
   .icons {

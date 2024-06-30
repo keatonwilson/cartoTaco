@@ -41,7 +41,7 @@
             },
           },
           layout: {
-            padding: 0
+            padding: 5
           },
           scales: {
             r: {
@@ -50,6 +50,9 @@
               },
               pointLabels: {
                 display: true,
+                font: {
+                  size: 12 // Adjust this value to change the font size
+                },
               },
               ticks: {
                 display: false,
@@ -70,9 +73,10 @@
 
 <canvas bind:this={canvas}></canvas>
 
+
 <style>
-  canvas {
+  /* canvas {
     max-width: 250px;
     height: auto;
-  }
+  } */
 </style>

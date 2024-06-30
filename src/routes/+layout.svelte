@@ -1,13 +1,13 @@
-<script>
-</script>
+
 
 <div class="app">
 	<main>
-		<slot />
+		<slot></slot>
 	</main>
 </div>
 
-<style>
+
+<slot></slot><style>
 	.app {
 		display: flex;
 		flex-direction: column;
@@ -25,4 +25,4 @@
 		box-sizing: border-box;
 	}
 
-</style>
+</style><slot></slot><script>import "../app.css";</script>

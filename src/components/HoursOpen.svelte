@@ -95,6 +95,8 @@
   }
   </style>
   
+  <div>
+    <h2 class="text-m font-semibold text-gray-800 mb-2">Hours</h2>
   <div class="container">
     <div class="days">
       {#each convertedHours as {day, open, close, closed}, i}
@@ -109,3 +111,4 @@
       {openNow ? 'Open Now' : 'Closed Now'}
     </div>
   </div>
+</div>
