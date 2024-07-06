@@ -18,6 +18,20 @@
       zoom: 9,
     });
 
+    // Add zoom and rotation controls to the map.
+    const navControl = new mapboxgl.NavigationControl();
+    map.addControl(navControl, 'top-right');
+
+    // Add geolocation control to the map.
+    const geoLocateControl = new mapboxgl.GeolocateControl({
+      positionOptions: {
+        enableHighAccuracy: true
+      },
+      trackUserLocation: true,
+      showAccuracyCircle: true
+    });
+    map.addControl(geoLocateControl, 'top-right');
+
     updateMarkers($tacoStore, map, markers);
 
     return () => map.remove();

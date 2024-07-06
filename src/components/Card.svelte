@@ -4,6 +4,7 @@
   import HoursOpen from "./HoursOpen.svelte";
   import SpiceGauge from "./SpiceGauge.svelte";
   import IconHighlight from "./IconHighlight.svelte";
+  import SalsaCount from "./SalsaCount.svelte";
 
   export let data;
 
@@ -68,6 +69,7 @@
         <IconHighlight type="tortilla" data={data.tortillaType}/>
       </div>
     </div>
+    <SalsaCount value=10/>
   </div>
 </div>
 

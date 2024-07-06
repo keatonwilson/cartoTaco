@@ -39,11 +39,6 @@
 
   // Determine if the business is open now
   let openNow = isOpen(currentDay, currentTime);
-  console.log(openNow);
-  console.log(currentDay);
-  console.log(currentTime);
-  console.log(startHours);
-  console.log(endHours);
 </script>
 
 

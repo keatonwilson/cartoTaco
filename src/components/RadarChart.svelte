@@ -7,8 +7,6 @@
 
   let canvas;
   let chartInstance;
-  // export let topFiveItems;
-  // console.log(topFiveItems);
 
   onMount(() => {
     if (canvas) {
