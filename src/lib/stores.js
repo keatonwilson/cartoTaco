@@ -3,13 +3,12 @@
 // imports
 import { writable } from "svelte/store";
 import { supabase } from "./supabase";
-import { A } from "flowbite-svelte";
 
 function combineArraysByEstId(arrays, names) {
   const combined = {};
 
   arrays.forEach((array, index) => {
-    array.forEach(item => {
+    array.forEach((item) => {
       const est_id = item.est_id;
       combined[est_id] = combined[est_id] || {};
       combined[est_id][names[index]] = { ...item };
@@ -17,11 +16,14 @@ function combineArraysByEstId(arrays, names) {
     });
   });
 
-  return Object.keys(combined).map(est_id => ({ est_id: parseInt(est_id), ...combined[est_id] }));
+  return Object.keys(combined).map((est_id) => ({
+    est_id: parseInt(est_id),
+    ...combined[est_id],
+  }));
 }
 
 // export a writable store for core data
-export const tacoStore = writable({ combinedSites: [] });
+export const tacoStore = writable({ combinedSites: [], summaries: [] });
 
 // async fetch data function (currently sites and descriptions)
 export async function fetchData() {
@@ -33,7 +35,6 @@ export async function fetchData() {
     console.error("Error fetching sites:", sitesError);
     sitesData = [];
   }
-
 
   // Fetch descriptions
   let { data: descriptionsData, error: descriptionsError } = await supabase
@@ -81,8 +82,22 @@ export async function fetchData() {
   }
 
   // combine data
-  const combinedArray = [sitesData, descriptionsData, menuData, hoursData, salsaData, proteinData];
-  const namesArray = ["site", "descriptions", "menu", "hours", "salsa", "protein"];
+  const combinedArray = [
+    sitesData,
+    descriptionsData,
+    menuData,
+    hoursData,
+    salsaData,
+    proteinData,
+  ];
+  const namesArray = [
+    "site",
+    "descriptions",
+    "menu",
+    "hours",
+    "salsa",
+    "protein",
+  ];
   const aggregate = combineArraysByEstId(combinedArray, namesArray);
 
   // Use the set method of the writable store to update the state
