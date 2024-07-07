@@ -28,6 +28,7 @@
   // defauly show long description
   let showLongDescription = false;
 
+
   function toggleLongDescription() {
     showLongDescription = !showLongDescription;
   }
@@ -69,7 +70,9 @@
         <IconHighlight type="tortilla" data={data.tortillaType}/>
       </div>
     </div>
-    <SalsaCount value=10/>
+    <div class='salsa-container'>
+      <SalsaCount value={data.salsaCount} meanValue={data.avgSalsaNum} maxValue={data.maxSalsaNum}/>
+    </div>
   </div>
 </div>
 
@@ -147,11 +150,13 @@
     padding-top: 0px;
   }
 
-
-
   .radar-chart-container {
     display: flex;
     justify-content: center;
     max-height: 500px;
+  }
+
+  .salsa-container {
+    display: flex;
   }
 </style>

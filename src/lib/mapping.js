@@ -2,16 +2,22 @@ import PopupContent from '../components/Card.svelte';
 import { filterObjectByKeySubstring } from './dataWrangling';
 import mapboxgl from 'mapbox-gl';
 
-export const updateMarkers = (currentSites, map, markers) => {
-    if (!Array.isArray(currentSites)) {
+export const updateMarkers = (currentSites, map, markers, currentSummary) => {
+    
+  if (!Array.isArray(currentSites)) {
       currentSites = [];
+    }
+
+    if (!Array.isArray(currentSummary)) {
+      currentSummary = [];
     }
     
     markers.forEach((marker) => marker.remove());
     markers = [];
-    if (map && currentSites) {
+    if (map && currentSites && currentSummary) {
       currentSites.forEach((site) => {
         
+        // console.log(currentSummary);
         // Get menu and protein percentages
         const menuPercs = filterObjectByKeySubstring(site.menu, "perc");
         const proteinPercs = filterObjectByKeySubstring(site.protein, "perc");
@@ -36,6 +42,8 @@ export const updateMarkers = (currentSites, map, markers) => {
                   heatOverall: site.salsa.heat_overall,
                   menuProtein: proteinPercs, 
                   salsaCount: site.salsa.total_num, 
+                  maxSalsaNum: currentSummary[0].max_salsa_num, 
+                  avgSalsaNum: currentSummary[0].avg_salsa_num,
                   tortillaType: site.menu.flour_corn
                 })
               )

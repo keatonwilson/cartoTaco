@@ -23,10 +23,11 @@ function combineArraysByEstId(arrays, names) {
 }
 
 // export a writable store for core data
-export const tacoStore = writable({ combinedSites: [], summaries: [] });
+export const tacoStore = writable({ combinedSites: [] });
+export const summaryStore = writable({ summaries: [] });
 
 // async fetch data function (currently sites and descriptions)
-export async function fetchData() {
+export async function fetchSiteData() {
   // Fetch sites
   let { data: sitesData, error: sitesError } = await supabase
     .from("sites")
@@ -104,4 +105,18 @@ export async function fetchData() {
   tacoStore.set(aggregate);
 }
 
-fetchData();
+fetchSiteData();
+
+export async function fetchSummaryData() {
+    // Fetch summary data
+  let { data: summaryData, error: summaryError } = await supabase
+    .from("summaries")
+    .select();
+  if (summaryError) {
+    console.error("Error fetching summaries:", summariesError);
+    summariesData = [];
+  }
+  summaryStore.set(summaryData);
+}
+
+fetchSummaryData();

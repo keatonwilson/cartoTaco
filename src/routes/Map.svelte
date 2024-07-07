@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import mapboxgl from 'mapbox-gl';
-  import { tacoStore } from '../lib/stores';
+  import { tacoStore, summaryStore } from '../lib/stores';
   import 'mapbox-gl/dist/mapbox-gl.css';
   import { updateMarkers } from "../lib/mapping.js";
 
@@ -11,8 +11,14 @@
   mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_KEY;
 
   onMount(() => {
+    const mapContainer = document.getElementById('map');
+
+    // Clear any residual content in the map container
+    mapContainer.innerHTML = '';
+
+    // Initialize the map
     map = new mapboxgl.Map({
-      container: 'map',
+      container: mapContainer,
       style: 'mapbox://styles/mapbox/standard',
       center: [-110.97, 32.16],
       zoom: 9,
@@ -32,17 +38,22 @@
     });
     map.addControl(geoLocateControl, 'top-right');
 
-    updateMarkers($tacoStore, map, markers);
+    // Update markers
+    updateMarkers($tacoStore, map, markers, $summaryStore);
 
+    // Cleanup map on component unmount
     return () => map.remove();
   });
 
   $: {
-    updateMarkers($tacoStore, map, markers);
+    updateMarkers($tacoStore, map, markers, $summaryStore);
   }
 </script>
 
+<!-- Map Container -->
 <div id="map"></div>
+
+<!-- Logo Element outside of the map container -->
 <img id="logo" src="/color_light_bg.png" alt="Logo">
 
 <style>
