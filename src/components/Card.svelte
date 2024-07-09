@@ -5,6 +5,8 @@
   import SpiceGauge from "./SpiceGauge.svelte";
   import IconHighlight from "./IconHighlight.svelte";
   import SalsaCount from "./SalsaCount.svelte";
+  import SpecCarousel from "./SpecCarousel.svelte";
+  import SpecCard from "./SpecCard.svelte";
 
   export let data;
 
@@ -73,6 +75,9 @@
     <div class='salsa-container'>
       <SalsaCount value={data.salsaCount} meanValue={data.avgSalsaNum} maxValue={data.maxSalsaNum}/>
     </div>
+    <SpecCard itemDescrip='Pueblan super-torta with chipotle, queso oaxaca, avocado & a variety of proteins.' itemName='Cemita' cardType='Item'/>
+    <SpecCard itemDescrip='Pueblan super-torta with chipotle, queso oaxaca, avocado & a variety of proteins.' itemName='Cemita' cardType='Protein'/>
+    <SpecCard itemDescrip='Pueblan super-torta with chipotle, queso oaxaca, avocado & a variety of proteins.' itemName='Cemita' cardType='Salsa'/>
   </div>
 </div>
 

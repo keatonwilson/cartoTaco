@@ -22,7 +22,7 @@
               {
                 data: [maxValue],
                 backgroundColor: "rgba(211, 211, 211, 0.5)", // Gray background
-                barPercentage: 0.4, // Adjust bar height
+                barPercentage: 0.2, // Adjust bar height
                 categoryPercentage: 0.8, // Adjust bar height
                 order: 2,
                 label: "Max Value",
@@ -30,7 +30,7 @@
               {
                 data: [value],
                 backgroundColor: "rgb(204, 85, 0)",
-                barPercentage: 0.4, // Adjust bar height
+                barPercentage: 0.2, // Adjust bar height
                 categoryPercentage: 0.8, // Adjust bar height
                 order: 1,
                 label: "Value",
@@ -132,7 +132,7 @@
     }
 
     #salsaBarChart {
-        width: 80%;
+        width: 100%;
         height: auto;
     }
   </style>
