@@ -2,15 +2,19 @@ import PopupContent from '../components/Card.svelte';
 import { filterObjectByKeySubstring } from './dataWrangling';
 import mapboxgl from 'mapbox-gl';
 
-export const updateMarkers = (currentSites, map, markers, currentSummary) => {
+export const updateMarkers = (currentSites, map, markers, currentSummary, specData) => {
     
   if (!Array.isArray(currentSites)) {
       currentSites = [];
     }
 
-    if (!Array.isArray(currentSummary)) {
-      currentSummary = [];
-    }
+  if (!Array.isArray(currentSummary)) {
+    currentSummary = [];
+  }
+
+  if (!Array.isArray(specData)) {
+    currentSummary = [];
+  }
     
     markers.forEach((marker) => marker.remove());
     markers = [];
@@ -44,7 +48,8 @@ export const updateMarkers = (currentSites, map, markers, currentSummary) => {
                   salsaCount: site.salsa.total_num, 
                   maxSalsaNum: currentSummary[0].max_salsa_num, 
                   avgSalsaNum: currentSummary[0].avg_salsa_num,
-                  tortillaType: site.menu.flour_corn
+                  tortillaType: site.menu.flour_corn, 
+                  specialtyData: specData
                 })
               )
           )

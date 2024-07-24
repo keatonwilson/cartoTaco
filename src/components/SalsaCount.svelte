@@ -120,10 +120,10 @@
     .chart-container {
       display: flex;
       align-items: center;
-      height: 100px; /* Increase the container height */
       margin: 5px;
       overflow: hidden;
       width: 100%;
+      max-height: 100px
     }
     .chart-label {
       margin-right: 10px;
@@ -132,7 +132,7 @@
     }
 
     #salsaBarChart {
-        width: 100%;
+        width: auto;
         height: auto;
     }
   </style>

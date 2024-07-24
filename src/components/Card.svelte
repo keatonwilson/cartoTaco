@@ -34,6 +34,9 @@
   function toggleLongDescription() {
     showLongDescription = !showLongDescription;
   }
+
+  console.log(data.specialtyData);
+  
 </script>
 
 <div id="popup-content">

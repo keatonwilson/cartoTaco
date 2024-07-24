@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import mapboxgl from 'mapbox-gl';
-  import { tacoStore, summaryStore } from '../lib/stores';
+  import { tacoStore, summaryStore, specStore } from '../lib/stores';
   import 'mapbox-gl/dist/mapbox-gl.css';
   import { updateMarkers } from "../lib/mapping.js";
 
@@ -39,14 +39,14 @@
     map.addControl(geoLocateControl, 'top-right');
 
     // Update markers
-    updateMarkers($tacoStore, map, markers, $summaryStore);
+    updateMarkers($tacoStore, map, markers, $summaryStore, $specStore);
 
     // Cleanup map on component unmount
     return () => map.remove();
   });
 
   $: {
-    updateMarkers($tacoStore, map, markers, $summaryStore);
+    updateMarkers($tacoStore, map, markers, $summaryStore, $specStore);
   }
 </script>
 

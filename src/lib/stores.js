@@ -25,6 +25,7 @@ function combineArraysByEstId(arrays, names) {
 // export a writable store for core data
 export const tacoStore = writable({ combinedSites: [] });
 export const summaryStore = writable({ summaries: [] });
+export const specStore = writable({ specialties: []})
 
 // async fetch data function (currently sites and descriptions)
 export async function fetchSiteData() {
@@ -120,3 +121,51 @@ export async function fetchSummaryData() {
 }
 
 fetchSummaryData();
+
+export async function fetchSpecialtyData() {
+  // Fetch item specialties
+let { data: itemSpecData, error: itemSpecError } = await supabase
+  .from("item_spec")
+  .select();
+if (itemSpecError) {
+  console.error("Error fetching specialty items:", itemSpecError);
+  itemSpecData = [];
+}
+
+  // Fetch protein specialties
+  let { data: proteinSpecData, error: proteinSpecError } = await supabase
+  .from("protein_spec")
+  .select();
+if (proteinSpecError) {
+  console.error("Error fetching specialty proteins:", proteinSpecError);
+  proteinSpecData = [];
+}
+
+  // Fetch protein specialties
+  let { data: salsaSpecData, error: salsaSpecError } = await supabase
+  .from("salsa_spec")
+  .select();
+if (salsaSpecError) {
+  console.error("Error fetching specialty salsas:", salsaSpecError);
+  salsaSpecData = [];
+}
+
+
+// combine data
+const specCombinedArray = [
+  itemSpecData,
+  proteinSpecData, 
+  salsaSpecData
+];
+const specNamesArray = [
+  "itemSpec", 
+  "proteinSpec", 
+  "salsaSpec"
+];
+const specAggregate = combineArraysByEstId(specCombinedArray, specNamesArray);
+
+// Use the set method of the writable store to update the state
+specStore.set(specAggregate);
+}
+
+fetchSpecialtyData();
