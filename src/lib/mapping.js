@@ -1,22 +1,14 @@
 import PopupContent from '../components/Card.svelte';
-import { filterObjectByKeySubstring } from './dataWrangling';
 import mapboxgl from 'mapbox-gl';
+import { selectedSite } from './stores';
 
-export const updateMarkers = (currentSites, map, markers, currentSummary, specData) => {
+export const updateMarkers = (processedSites, map, markers, summaryStats) => {
   // Validate inputs to prevent errors
   if (!map) return;
   
   // Ensure we have arrays to work with
-  if (!Array.isArray(currentSites)) {
-    currentSites = [];
-  }
-
-  if (!Array.isArray(currentSummary)) {
-    currentSummary = [];
-  }
-
-  if (!Array.isArray(specData)) {
-    specData = [];
+  if (!Array.isArray(processedSites)) {
+    processedSites = [];
   }
   
   // Remove existing markers
@@ -26,57 +18,43 @@ export const updateMarkers = (currentSites, map, markers, currentSummary, specDa
   }
   
   // Only proceed if we have valid data
-  if (map && currentSites.length > 0 && currentSummary.length > 0) {
+  if (map && processedSites.length > 0) {
     try {
-      currentSites.forEach((site) => {
+      processedSites.forEach((site) => {
         // Skip invalid site data
-        if (!site.site || !site.descriptions || !site.menu || 
-            !site.hours || !site.salsa || !site.protein) {
-          console.warn('Skipping site with missing data:', site.est_id);
+        if (!site) {
           return;
         }
         
         try {
-          // Get menu and protein percentages
-          const menuPercs = filterObjectByKeySubstring(site.menu, "perc");
-          const proteinPercs = filterObjectByKeySubstring(site.protein, "perc");
-
-          // Get hours
-          const startHours = filterObjectByKeySubstring(site.hours, "start");
-          const endHours = filterObjectByKeySubstring(site.hours, "end");
-
-          // Get summary values with fallbacks
-          const maxSalsaNum = currentSummary[0]?.max_salsa_num || 0;
-          const avgSalsaNum = currentSummary[0]?.avg_salsa_num || 0;
-
           const marker = new mapboxgl.Marker()
-            .setLngLat([site.site.lon_1, site.site.lat_1])
-            .setPopup(
-              new mapboxgl.Popup()
-                .setDOMContent(
-                  createPopupContent({
-                    name: site.site.name,
-                    type: site.site.type,
-                    shortDescription: site.descriptions.short_descrip,
-                    longDescription: site.descriptions.long_descrip,
-                    menuItems: menuPercs, 
-                    startHours: startHours, 
-                    endHours: endHours, 
-                    heatOverall: site.salsa.heat_overall,
-                    menuProtein: proteinPercs, 
-                    salsaCount: site.salsa.total_num, 
-                    maxSalsaNum: maxSalsaNum, 
-                    avgSalsaNum: avgSalsaNum,
-                    tortillaType: site.menu.flour_corn, 
-                    specialtyData: specData
-                  })
-                )
-            )
+            .setLngLat([site.longitude, site.latitude])
             .addTo(map);
-
+          
+          // Create popup but don't set it yet - we'll set it on click
+          const popup = new mapboxgl.Popup({
+            closeButton: true,
+            closeOnClick: true
+          }).setDOMContent(
+            createPopupContent(site.est_id)
+          );
+          
+          // Handle marker click - update selected site
+          marker.getElement().addEventListener('click', () => {
+            // Set the selected site in the store
+            selectedSite.set(site);
+            
+            // Set and open the popup
+            marker.setPopup(popup);
+            popup.addTo(map);
+            
+            // Adjust popup position
+            adjustPopupPosition(popup, map);
+          });
+          
           // Adjust popup position on open
-          marker.getPopup().on('open', () => {
-            adjustPopupPosition(marker.getPopup(), map);
+          popup.on('open', () => {
+            adjustPopupPosition(popup, map);
           });
 
           markers.push(marker);
@@ -90,12 +68,12 @@ export const updateMarkers = (currentSites, map, markers, currentSummary, specDa
   }
 };
 
-function createPopupContent(data) {
+function createPopupContent(siteId) {
   try {
     const popupElement = document.createElement('div');
     new PopupContent({
       target: popupElement,
-      props: { data },
+      props: { siteId }
     });
     return popupElement;
   } catch (error) {
