@@ -1,56 +1,32 @@
 <script>
   import RadarChart from "./RadarChart.svelte";
-  import { getTopFive, percentageOfMaxArray } from "$lib/dataWrangling.js";
   import HoursOpen from "./HoursOpen.svelte";
   import SpiceGauge from "./SpiceGauge.svelte";
   import IconHighlight from "./IconHighlight.svelte";
   import SalsaCount from "./SalsaCount.svelte";
   import SpecCarousel from "./SpecCarousel.svelte";
   import SpecCard from "./SpecCard.svelte";
+  import { selectedSite, summaryStats, specialtiesBySite } from "$lib/stores";
 
-  export let data;
+  // Use the site ID to find the site in the selectedSite store
+  export let siteId = null;
   
+  // Local state
+  let showLongDescription = false;
   let errorState = false;
   let errorMessage = "Unable to display data";
-  
-  // Default variables
-  let menuArray = [];
-  let topFiveItems = [];
-  let topFiveValues = [];
-  let proteinArray = [];
-  let topFivePItems = [];
-  let topFivePValues = [];
-  let showLongDescription = false;
 
-  // Validate required data
-  try {
-    if (!data || !data.name || !data.menuItems || !data.menuProtein) {
-      errorState = true;
-      errorMessage = "Missing required data";
-    } else {
-      // Process data only if validation passes
-      // radar chart menu data
-      menuArray = getTopFive(data.menuItems || {});
-      topFiveItems = menuArray.map((subArray) => subArray[0]);
-      topFiveValues = menuArray.map((subArray) => subArray[1]);
-
-      // radar chart protein data
-      proteinArray = getTopFive(data.menuProtein || {});
-      topFivePItems = proteinArray.map((subArray) => subArray[0]);
-      topFivePValues = proteinArray.map((subArray) => subArray[1]);
-    }
-  } catch (error) {
-    console.error("Error processing card data:", error);
-    errorState = true;
-    errorMessage = "Error displaying data";
-  }
-
+  // Toggle long description
   function toggleLongDescription() {
     showLongDescription = !showLongDescription;
   }
 </script>
 
-{#if errorState}
+{#if !$selectedSite}
+  <div id="error-content">
+    <p>No location selected</p>
+  </div>
+{:else if errorState}
   <div id="error-content">
     <p>{errorMessage}</p>
   </div>
@@ -58,16 +34,19 @@
   <div id="popup-content">
     <div class="left-panel">
       <h2 class="text-2xl font-semibold text-gray-800 mb-4">
-        {data.name || 'Unknown Location'}
+        {$selectedSite.name || 'Unknown Location'}
       </h2>
-      <HoursOpen startHours={data.startHours || {}} endHours={data.endHours || {}} />
+      <HoursOpen 
+        startHours={$selectedSite.startHours || {}} 
+        endHours={$selectedSite.endHours || {}} 
+      />
       <h2 class="text-m font-semibold text-gray-800 my-2">Type</h2>
-      <IconHighlight type="siteType" data={data.type || 'unknown'} />
+      <IconHighlight type="siteType" data={$selectedSite.type || 'unknown'} />
       <div class="description">
         <h2 class="text-m font-semibold text-gray-800 my-2">Description</h2>
-        <p>{data.shortDescription || 'No description available'}</p>
+        <p>{$selectedSite.shortDescription || 'No description available'}</p>
         <div class="long-description" class:visible={showLongDescription}>
-          <p>{data.longDescription || 'No detailed description available'}</p>
+          <p>{$selectedSite.longDescription || 'No detailed description available'}</p>
         </div>
         <span class="expand-button" on:click={toggleLongDescription}>
           {showLongDescription ? "Show less" : "Read more"}
@@ -75,36 +54,69 @@
       </div>
       <h2 class="text-m font-semibold text-gray-800 my-2">Menu Summary</h2>
       <div class="radar-chart-container">
-        <RadarChart labels={topFiveItems} data={topFiveValues} />
+        <RadarChart 
+          labels={$selectedSite.topFiveMenuItems || []} 
+          data={$selectedSite.topFiveMenuValues || []} 
+        />
       </div>
     </div>
     <div class="right-panel" id="chart">
       <div class="top-row">
         <div class="protein-chart-container">
           <h2 class="text-m font-semibold text-gray-800 my-2">Protein</h2>
-          <RadarChart labels={topFivePItems} data={topFivePValues} />
+          <RadarChart 
+            labels={$selectedSite.topFiveProteinItems || []} 
+            data={$selectedSite.topFiveProteinValues || []} 
+          />
         </div>
         <div class="right-box">
           <h2 class="text-m font-semibold text-gray-800" id="spicy-label">Spiciness</h2>
-          <SpiceGauge spiceValue={data.heatOverall || 0} />
+          <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
           <h2 class="text-m font-semibold text-gray-800 my-2">Tortilla Type</h2>
-          <IconHighlight type="tortilla" data={data.tortillaType || 'unknown'} />
+          <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
         </div>
       </div>
       <div class='salsa-container'>
         <SalsaCount 
-          value={data.salsaCount || 0} 
-          meanValue={data.avgSalsaNum || 0} 
-          maxValue={data.maxSalsaNum || 0} 
+          value={$selectedSite.salsaCount || 0} 
+          meanValue={$summaryStats.avgSalsaNum || 0} 
+          maxValue={$summaryStats.maxSalsaNum || 0} 
         />
       </div>
       
-      <!-- Replace hardcoded data with dynamic specialty data when available -->
-      {#if data.specialtyData && data.specialtyData.length > 0}
-        <!-- Will implement specialty cards from data in next iteration -->
-        <SpecCarousel specData={data.specialtyData} />
+      <!-- Get specialty data from the specialtiesBySite store -->
+      {#if $specialtiesBySite && $specialtiesBySite.has($selectedSite.est_id)}
+        {#if $specialtiesBySite.get($selectedSite.est_id).itemSpecs.length > 0}
+          {#each $specialtiesBySite.get($selectedSite.est_id).itemSpecs as itemSpec}
+            <SpecCard 
+              itemDescrip={itemSpec.description || ''} 
+              itemName={itemSpec.name || ''} 
+              cardType='Item'
+            />
+          {/each}
+        {/if}
+        
+        {#if $specialtiesBySite.get($selectedSite.est_id).proteinSpecs.length > 0}
+          {#each $specialtiesBySite.get($selectedSite.est_id).proteinSpecs as proteinSpec}
+            <SpecCard 
+              itemDescrip={proteinSpec.description || ''} 
+              itemName={proteinSpec.name || ''} 
+              cardType='Protein'
+            />
+          {/each}
+        {/if}
+        
+        {#if $specialtiesBySite.get($selectedSite.est_id).salsaSpecs.length > 0}
+          {#each $specialtiesBySite.get($selectedSite.est_id).salsaSpecs as salsaSpec}
+            <SpecCard 
+              itemDescrip={salsaSpec.description || ''} 
+              itemName={salsaSpec.name || ''} 
+              cardType='Salsa'
+            />
+          {/each}
+        {/if}
       {:else}
-        <!-- Fallback to hardcoded examples -->
+        <!-- Fallback to hardcoded examples if no specialty data exists -->
         <SpecCard itemDescrip='Pueblan super-torta with chipotle, queso oaxaca, avocado & a variety of proteins.' itemName='Cemita' cardType='Item'/>
         <SpecCard itemDescrip='Pueblan super-torta with chipotle, queso oaxaca, avocado & a variety of proteins.' itemName='Cemita' cardType='Protein'/>
         <SpecCard itemDescrip='Pueblan super-torta with chipotle, queso oaxaca, avocado & a variety of proteins.' itemName='Cemita' cardType='Salsa'/>

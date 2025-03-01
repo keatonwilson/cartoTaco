@@ -1,7 +1,15 @@
 <script>
   import { onMount } from 'svelte';
   import mapboxgl from 'mapbox-gl';
-  import { tacoStore, summaryStore, specStore, isLoading, hasError } from '../lib/stores';
+  import { 
+    tacoStore, 
+    summaryStore, 
+    specStore, 
+    isLoading, 
+    hasError, 
+    processedTacoData, 
+    summaryStats 
+  } from '../lib/stores';
   import 'mapbox-gl/dist/mapbox-gl.css';
   import { updateMarkers } from "../lib/mapping.js";
 
@@ -45,9 +53,9 @@
     };
   });
 
-  // Only update markers when all data is loaded and the map is initialized
-  $: if (map && $tacoStore.data && $summaryStore.data && $specStore.data && !$isLoading) {
-    updateMarkers($tacoStore.data, map, markers, $summaryStore.data, $specStore.data);
+  // Only update markers when processed data is available and the map is initialized
+  $: if (map && $processedTacoData.length > 0 && !$isLoading) {
+    updateMarkers($processedTacoData, map, markers, $summaryStats);
   }
 
   // Function to retry data loading on error

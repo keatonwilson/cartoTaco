@@ -3,6 +3,7 @@
 // imports
 import { writable, derived } from "svelte/store";
 import { supabase } from "./supabase";
+import { filterObjectByKeySubstring, getTopFive } from "./dataWrangling";
 
 // Create store that includes data and loading/error state
 function createDataStore() {
@@ -64,6 +65,137 @@ export const hasError = derived(
     return $tacoStore.error || $summaryStore.error || $specStore.error;
   }
 );
+
+// Derived store for processed taco data with pre-computed values
+export const processedTacoData = derived(
+  tacoStore,
+  ($tacoStore) => {
+    if (!$tacoStore.data || $tacoStore.data.length === 0) {
+      return [];
+    }
+
+    return $tacoStore.data.map(site => {
+      // Skip sites with missing required data
+      if (!site.site || !site.descriptions || !site.menu || 
+          !site.hours || !site.salsa || !site.protein) {
+        return null;
+      }
+
+      try {
+        // Pre-compute values used by components
+        const menuPercs = filterObjectByKeySubstring(site.menu, "perc");
+        const proteinPercs = filterObjectByKeySubstring(site.protein, "perc");
+        const startHours = filterObjectByKeySubstring(site.hours, "start");
+        const endHours = filterObjectByKeySubstring(site.hours, "end");
+        
+        // Pre-compute top five menu items and proteins
+        const menuArray = getTopFive(menuPercs);
+        const topFiveMenuItems = menuArray.map(subArray => subArray[0]);
+        const topFiveMenuValues = menuArray.map(subArray => subArray[1]);
+        
+        const proteinArray = getTopFive(proteinPercs);
+        const topFiveProteinItems = proteinArray.map(subArray => subArray[0]);
+        const topFiveProteinValues = proteinArray.map(subArray => subArray[1]);
+        
+        // Return processed site data with pre-computed values
+        return {
+          est_id: site.est_id,
+          site: site.site,
+          // Basic site details
+          name: site.site.name,
+          type: site.site.type,
+          longitude: site.site.lon_1,
+          latitude: site.site.lat_1,
+          
+          // Descriptions
+          shortDescription: site.descriptions.short_descrip,
+          longDescription: site.descriptions.long_descrip,
+          
+          // Hours (pre-processed)
+          startHours,
+          endHours,
+          
+          // Menu data (pre-processed)
+          menuItems: menuPercs,
+          topFiveMenuItems,
+          topFiveMenuValues,
+          
+          // Protein data (pre-processed)
+          menuProtein: proteinPercs,
+          topFiveProteinItems,
+          topFiveProteinValues,
+          
+          // Salsa and spice data
+          salsaCount: site.salsa.total_num,
+          heatOverall: site.salsa.heat_overall,
+          
+          // Other details
+          tortillaType: site.menu.flour_corn,
+          
+          // Original data (for complex processing that can't be pre-computed)
+          rawData: site
+        };
+      } catch (error) {
+        console.error(`Error processing site ${site.est_id}:`, error);
+        return null;
+      }
+    }).filter(site => site !== null); // Remove null entries
+  }
+);
+
+// Derived store for summary statistics with proper fallbacks
+export const summaryStats = derived(
+  summaryStore,
+  ($summaryStore) => {
+    if (!$summaryStore.data || $summaryStore.data.length === 0) {
+      return {
+        maxSalsaNum: 0,
+        avgSalsaNum: 0,
+        maxHeatLevel: 0,
+        avgHeatLevel: 0
+      };
+    }
+    
+    const summary = $summaryStore.data[0] || {};
+    
+    return {
+      maxSalsaNum: summary.max_salsa_num || 0,
+      avgSalsaNum: summary.avg_salsa_num || 0,
+      maxHeatLevel: summary.max_heat_level || 0,
+      avgHeatLevel: summary.avg_heat_level || 0
+    };
+  }
+);
+
+// Derived store for specialty items by site
+export const specialtiesBySite = derived(
+  [specStore, processedTacoData],
+  ([$specStore, $processedTacoData]) => {
+    const specialtyMap = new Map();
+    
+    if (!$specStore.data || $specStore.data.length === 0) {
+      return specialtyMap;
+    }
+    
+    // Create a map of site IDs to processed specialty data
+    $specStore.data.forEach(spec => {
+      if (!spec || !spec.est_id) return;
+      
+      const siteSpecialties = {
+        itemSpecs: spec.itemSpec ? [spec.itemSpec] : [],
+        proteinSpecs: spec.proteinSpec ? [spec.proteinSpec] : [],
+        salsaSpecs: spec.salsaSpec ? [spec.salsaSpec] : []
+      };
+      
+      specialtyMap.set(spec.est_id, siteSpecialties);
+    });
+    
+    return specialtyMap;
+  }
+);
+
+// Selected site store for popup details
+export const selectedSite = writable(null);
 
 // async fetch data function (currently sites and descriptions)
 export async function fetchSiteData() {
