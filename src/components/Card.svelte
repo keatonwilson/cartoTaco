@@ -9,82 +9,119 @@
   import SpecCard from "./SpecCard.svelte";
 
   export let data;
-
-  // radar chart menu data
-  const menuArray = getTopFive(data.menuItems);
-  const topFiveItems = menuArray.map((subArray) => subArray[0]);
-  const topFiveValues = menuArray.map((subArray) => subArray[1]);
-
-  // radar chart protein data
-  const proteinArray = getTopFive(data.menuProtein);
-  const topFivePItems = proteinArray.map((subArray) => subArray[0]);
-  const topFivePValues = proteinArray.map((subArray) => subArray[1]);
-
-  // hours
-  const startHours = data.startHours;
-  const endHours = data.endHours;
-
-  // spice level
-  const spiceValue = data.heatOverall;
-
-  // defauly show long description
+  
+  let errorState = false;
+  let errorMessage = "Unable to display data";
+  
+  // Default variables
+  let menuArray = [];
+  let topFiveItems = [];
+  let topFiveValues = [];
+  let proteinArray = [];
+  let topFivePItems = [];
+  let topFivePValues = [];
   let showLongDescription = false;
 
+  // Validate required data
+  try {
+    if (!data || !data.name || !data.menuItems || !data.menuProtein) {
+      errorState = true;
+      errorMessage = "Missing required data";
+    } else {
+      // Process data only if validation passes
+      // radar chart menu data
+      menuArray = getTopFive(data.menuItems || {});
+      topFiveItems = menuArray.map((subArray) => subArray[0]);
+      topFiveValues = menuArray.map((subArray) => subArray[1]);
+
+      // radar chart protein data
+      proteinArray = getTopFive(data.menuProtein || {});
+      topFivePItems = proteinArray.map((subArray) => subArray[0]);
+      topFivePValues = proteinArray.map((subArray) => subArray[1]);
+    }
+  } catch (error) {
+    console.error("Error processing card data:", error);
+    errorState = true;
+    errorMessage = "Error displaying data";
+  }
 
   function toggleLongDescription() {
     showLongDescription = !showLongDescription;
   }
-
-  console.log(data.specialtyData);
-  
 </script>
 
-<div id="popup-content">
-  <div class="left-panel">
-    <h2 class="text-2xl font-semibold text-gray-800 mb-4">
-      {data.name}
-    </h2>
-    <HoursOpen {startHours} {endHours} />
-    <h2 class="text-m font-semibold text-gray-800 my-2">Type</h2>
-    <IconHighlight type="siteType" data={data.type}/>
-    <div class="description">
-      <h2 class="text-m font-semibold text-gray-800 my-2">Description</h2>
-      <p>{data.shortDescription}</p>
-      <div class="long-description" class:visible={showLongDescription}>
-        <p>{data.longDescription}</p>
+{#if errorState}
+  <div id="error-content">
+    <p>{errorMessage}</p>
+  </div>
+{:else}
+  <div id="popup-content">
+    <div class="left-panel">
+      <h2 class="text-2xl font-semibold text-gray-800 mb-4">
+        {data.name || 'Unknown Location'}
+      </h2>
+      <HoursOpen startHours={data.startHours || {}} endHours={data.endHours || {}} />
+      <h2 class="text-m font-semibold text-gray-800 my-2">Type</h2>
+      <IconHighlight type="siteType" data={data.type || 'unknown'} />
+      <div class="description">
+        <h2 class="text-m font-semibold text-gray-800 my-2">Description</h2>
+        <p>{data.shortDescription || 'No description available'}</p>
+        <div class="long-description" class:visible={showLongDescription}>
+          <p>{data.longDescription || 'No detailed description available'}</p>
+        </div>
+        <span class="expand-button" on:click={toggleLongDescription}>
+          {showLongDescription ? "Show less" : "Read more"}
+        </span>
       </div>
-      <span class="expand-button" on:click={toggleLongDescription}>
-        {showLongDescription ? "Show less" : "Read more"}
-      </span>
+      <h2 class="text-m font-semibold text-gray-800 my-2">Menu Summary</h2>
+      <div class="radar-chart-container">
+        <RadarChart labels={topFiveItems} data={topFiveValues} />
+      </div>
     </div>
-    <h2 class="text-m font-semibold text-gray-800 my-2">Menu Summary</h2>
-    <div class="radar-chart-container">
-      <RadarChart labels={topFiveItems} data={topFiveValues} />
+    <div class="right-panel" id="chart">
+      <div class="top-row">
+        <div class="protein-chart-container">
+          <h2 class="text-m font-semibold text-gray-800 my-2">Protein</h2>
+          <RadarChart labels={topFivePItems} data={topFivePValues} />
+        </div>
+        <div class="right-box">
+          <h2 class="text-m font-semibold text-gray-800" id="spicy-label">Spiciness</h2>
+          <SpiceGauge spiceValue={data.heatOverall || 0} />
+          <h2 class="text-m font-semibold text-gray-800 my-2">Tortilla Type</h2>
+          <IconHighlight type="tortilla" data={data.tortillaType || 'unknown'} />
+        </div>
+      </div>
+      <div class='salsa-container'>
+        <SalsaCount 
+          value={data.salsaCount || 0} 
+          meanValue={data.avgSalsaNum || 0} 
+          maxValue={data.maxSalsaNum || 0} 
+        />
+      </div>
+      
+      <!-- Replace hardcoded data with dynamic specialty data when available -->
+      {#if data.specialtyData && data.specialtyData.length > 0}
+        <!-- Will implement specialty cards from data in next iteration -->
+        <SpecCarousel specData={data.specialtyData} />
+      {:else}
+        <!-- Fallback to hardcoded examples -->
+        <SpecCard itemDescrip='Pueblan super-torta with chipotle, queso oaxaca, avocado & a variety of proteins.' itemName='Cemita' cardType='Item'/>
+        <SpecCard itemDescrip='Pueblan super-torta with chipotle, queso oaxaca, avocado & a variety of proteins.' itemName='Cemita' cardType='Protein'/>
+        <SpecCard itemDescrip='Pueblan super-torta with chipotle, queso oaxaca, avocado & a variety of proteins.' itemName='Cemita' cardType='Salsa'/>
+      {/if}
     </div>
   </div>
-  <div class="right-panel" id="chart">
-    <div class="top-row">
-      <div class="protein-chart-container">
-        <h2 class="text-m font-semibold text-gray-800 my-2">Protein</h2>
-        <RadarChart labels={topFivePItems} data={topFivePValues} />
-      </div>
-      <div class="right-box">
-        <h2 class="text-m font-semibold text-gray-800" id="spicy-label">Spiciness</h2>
-        <SpiceGauge {spiceValue} />
-        <h2 class="text-m font-semibold text-gray-800 my-2">Tortilla Type</h2>
-        <IconHighlight type="tortilla" data={data.tortillaType}/>
-      </div>
-    </div>
-    <div class='salsa-container'>
-      <SalsaCount value={data.salsaCount} meanValue={data.avgSalsaNum} maxValue={data.maxSalsaNum}/>
-    </div>
-    <SpecCard itemDescrip='Pueblan super-torta with chipotle, queso oaxaca, avocado & a variety of proteins.' itemName='Cemita' cardType='Item'/>
-    <SpecCard itemDescrip='Pueblan super-torta with chipotle, queso oaxaca, avocado & a variety of proteins.' itemName='Cemita' cardType='Protein'/>
-    <SpecCard itemDescrip='Pueblan super-torta with chipotle, queso oaxaca, avocado & a variety of proteins.' itemName='Cemita' cardType='Salsa'/>
-  </div>
-</div>
+{/if}
 
 <style>
+  #error-content {
+    padding: 20px;
+    text-align: center;
+    background-color: #ffe6e6;
+    border: 1px solid #ffcccc;
+    border-radius: 8px;
+    margin: 10px;
+  }
 
   #popup-content {
     display: flex;

@@ -3,78 +3,111 @@ import { filterObjectByKeySubstring } from './dataWrangling';
 import mapboxgl from 'mapbox-gl';
 
 export const updateMarkers = (currentSites, map, markers, currentSummary, specData) => {
-    
+  // Validate inputs to prevent errors
+  if (!map) return;
+  
+  // Ensure we have arrays to work with
   if (!Array.isArray(currentSites)) {
-      currentSites = [];
-    }
+    currentSites = [];
+  }
 
   if (!Array.isArray(currentSummary)) {
     currentSummary = [];
   }
 
   if (!Array.isArray(specData)) {
-    currentSummary = [];
+    specData = [];
   }
-    
+  
+  // Remove existing markers
+  if (markers.length > 0) {
     markers.forEach((marker) => marker.remove());
-    markers = [];
-    if (map && currentSites && currentSummary) {
+    markers.length = 0; // Clear the array without creating a new one
+  }
+  
+  // Only proceed if we have valid data
+  if (map && currentSites.length > 0 && currentSummary.length > 0) {
+    try {
       currentSites.forEach((site) => {
+        // Skip invalid site data
+        if (!site.site || !site.descriptions || !site.menu || 
+            !site.hours || !site.salsa || !site.protein) {
+          console.warn('Skipping site with missing data:', site.est_id);
+          return;
+        }
         
-        // console.log(currentSummary);
-        // Get menu and protein percentages
-        const menuPercs = filterObjectByKeySubstring(site.menu, "perc");
-        const proteinPercs = filterObjectByKeySubstring(site.protein, "perc");
+        try {
+          // Get menu and protein percentages
+          const menuPercs = filterObjectByKeySubstring(site.menu, "perc");
+          const proteinPercs = filterObjectByKeySubstring(site.protein, "perc");
 
-        // Get hours
-        const startHours = filterObjectByKeySubstring(site.hours, "start");
-        const endHours = filterObjectByKeySubstring(site.hours, "end");
+          // Get hours
+          const startHours = filterObjectByKeySubstring(site.hours, "start");
+          const endHours = filterObjectByKeySubstring(site.hours, "end");
 
-        const marker = new mapboxgl.Marker()
-          .setLngLat([site.site.lon_1, site.site.lat_1])
-          .setPopup(
-            new mapboxgl.Popup()
-              .setDOMContent(
-                createPopupContent({
-                  name: site.site.name,
-                  type: site.site.type,
-                  shortDescription: site.descriptions.short_descrip,
-                  longDescription: site.descriptions.long_descrip,
-                  menuItems: menuPercs, 
-                  startHours: startHours, 
-                  endHours: endHours, 
-                  heatOverall: site.salsa.heat_overall,
-                  menuProtein: proteinPercs, 
-                  salsaCount: site.salsa.total_num, 
-                  maxSalsaNum: currentSummary[0].max_salsa_num, 
-                  avgSalsaNum: currentSummary[0].avg_salsa_num,
-                  tortillaType: site.menu.flour_corn, 
-                  specialtyData: specData
-                })
-              )
-          )
-          .addTo(map);
+          // Get summary values with fallbacks
+          const maxSalsaNum = currentSummary[0]?.max_salsa_num || 0;
+          const avgSalsaNum = currentSummary[0]?.avg_salsa_num || 0;
 
-        // Adjust popup position on open
-        marker.getPopup().on('open', () => {
-          adjustPopupPosition(marker.getPopup(), map);
-        });
+          const marker = new mapboxgl.Marker()
+            .setLngLat([site.site.lon_1, site.site.lat_1])
+            .setPopup(
+              new mapboxgl.Popup()
+                .setDOMContent(
+                  createPopupContent({
+                    name: site.site.name,
+                    type: site.site.type,
+                    shortDescription: site.descriptions.short_descrip,
+                    longDescription: site.descriptions.long_descrip,
+                    menuItems: menuPercs, 
+                    startHours: startHours, 
+                    endHours: endHours, 
+                    heatOverall: site.salsa.heat_overall,
+                    menuProtein: proteinPercs, 
+                    salsaCount: site.salsa.total_num, 
+                    maxSalsaNum: maxSalsaNum, 
+                    avgSalsaNum: avgSalsaNum,
+                    tortillaType: site.menu.flour_corn, 
+                    specialtyData: specData
+                  })
+                )
+            )
+            .addTo(map);
 
-        markers.push(marker);
+          // Adjust popup position on open
+          marker.getPopup().on('open', () => {
+            adjustPopupPosition(marker.getPopup(), map);
+          });
+
+          markers.push(marker);
+        } catch (error) {
+          console.error(`Error creating marker for site ${site?.est_id}:`, error);
+        }
       });
+    } catch (error) {
+      console.error('Error updating markers:', error);
     }
-  };
+  }
+};
 
-  function createPopupContent(data) {
+function createPopupContent(data) {
+  try {
     const popupElement = document.createElement('div');
     new PopupContent({
       target: popupElement,
       props: { data },
     });
     return popupElement;
+  } catch (error) {
+    console.error('Error creating popup content:', error);
+    const errorElement = document.createElement('div');
+    errorElement.textContent = 'Error loading content';
+    return errorElement;
   }
+}
 
-  function adjustPopupPosition(popup, map) {
+function adjustPopupPosition(popup, map) {
+  try {
     const popupElement = popup._content;
     const mapContainer = map.getContainer();
     const mapRect = mapContainer.getBoundingClientRect();
@@ -101,4 +134,7 @@ export const updateMarkers = (currentSites, map, markers, currentSummary, specDa
     }
 
     popup.setOffset([offsetX, offsetY]);
+  } catch (error) {
+    console.error('Error adjusting popup position:', error);
   }
+}
