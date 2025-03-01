@@ -173,22 +173,90 @@ export const specialtiesBySite = derived(
   ([$specStore, $processedTacoData]) => {
     const specialtyMap = new Map();
     
-    if (!$specStore.data || $specStore.data.length === 0) {
-      return specialtyMap;
-    }
+    // Sample specialty data for demonstration - indexed by est_id
+    const sampleSpecialties = {
+      // El Antojo Poblano (assuming est_id 1)
+      1: {
+        itemSpecs: [
+          { name: 'Cemita', description: 'Pueblan super-torta with chipotle, queso oaxaca, avocado & a variety of proteins.' },
+          { name: 'Tacos Árabes', description: 'Marinated pork on a pita-like tortilla with lime and salsa roja.' }
+        ],
+        proteinSpecs: [
+          { name: 'Milanesa', description: 'Breaded and fried pork or chicken cutlet, seasoned with traditional herbs.' }
+        ],
+        salsaSpecs: [
+          { name: 'Salsa Macha', description: 'Oil-based hot sauce with dried chilies, garlic, and peanuts.' }
+        ]
+      },
+      // Maico's (assuming est_id 2)
+      2: {
+        itemSpecs: [
+          { name: 'Mulitas', description: 'Two tortillas filled with cheese, meat, and topped with guacamole.' },
+          { name: 'Vampiros', description: 'Grilled tortilla until crispy, topped with cheese and carne asada.' }
+        ],
+        proteinSpecs: [
+          { name: 'Carne Asada', description: 'Marinated and grilled beef, cut into small strips with perfect char.' }
+        ],
+        salsaSpecs: [
+          { name: 'Salsa Verde Taquera', description: 'Roasted tomatillos, serranos, and avocado blended into a smooth sauce.' }
+        ]
+      },
+      // BOCA (assuming est_id 3)
+      3: {
+        itemSpecs: [
+          { name: 'Quesatacos', description: 'Tortillas with melted cheese, meat, and corn pico de gallo.' },
+          { name: 'Seafood Tostadas', description: 'Crispy tortilla topped with marinated seafood and avocado.' }
+        ],
+        proteinSpecs: [
+          { name: 'Camaron', description: 'Marinated shrimp cooked with garlic, lime, and mild spices.' }
+        ],
+        salsaSpecs: [
+          { name: 'Habanero Mango', description: 'Sweet mango balanced with fiery habanero peppers and lime juice.' }
+        ]
+      },
+      // Sample placeholder for others
+      4: {
+        itemSpecs: [
+          { name: 'Birria Tacos', description: 'Slow-cooked beef tacos served with rich consommé for dipping.' }
+        ],
+        proteinSpecs: [
+          { name: 'Barbacoa', description: 'Slow-cooked beef seasoned with chiles and spices until tender.' }
+        ],
+        salsaSpecs: [
+          { name: 'Chile de Árbol', description: 'Bright, spicy red salsa made from toasted chile de árbol peppers.' }
+        ]
+      }
+    };
     
-    // Create a map of site IDs to processed specialty data
-    $specStore.data.forEach(spec => {
-      if (!spec || !spec.est_id) return;
-      
-      const siteSpecialties = {
-        itemSpecs: spec.itemSpec ? [spec.itemSpec] : [],
-        proteinSpecs: spec.proteinSpec ? [spec.proteinSpec] : [],
-        salsaSpecs: spec.salsaSpec ? [spec.salsaSpec] : []
-      };
-      
-      specialtyMap.set(spec.est_id, siteSpecialties);
-    });
+    // If we have real data from the database, use it
+    if ($specStore.data && $specStore.data.length > 0) {
+      // Create a map of site IDs to processed specialty data
+      $specStore.data.forEach(spec => {
+        if (!spec || !spec.est_id) return;
+        
+        const siteSpecialties = {
+          itemSpecs: spec.itemSpec ? [spec.itemSpec] : [],
+          proteinSpecs: spec.proteinSpec ? [spec.proteinSpec] : [],
+          salsaSpecs: spec.salsaSpec ? [spec.salsaSpec] : []
+        };
+        
+        specialtyMap.set(spec.est_id, siteSpecialties);
+      });
+    } 
+    
+    // For demonstration, add sample data for any site that doesn't have specialty data
+    if ($processedTacoData && $processedTacoData.length > 0) {
+      $processedTacoData.forEach(site => {
+        if (!site || !site.est_id) return;
+        
+        // If this site doesn't have specialty data yet
+        if (!specialtyMap.has(site.est_id)) {
+          // Get sample specialty data based on site ID or use generic data
+          const sampleData = sampleSpecialties[site.est_id] || sampleSpecialties[4];
+          specialtyMap.set(site.est_id, sampleData);
+        }
+      });
+    }
     
     return specialtyMap;
   }

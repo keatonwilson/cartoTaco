@@ -84,43 +84,65 @@
         />
       </div>
       
-      <!-- Get specialty data from the specialtiesBySite store -->
-      {#if $specialtiesBySite && $specialtiesBySite.has($selectedSite.est_id)}
-        {#if $specialtiesBySite.get($selectedSite.est_id).itemSpecs.length > 0}
-          {#each $specialtiesBySite.get($selectedSite.est_id).itemSpecs as itemSpec}
-            <SpecCard 
-              itemDescrip={itemSpec.description || ''} 
-              itemName={itemSpec.name || ''} 
-              cardType='Item'
-            />
-          {/each}
-        {/if}
+      <!-- Specialty Items Section -->
+      <div class="specialties-section">
+        <h2 class="text-lg font-semibold text-gray-800 my-2">Specialties</h2>
         
-        {#if $specialtiesBySite.get($selectedSite.est_id).proteinSpecs.length > 0}
-          {#each $specialtiesBySite.get($selectedSite.est_id).proteinSpecs as proteinSpec}
-            <SpecCard 
-              itemDescrip={proteinSpec.description || ''} 
-              itemName={proteinSpec.name || ''} 
-              cardType='Protein'
-            />
-          {/each}
+        {#if $specialtiesBySite && $specialtiesBySite.has($selectedSite.est_id)}
+          <div class="specialties-container">
+            <!-- Item Specialties -->
+            {#if $specialtiesBySite.get($selectedSite.est_id).itemSpecs.length > 0}
+              <div class="specialty-category">
+                <h3 class="text-sm font-medium text-gray-600 mb-2">Signature Items</h3>
+                <div class="specialty-cards">
+                  {#each $specialtiesBySite.get($selectedSite.est_id).itemSpecs as itemSpec}
+                    <SpecCard 
+                      itemDescrip={itemSpec.description || ''} 
+                      itemName={itemSpec.name || ''} 
+                      cardType='Item'
+                    />
+                  {/each}
+                </div>
+              </div>
+            {/if}
+            
+            <!-- Protein Specialties -->
+            {#if $specialtiesBySite.get($selectedSite.est_id).proteinSpecs.length > 0}
+              <div class="specialty-category">
+                <h3 class="text-sm font-medium text-gray-600 mb-2">Signature Proteins</h3>
+                <div class="specialty-cards">
+                  {#each $specialtiesBySite.get($selectedSite.est_id).proteinSpecs as proteinSpec}
+                    <SpecCard 
+                      itemDescrip={proteinSpec.description || ''} 
+                      itemName={proteinSpec.name || ''} 
+                      cardType='Protein'
+                    />
+                  {/each}
+                </div>
+              </div>
+            {/if}
+            
+            <!-- Salsa Specialties -->
+            {#if $specialtiesBySite.get($selectedSite.est_id).salsaSpecs.length > 0}
+              <div class="specialty-category">
+                <h3 class="text-sm font-medium text-gray-600 mb-2">Signature Salsas</h3>
+                <div class="specialty-cards">
+                  {#each $specialtiesBySite.get($selectedSite.est_id).salsaSpecs as salsaSpec}
+                    <SpecCard 
+                      itemDescrip={salsaSpec.description || ''} 
+                      itemName={salsaSpec.name || ''} 
+                      cardType='Salsa'
+                    />
+                  {/each}
+                </div>
+              </div>
+            {/if}
+          </div>
+        {:else}
+          <!-- Fallback to message if no specialty data exists -->
+          <p class="text-sm text-gray-500 italic">No specialty information available for this location.</p>
         {/if}
-        
-        {#if $specialtiesBySite.get($selectedSite.est_id).salsaSpecs.length > 0}
-          {#each $specialtiesBySite.get($selectedSite.est_id).salsaSpecs as salsaSpec}
-            <SpecCard 
-              itemDescrip={salsaSpec.description || ''} 
-              itemName={salsaSpec.name || ''} 
-              cardType='Salsa'
-            />
-          {/each}
-        {/if}
-      {:else}
-        <!-- Fallback to hardcoded examples if no specialty data exists -->
-        <SpecCard itemDescrip='Pueblan super-torta with chipotle, queso oaxaca, avocado & a variety of proteins.' itemName='Cemita' cardType='Item'/>
-        <SpecCard itemDescrip='Pueblan super-torta with chipotle, queso oaxaca, avocado & a variety of proteins.' itemName='Cemita' cardType='Protein'/>
-        <SpecCard itemDescrip='Pueblan super-torta with chipotle, queso oaxaca, avocado & a variety of proteins.' itemName='Cemita' cardType='Salsa'/>
-      {/if}
+      </div>
     </div>
   </div>
 {/if}
@@ -215,5 +237,42 @@
 
   .salsa-container {
     display: flex;
+  }
+  
+  .specialties-section {
+    margin-top: 1rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid lightgray;
+  }
+  
+  .specialties-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .specialty-category {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .specialty-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  @media (min-width: 1200px) {
+    .specialties-container {
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    
+    .specialty-category {
+      flex: 1;
+      min-width: 45%;
+    }
   }
 </style>
