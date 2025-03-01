@@ -125,6 +125,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📬 Contact
 
-Keaton Wilson - [@YourTwitterHandle](https://twitter.com/YourTwitterHandle)
+[Keaton Wilson](keatonwilson@me.com)
 
 Project Link: [https://github.com/keatonwilson/cartoTaco](https://github.com/keatonwilson/cartoTaco)
