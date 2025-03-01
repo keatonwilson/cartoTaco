@@ -86,57 +86,51 @@
       
       <!-- Specialty Items Section -->
       <div class="specialties-section">
-        <h2 class="text-lg font-semibold text-gray-800 my-2">Specialties</h2>
+        <h2 class="text-lg font-semibold text-gray-800 mb-2">Specialties</h2>
         
         {#if $specialtiesBySite && $specialtiesBySite.has($selectedSite.est_id)}
-          <div class="specialties-container">
-            <!-- Item Specialties -->
-            {#if $specialtiesBySite.get($selectedSite.est_id).itemSpecs.length > 0}
-              <div class="specialty-category">
-                <h3 class="text-sm font-medium text-gray-600 mb-2">Signature Items</h3>
-                <div class="specialty-cards">
-                  {#each $specialtiesBySite.get($selectedSite.est_id).itemSpecs as itemSpec}
+          <div class="specialties-grid">
+            <!-- All Specialties in a Grid Layout -->
+            <div class="grid-container">
+              <!-- Item Specialties -->
+              {#if $specialtiesBySite.get($selectedSite.est_id).itemSpecs.length > 0}
+                {#each $specialtiesBySite.get($selectedSite.est_id).itemSpecs as itemSpec}
+                  <div class="grid-item">
                     <SpecCard 
                       itemDescrip={itemSpec.description || ''} 
                       itemName={itemSpec.name || ''} 
                       cardType='Item'
                     />
-                  {/each}
-                </div>
-              </div>
-            {/if}
-            
-            <!-- Protein Specialties -->
-            {#if $specialtiesBySite.get($selectedSite.est_id).proteinSpecs.length > 0}
-              <div class="specialty-category">
-                <h3 class="text-sm font-medium text-gray-600 mb-2">Signature Proteins</h3>
-                <div class="specialty-cards">
-                  {#each $specialtiesBySite.get($selectedSite.est_id).proteinSpecs as proteinSpec}
+                  </div>
+                {/each}
+              {/if}
+              
+              <!-- Protein Specialties -->
+              {#if $specialtiesBySite.get($selectedSite.est_id).proteinSpecs.length > 0}
+                {#each $specialtiesBySite.get($selectedSite.est_id).proteinSpecs as proteinSpec}
+                  <div class="grid-item">
                     <SpecCard 
                       itemDescrip={proteinSpec.description || ''} 
                       itemName={proteinSpec.name || ''} 
                       cardType='Protein'
                     />
-                  {/each}
-                </div>
-              </div>
-            {/if}
-            
-            <!-- Salsa Specialties -->
-            {#if $specialtiesBySite.get($selectedSite.est_id).salsaSpecs.length > 0}
-              <div class="specialty-category">
-                <h3 class="text-sm font-medium text-gray-600 mb-2">Signature Salsas</h3>
-                <div class="specialty-cards">
-                  {#each $specialtiesBySite.get($selectedSite.est_id).salsaSpecs as salsaSpec}
+                  </div>
+                {/each}
+              {/if}
+              
+              <!-- Salsa Specialties -->
+              {#if $specialtiesBySite.get($selectedSite.est_id).salsaSpecs.length > 0}
+                {#each $specialtiesBySite.get($selectedSite.est_id).salsaSpecs as salsaSpec}
+                  <div class="grid-item">
                     <SpecCard 
                       itemDescrip={salsaSpec.description || ''} 
                       itemName={salsaSpec.name || ''} 
                       cardType='Salsa'
                     />
-                  {/each}
-                </div>
-              </div>
-            {/if}
+                  </div>
+                {/each}
+              {/if}
+            </div>
           </div>
         {:else}
           <!-- Fallback to message if no specialty data exists -->
@@ -245,34 +239,32 @@
     border-top: 1px solid lightgray;
   }
   
-  .specialties-container {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+  .specialties-grid {
+    margin-top: 0.5rem;
+    width: 100%;
   }
   
-  .specialty-category {
-    display: flex;
-    flex-direction: column;
+  .grid-container {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
   }
   
-  .specialty-cards {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+  .grid-item {
+    width: 100%;
+    min-width: 0; /* Important for proper sizing */
   }
   
-  @media (min-width: 1200px) {
-    .specialties-container {
-      flex-direction: row;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      gap: 1rem;
+  @media (min-width: 600px) {
+    .grid-container {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
-    
-    .specialty-category {
-      flex: 1;
-      min-width: 45%;
+  }
+  
+  @media (min-width: 1024px) {
+    .grid-container {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
 </style>
