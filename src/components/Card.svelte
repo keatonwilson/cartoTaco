@@ -84,43 +84,59 @@
         />
       </div>
       
-      <!-- Get specialty data from the specialtiesBySite store -->
-      {#if $specialtiesBySite && $specialtiesBySite.has($selectedSite.est_id)}
-        {#if $specialtiesBySite.get($selectedSite.est_id).itemSpecs.length > 0}
-          {#each $specialtiesBySite.get($selectedSite.est_id).itemSpecs as itemSpec}
-            <SpecCard 
-              itemDescrip={itemSpec.description || ''} 
-              itemName={itemSpec.name || ''} 
-              cardType='Item'
-            />
-          {/each}
-        {/if}
+      <!-- Specialty Items Section -->
+      <div class="specialties-section">
+        <h2 class="text-lg font-semibold text-gray-800 mb-2">Specialties</h2>
         
-        {#if $specialtiesBySite.get($selectedSite.est_id).proteinSpecs.length > 0}
-          {#each $specialtiesBySite.get($selectedSite.est_id).proteinSpecs as proteinSpec}
-            <SpecCard 
-              itemDescrip={proteinSpec.description || ''} 
-              itemName={proteinSpec.name || ''} 
-              cardType='Protein'
-            />
-          {/each}
+        {#if $specialtiesBySite && $specialtiesBySite.has($selectedSite.est_id)}
+          <div class="specialties-grid">
+            <!-- All Specialties in a Grid Layout -->
+            <div class="grid-container">
+              <!-- Item Specialties -->
+              {#if $specialtiesBySite.get($selectedSite.est_id).itemSpecs.length > 0}
+                {#each $specialtiesBySite.get($selectedSite.est_id).itemSpecs as itemSpec}
+                  <div class="grid-item">
+                    <SpecCard 
+                      itemDescrip={itemSpec.description || ''} 
+                      itemName={itemSpec.name || ''} 
+                      cardType='Item'
+                    />
+                  </div>
+                {/each}
+              {/if}
+              
+              <!-- Protein Specialties -->
+              {#if $specialtiesBySite.get($selectedSite.est_id).proteinSpecs.length > 0}
+                {#each $specialtiesBySite.get($selectedSite.est_id).proteinSpecs as proteinSpec}
+                  <div class="grid-item">
+                    <SpecCard 
+                      itemDescrip={proteinSpec.description || ''} 
+                      itemName={proteinSpec.name || ''} 
+                      cardType='Protein'
+                    />
+                  </div>
+                {/each}
+              {/if}
+              
+              <!-- Salsa Specialties -->
+              {#if $specialtiesBySite.get($selectedSite.est_id).salsaSpecs.length > 0}
+                {#each $specialtiesBySite.get($selectedSite.est_id).salsaSpecs as salsaSpec}
+                  <div class="grid-item">
+                    <SpecCard 
+                      itemDescrip={salsaSpec.description || ''} 
+                      itemName={salsaSpec.name || ''} 
+                      cardType='Salsa'
+                    />
+                  </div>
+                {/each}
+              {/if}
+            </div>
+          </div>
+        {:else}
+          <!-- Fallback to message if no specialty data exists -->
+          <p class="text-sm text-gray-500 italic">No specialty information available for this location.</p>
         {/if}
-        
-        {#if $specialtiesBySite.get($selectedSite.est_id).salsaSpecs.length > 0}
-          {#each $specialtiesBySite.get($selectedSite.est_id).salsaSpecs as salsaSpec}
-            <SpecCard 
-              itemDescrip={salsaSpec.description || ''} 
-              itemName={salsaSpec.name || ''} 
-              cardType='Salsa'
-            />
-          {/each}
-        {/if}
-      {:else}
-        <!-- Fallback to hardcoded examples if no specialty data exists -->
-        <SpecCard itemDescrip='Pueblan super-torta with chipotle, queso oaxaca, avocado & a variety of proteins.' itemName='Cemita' cardType='Item'/>
-        <SpecCard itemDescrip='Pueblan super-torta with chipotle, queso oaxaca, avocado & a variety of proteins.' itemName='Cemita' cardType='Protein'/>
-        <SpecCard itemDescrip='Pueblan super-torta with chipotle, queso oaxaca, avocado & a variety of proteins.' itemName='Cemita' cardType='Salsa'/>
-      {/if}
+      </div>
     </div>
   </div>
 {/if}
@@ -215,5 +231,49 @@
 
   .salsa-container {
     display: flex;
+  }
+  
+  .specialties-section {
+    margin-top: 1rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid lightgray;
+  }
+  
+  .specialties-grid {
+    margin-top: 0.5rem;
+    width: 100%;
+    display: flex;
+    justify-content: center; /* Center horizontally */
+  }
+  
+  .grid-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
+    gap: 12px; /* Increased gap for better spacing */
+    width: 100%;
+    max-width: 900px; /* Prevent stretching too wide on large screens */
+  }
+  
+  .grid-item {
+    flex: 0 0 calc(50% - 8px); /* Fixed width calculation with new gap */
+    min-width: 170px; /* Slightly adjusted minimum width */
+    max-width: calc(50% - 8px); /* Maximum width with new gap */
+    margin-bottom: 4px; /* Reduced margin to account for increased gap */
+  }
+  
+  @media (min-width: 600px) {
+    .grid-item {
+      flex: 0 0 calc(33.333% - 8px); /* Each item takes a third of the width minus gap */
+      max-width: calc(33.333% - 8px);
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .grid-item {
+      flex: 0 0 calc(33.333% - 8px); /* Keep at 3 per row for better readability */
+      max-width: calc(33.333% - 8px);
+    }
   }
 </style>
