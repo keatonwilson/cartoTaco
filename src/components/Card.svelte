@@ -242,29 +242,38 @@
   .specialties-grid {
     margin-top: 0.5rem;
     width: 100%;
+    display: flex;
+    justify-content: center; /* Center horizontally */
   }
   
   .grid-container {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
+    gap: 12px; /* Increased gap for better spacing */
     width: 100%;
+    max-width: 900px; /* Prevent stretching too wide on large screens */
   }
   
   .grid-item {
-    width: 100%;
-    min-width: 0; /* Important for proper sizing */
+    flex: 0 0 calc(50% - 8px); /* Fixed width calculation with new gap */
+    min-width: 170px; /* Slightly adjusted minimum width */
+    max-width: calc(50% - 8px); /* Maximum width with new gap */
+    margin-bottom: 4px; /* Reduced margin to account for increased gap */
   }
   
   @media (min-width: 600px) {
-    .grid-container {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+    .grid-item {
+      flex: 0 0 calc(33.333% - 8px); /* Each item takes a third of the width minus gap */
+      max-width: calc(33.333% - 8px);
     }
   }
   
   @media (min-width: 1024px) {
-    .grid-container {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+    .grid-item {
+      flex: 0 0 calc(33.333% - 8px); /* Keep at 3 per row for better readability */
+      max-width: calc(33.333% - 8px);
     }
   }
 </style>
