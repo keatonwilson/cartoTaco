@@ -45,7 +45,7 @@
     : itemDescrip;
 </script>
   
-<div class="specialty-card {cardClass}">
+<div class="specialty-card {cardClass}" title={itemDescrip}>
   <div class="compact-card">
     <div class="icon-container">
       <img src={cardImage} alt={cardType} class="specialty-icon" />
@@ -54,11 +54,11 @@
       <p class="card-type">{cardType}</p>
       <h5 class="card-title">{itemName}</h5>
     </div>
-    <div class="description-tooltip">
-      <div class="tooltip-content">
-        <p>{itemDescrip}</p>
-      </div>
-    </div>
+  </div>
+  
+  <!-- Tooltip that shows on hover -->
+  <div class="hover-description">
+    <p>{itemDescrip}</p>
   </div>
 </div>
   
@@ -81,29 +81,29 @@
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    height: 70px;
+    height: 90px; /* Increased height */
     width: 100%;
     position: relative;
   }
   
   .icon-container {
-    flex: 0 0 70px;
-    height: 70px;
+    flex: 0 0 45px; /* Significantly reduced width to prioritize text */
+    height: 90px; /* Keep consistent height */
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 8px;
+    padding: 6px;
   }
   
   .specialty-icon {
-    width: 32px;
-    height: 32px;
+    width: 28px; /* Smaller icon size */
+    height: 28px; /* Smaller icon size */
     object-fit: contain;
   }
   
   .content {
-    flex: 1;
-    padding: 8px;
+    flex: 1 1 auto; /* Allow content to expand and fill the available space */
+    padding: 12px 14px 12px 8px; /* Adjusted padding to give more room to text */
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -112,61 +112,58 @@
   }
   
   .card-type {
-    font-size: 10px;
+    font-size: 11px; /* Slightly increased font size */
     font-style: italic;
     color: #6b7280;
     margin: 0;
-    line-height: 1;
+    line-height: 1.1;
   }
   
   .card-title {
-    font-size: 14px;
+    font-size: 15px; /* Slightly adjusted font size */
     font-weight: 600;
     margin: 4px 0 0 0;
-    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    line-height: 1.2;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Show up to 2 lines */
+    -webkit-box-orient: vertical;
+    white-space: normal; /* Allow wrapping */
+    max-height: 3em; /* Limit height */
   }
   
-  /* Tooltip for description */
-  .description-tooltip {
+  /* Hover description */
+  .hover-description {
     position: absolute;
-    top: 0;
     left: 0;
     right: 0;
-    bottom: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    top: 100%;
+    margin-top: 5px;
+    background-color: white;
+    padding: 8px;
+    border-radius: 6px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    font-size: 12px;
+    line-height: 1.4;
+    max-width: 250px;
     opacity: 0;
-    transition: opacity 0.2s;
     pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    transform: translateY(-5px);
+    overflow: visible;
   }
   
-  .specialty-card:hover .description-tooltip {
+  .specialty-card:hover .hover-description {
     opacity: 1;
+    transform: translateY(0);
     pointer-events: auto;
   }
   
-  .tooltip-content {
-    position: absolute;
-    top: 75px;
-    left: 0;
-    width: 200px;
-    background-color: white;
-    border-radius: 8px;
-    padding: 10px;
-    font-size: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 20;
-    color: #333;
-    max-width: 220px;
-  }
-  
-  .tooltip-content p {
+  .hover-description p {
     margin: 0;
-    line-height: 1.4;
+    white-space: normal; /* Allow text to wrap */
   }
   
   /* Color theming */
@@ -185,15 +182,15 @@
     border-right: 2px solid #F44336;
   }
   
-  .specialty-item .tooltip-content {
+  .specialty-item .hover-description {
     border-top: 3px solid #4CAF50;
   }
   
-  .specialty-protein .tooltip-content {
+  .specialty-protein .hover-description {
     border-top: 3px solid #FF9800;
   }
   
-  .specialty-salsa .tooltip-content {
+  .specialty-salsa .hover-description {
     border-top: 3px solid #F44336;
   }
 </style>
