@@ -13,11 +13,11 @@
   function getImageByType(type) {
     switch(type.toLowerCase()) {
       case 'item':
-        return '/corn.svg';
+        return '/burrito_simple.svg'; // burrito icon for speciality
       case 'protein':
         return '/cow.svg'; // Cow icon for protein
       case 'salsa':
-        return '/pepper.svg'; // Pepper icon for salsa
+        return '/salsa.svg'; // Pepper icon for salsa
       default:
         return '/corn.svg';
     }
