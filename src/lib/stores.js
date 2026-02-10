@@ -23,15 +23,18 @@ function createDataStore() {
   };
 }
 
+// NOTE: This function is no longer used after the query optimization (see migration 001)
+// Kept for reference and potential future use with non-view queries
+// The sites_complete view now handles this combining at the database level
 function combineArraysByEstId(arrays, names) {
   const combined = {};
 
   arrays.forEach((array, index) => {
     if (!array) return; // Skip null or undefined arrays
-    
+
     array.forEach((item) => {
       if (!item || !item.est_id) return; // Skip invalid items
-      
+
       const est_id = item.est_id;
       combined[est_id] = combined[est_id] || {};
       combined[est_id][names[index]] = { ...item };
@@ -265,93 +268,26 @@ export const specialtiesBySite = derived(
 // Selected site store for popup details
 export const selectedSite = writable(null);
 
-// async fetch data function (currently sites and descriptions)
+// async fetch data function - optimized to use single view query
 export async function fetchSiteData() {
   // Set loading state
   tacoStore.setLoading(true);
-  
+
   try {
-    // Fetch sites
-    let { data: sitesData, error: sitesError } = await supabase
-      .from("sites")
+    // Fetch all site data from the optimized view in a single query
+    let { data: sitesCompleteData, error: sitesCompleteError } = await supabase
+      .from("sites_complete")
       .select();
-    if (sitesError) {
-      console.error("Error fetching sites:", sitesError);
-      tacoStore.setError(sitesError);
+
+    if (sitesCompleteError) {
+      console.error("Error fetching complete site data:", sitesCompleteError);
+      tacoStore.setError(sitesCompleteError);
       return;
     }
 
-    // Fetch descriptions
-    let { data: descriptionsData, error: descriptionsError } = await supabase
-      .from("descriptions")
-      .select();
-    if (descriptionsError) {
-      console.error("Error fetching descriptions:", descriptionsError);
-      tacoStore.setError(descriptionsError);
-      return;
-    }
-
-    // fetch menu data
-    let { data: menuData, error: menuError } = await supabase
-      .from("menu")
-      .select();
-    if (menuError) {
-      console.error("Error fetching menu data:", menuError);
-      tacoStore.setError(menuError);
-      return;
-    }
-
-    // fetch hours data
-    let { data: hoursData, error: hoursError } = await supabase
-      .from("hours")
-      .select();
-    if (hoursError) {
-      console.error("Error fetching hours data:", hoursError);
-      tacoStore.setError(hoursError);
-      return;
-    }
-
-    // fetch salsa data
-    let { data: salsaData, error: salsaError } = await supabase
-      .from("salsa")
-      .select();
-    if (salsaError) {
-      console.error("Error fetching salsa data:", salsaError);
-      tacoStore.setError(salsaError);
-      return;
-    }
-
-    // fetch protein data
-    let { data: proteinData, error: proteinError } = await supabase
-      .from("protein")
-      .select();
-    if (proteinError) {
-      console.error("Error fetching protein data:", proteinError);
-      tacoStore.setError(proteinError);
-      return;
-    }
-
-    // combine data
-    const combinedArray = [
-      sitesData,
-      descriptionsData,
-      menuData,
-      hoursData,
-      salsaData,
-      proteinData,
-    ];
-    const namesArray = [
-      "site",
-      "descriptions",
-      "menu",
-      "hours",
-      "salsa",
-      "protein",
-    ];
-    const aggregate = combineArraysByEstId(combinedArray, namesArray);
-
-    // Update the store with the new data
-    tacoStore.setData(aggregate);
+    // The view returns data already structured with nested objects
+    // No need for client-side combining anymore!
+    tacoStore.setData(sitesCompleteData);
   } catch (error) {
     console.error("Error in fetchSiteData:", error);
     tacoStore.setError(error);
