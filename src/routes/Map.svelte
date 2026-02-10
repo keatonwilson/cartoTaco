@@ -1,20 +1,21 @@
 <script>
   import { onMount } from 'svelte';
   import mapboxgl from 'mapbox-gl';
-  import { 
-    tacoStore, 
-    summaryStore, 
-    specStore, 
-    isLoading, 
-    hasError, 
-    processedTacoData, 
-    summaryStats 
+  import {
+    tacoStore,
+    summaryStore,
+    specStore,
+    isLoading,
+    hasError,
+    processedTacoData,
+    filteredTacoData,
+    summaryStats
   } from '../lib/stores';
   import 'mapbox-gl/dist/mapbox-gl.css';
   import { updateMarkers } from "../lib/mapping.js";
+  import FilterBar from '../components/FilterBar.svelte';
 
   let map;
-  let markers = [];
   let mapContainer;
 
   mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_KEY;
@@ -53,9 +54,10 @@
     };
   });
 
-  // Only update markers when processed data is available and the map is initialized
-  $: if (map && $processedTacoData.length > 0 && !$isLoading) {
-    updateMarkers($processedTacoData, map, markers, $summaryStats);
+  // Update markers when filtered data changes
+  // Note: With clustering, we don't need a markers array - Mapbox manages it internally
+  $: if (map && $filteredTacoData.length >= 0 && !$isLoading) {
+    updateMarkers($filteredTacoData, map, null, $summaryStats);
   }
 
   // Function to retry data loading on error
@@ -90,7 +92,7 @@
       <p>Loading taco data...</p>
     </div>
   {/if}
-  
+
   {#if $hasError}
     <div class="error-container">
       <h3>Error loading data</h3>
@@ -102,6 +104,11 @@
 
 <!-- Logo Element outside of the map container -->
 <img id="logo" src="/color_light_bg.png" alt="Logo">
+
+<!-- Filter Bar -->
+{#if !$isLoading && !$hasError}
+  <FilterBar />
+{/if}
 
 <style>
   #map {

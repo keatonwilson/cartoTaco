@@ -60,30 +60,41 @@ export function convertHoursData(startTimes, endTimes) {
     sun: 'Su'
   };
 
-  let result = [];
+  // Define the correct day order (Monday to Sunday)
+  const dayOrder = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
-  for (let i = 0; i < startTimes.length; i++) {
-    let dayPrefix = startTimes[i][0].split('_')[0];
-    let day = dayMap[dayPrefix];
-    let openTime = startTimes[i][1].split(':')[0];
-    let endTime = endTimes[i][1];
+  // Convert arrays to objects for easy lookup
+  const startObj = Object.fromEntries(startTimes);
+  const endObj = Object.fromEntries(endTimes);
 
-    let closeTime, closed;
-    if (endTime === "NA") {
+  // Build result in the correct order
+  let result = dayOrder.map(dayPrefix => {
+    const startKey = `${dayPrefix}_start`;
+    const endKey = `${dayPrefix}_end`;
+
+    const day = dayMap[dayPrefix];
+    const startTime = startObj[startKey];
+    const endTime = endObj[endKey];
+
+    let openTime, closeTime, closed;
+
+    if (!startTime || !endTime || endTime === "NA") {
+      openTime = '';
       closeTime = '';
       closed = true;
     } else {
+      openTime = startTime.split(':')[0];
       closeTime = endTime.split(':')[0];
       closed = false;
     }
 
-    result.push({
+    return {
       day: day,
       open: openTime,
       close: closeTime,
       closed: closed
-    });
-  }
+    };
+  });
 
   return result;
 }

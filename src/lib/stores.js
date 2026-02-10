@@ -23,15 +23,18 @@ function createDataStore() {
   };
 }
 
+// NOTE: This function is no longer used after the query optimization (see migration 001)
+// Kept for reference and potential future use with non-view queries
+// The sites_complete view now handles this combining at the database level
 function combineArraysByEstId(arrays, names) {
   const combined = {};
 
   arrays.forEach((array, index) => {
     if (!array) return; // Skip null or undefined arrays
-    
+
     array.forEach((item) => {
       if (!item || !item.est_id) return; // Skip invalid items
-      
+
       const est_id = item.est_id;
       combined[est_id] = combined[est_id] || {};
       combined[est_id][names[index]] = { ...item };
@@ -76,7 +79,7 @@ export const processedTacoData = derived(
 
     return $tacoStore.data.map(site => {
       // Skip sites with missing required data
-      if (!site.site || !site.descriptions || !site.menu || 
+      if (!site.site || !site.descriptions || !site.menu ||
           !site.hours || !site.salsa || !site.protein) {
         return null;
       }
@@ -87,15 +90,23 @@ export const processedTacoData = derived(
         const proteinPercs = filterObjectByKeySubstring(site.protein, "perc");
         const startHours = filterObjectByKeySubstring(site.hours, "start");
         const endHours = filterObjectByKeySubstring(site.hours, "end");
-        
+
         // Pre-compute top five menu items and proteins
         const menuArray = getTopFive(menuPercs);
         const topFiveMenuItems = menuArray.map(subArray => subArray[0]);
-        const topFiveMenuValues = menuArray.map(subArray => subArray[1]);
-        
+        // Convert to numbers and multiply by 100 to get percentages
+        const topFiveMenuValues = menuArray.map(subArray => {
+          const value = parseFloat(subArray[1]);
+          return isNaN(value) ? 0 : value * 100;
+        });
+
         const proteinArray = getTopFive(proteinPercs);
         const topFiveProteinItems = proteinArray.map(subArray => subArray[0]);
-        const topFiveProteinValues = proteinArray.map(subArray => subArray[1]);
+        // Convert to numbers and multiply by 100 to get percentages
+        const topFiveProteinValues = proteinArray.map(subArray => {
+          const value = parseFloat(subArray[1]);
+          return isNaN(value) ? 0 : value * 100;
+        });
         
         // Return processed site data with pre-computed values
         return {
@@ -265,93 +276,147 @@ export const specialtiesBySite = derived(
 // Selected site store for popup details
 export const selectedSite = writable(null);
 
-// async fetch data function (currently sites and descriptions)
+// Filter configuration store
+export const filterConfig = writable({
+  searchText: '',
+  proteins: {
+    chicken: false,
+    beef: false,
+    pork: false,
+    fish: false,
+    veg: false
+  },
+  types: {
+    'Brick and Mortar': false,
+    'Stand': false,
+    'Truck': false
+  },
+  spiceLevel: { min: 0, max: 10 },
+  openNow: false
+});
+
+// Helper function to check if a location is currently open
+function isOpenNow(startHours, endHours) {
+  const now = new Date();
+  const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  const today = days[now.getDay()];
+
+  const startKey = `${today}_start`;
+  const endKey = `${today}_end`;
+
+  const startTime = startHours[startKey];
+  const endTime = endHours[endKey];
+
+  if (!startTime || !endTime) return false;
+
+  // Parse time strings (assuming format like "11:00" or "11:00 AM")
+  const parseTime = (timeStr) => {
+    if (!timeStr) return null;
+    const [time, period] = timeStr.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+
+    if (period) {
+      if (period.toUpperCase() === 'PM' && hours !== 12) hours += 12;
+      if (period.toUpperCase() === 'AM' && hours === 12) hours = 0;
+    }
+
+    return hours * 60 + minutes;
+  };
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const startMinutes = parseTime(startTime);
+  const endMinutes = parseTime(endTime);
+
+  if (startMinutes === null || endMinutes === null) return false;
+
+  // Handle times that cross midnight
+  if (endMinutes < startMinutes) {
+    return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+  }
+
+  return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+}
+
+// Derived store for filtered taco data
+export const filteredTacoData = derived(
+  [processedTacoData, filterConfig],
+  ([$processedTacoData, $filterConfig]) => {
+    if (!$processedTacoData || $processedTacoData.length === 0) {
+      return [];
+    }
+
+    return $processedTacoData.filter(site => {
+      // Search text filter (name)
+      if ($filterConfig.searchText) {
+        const searchLower = $filterConfig.searchText.toLowerCase();
+        if (!site.name.toLowerCase().includes(searchLower)) {
+          return false;
+        }
+      }
+
+      // Protein filters
+      const activeProteins = Object.entries($filterConfig.proteins)
+        .filter(([_, isActive]) => isActive)
+        .map(([protein, _]) => protein);
+
+      if (activeProteins.length > 0) {
+        const hasAnyProtein = activeProteins.some(protein => {
+          const proteinKey = `${protein}_yes`;
+          return site.rawData?.protein?.[proteinKey] === true;
+        });
+        if (!hasAnyProtein) return false;
+      }
+
+      // Type filters
+      const activeTypes = Object.entries($filterConfig.types)
+        .filter(([_, isActive]) => isActive)
+        .map(([type, _]) => type);
+
+      if (activeTypes.length > 0) {
+        if (!activeTypes.includes(site.type)) {
+          return false;
+        }
+      }
+
+      // Spice level filter
+      const siteSpiceLevel = site.heatOverall || 0;
+      if (siteSpiceLevel < $filterConfig.spiceLevel.min ||
+          siteSpiceLevel > $filterConfig.spiceLevel.max) {
+        return false;
+      }
+
+      // Open now filter
+      if ($filterConfig.openNow) {
+        if (!isOpenNow(site.startHours, site.endHours)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }
+);
+
+// async fetch data function - optimized to use single view query
 export async function fetchSiteData() {
   // Set loading state
   tacoStore.setLoading(true);
-  
+
   try {
-    // Fetch sites
-    let { data: sitesData, error: sitesError } = await supabase
-      .from("sites")
+    // Fetch all site data from the optimized view in a single query
+    let { data: sitesCompleteData, error: sitesCompleteError } = await supabase
+      .from("sites_complete")
       .select();
-    if (sitesError) {
-      console.error("Error fetching sites:", sitesError);
-      tacoStore.setError(sitesError);
+
+    if (sitesCompleteError) {
+      console.error("Error fetching complete site data:", sitesCompleteError);
+      tacoStore.setError(sitesCompleteError);
       return;
     }
 
-    // Fetch descriptions
-    let { data: descriptionsData, error: descriptionsError } = await supabase
-      .from("descriptions")
-      .select();
-    if (descriptionsError) {
-      console.error("Error fetching descriptions:", descriptionsError);
-      tacoStore.setError(descriptionsError);
-      return;
-    }
-
-    // fetch menu data
-    let { data: menuData, error: menuError } = await supabase
-      .from("menu")
-      .select();
-    if (menuError) {
-      console.error("Error fetching menu data:", menuError);
-      tacoStore.setError(menuError);
-      return;
-    }
-
-    // fetch hours data
-    let { data: hoursData, error: hoursError } = await supabase
-      .from("hours")
-      .select();
-    if (hoursError) {
-      console.error("Error fetching hours data:", hoursError);
-      tacoStore.setError(hoursError);
-      return;
-    }
-
-    // fetch salsa data
-    let { data: salsaData, error: salsaError } = await supabase
-      .from("salsa")
-      .select();
-    if (salsaError) {
-      console.error("Error fetching salsa data:", salsaError);
-      tacoStore.setError(salsaError);
-      return;
-    }
-
-    // fetch protein data
-    let { data: proteinData, error: proteinError } = await supabase
-      .from("protein")
-      .select();
-    if (proteinError) {
-      console.error("Error fetching protein data:", proteinError);
-      tacoStore.setError(proteinError);
-      return;
-    }
-
-    // combine data
-    const combinedArray = [
-      sitesData,
-      descriptionsData,
-      menuData,
-      hoursData,
-      salsaData,
-      proteinData,
-    ];
-    const namesArray = [
-      "site",
-      "descriptions",
-      "menu",
-      "hours",
-      "salsa",
-      "protein",
-    ];
-    const aggregate = combineArraysByEstId(combinedArray, namesArray);
-
-    // Update the store with the new data
-    tacoStore.setData(aggregate);
+    // The view returns data already structured with nested objects
+    // No need for client-side combining anymore!
+    tacoStore.setData(sitesCompleteData);
   } catch (error) {
     console.error("Error in fetchSiteData:", error);
     tacoStore.setError(error);

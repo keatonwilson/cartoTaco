@@ -6,6 +6,7 @@
   import SalsaCount from "./SalsaCount.svelte";
   import SpecCarousel from "./SpecCarousel.svelte";
   import SpecCard from "./SpecCard.svelte";
+  import ContactInfo from "./ContactInfo.svelte";
   import { selectedSite, summaryStats, specialtiesBySite } from "$lib/stores";
 
   // Use the site ID to find the site in the selectedSite store
@@ -36,9 +37,16 @@
       <h2 class="text-2xl font-semibold text-gray-800 mb-4">
         {$selectedSite.name || 'Unknown Location'}
       </h2>
-      <HoursOpen 
-        startHours={$selectedSite.startHours || {}} 
-        endHours={$selectedSite.endHours || {}} 
+      <HoursOpen
+        startHours={$selectedSite.startHours || {}}
+        endHours={$selectedSite.endHours || {}}
+      />
+      <ContactInfo
+        phone={$selectedSite.site?.phone}
+        website={$selectedSite.site?.website}
+        instagram={$selectedSite.site?.instagram}
+        facebook={$selectedSite.site?.facebook}
+        address={$selectedSite.site?.address}
       />
       <h2 class="text-m font-semibold text-gray-800 my-2">Type</h2>
       <IconHighlight type="siteType" data={$selectedSite.type || 'unknown'} />
@@ -220,7 +228,8 @@
     display: flex;
     flex-direction: column;
     justify-content: start;
-    padding-top: 0px;
+    padding: 10px;
+    padding-bottom: 16px;
   }
 
   .radar-chart-container {

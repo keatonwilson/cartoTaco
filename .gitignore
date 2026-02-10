@@ -8,3 +8,8 @@ node_modules
 !.env.example
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Database backups
+restore_database.sql
+supabase_restore.sql
+*_backup.sql

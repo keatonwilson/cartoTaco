@@ -16,27 +16,60 @@
           labels: labels,
           datasets: [
             {
+              label: 'Menu Distribution',
               data: data,
               fill: true,
-              backgroundColor: "rgba(75, 192, 192, 0.2)",
-              borderColor: "rgb(75, 192, 192)",
-              pointBackgroundColor: "rgb(75, 192, 192)",
+              backgroundColor: "rgba(254, 121, 93, 0.2)", // Orange theme
+              borderColor: "rgb(254, 121, 93)",
+              pointBackgroundColor: "rgb(254, 121, 93)",
               pointBorderColor: "#fff",
               pointHoverBackgroundColor: "#fff",
-              pointHoverBorderColor: "rgb(75, 192, 192)",
+              pointHoverBorderColor: "rgb(254, 121, 93)",
+              pointRadius: 4,
+              pointHoverRadius: 6,
             },
           ],
         },
         options: {
+          responsive: true,
+          maintainAspectRatio: true,
           elements: {
             line: {
-              borderWidth: 1,
+              borderWidth: 2,
             },
           },
           plugins: {
             legend: {
               display: false,
             },
+            tooltip: {
+              enabled: true,
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              titleFont: {
+                size: 14,
+                weight: 'bold'
+              },
+              bodyFont: {
+                size: 13
+              },
+              padding: 12,
+              displayColors: false,
+              callbacks: {
+                title: function(context) {
+                  return context[0].label;
+                },
+                label: function(context) {
+                  const value = context.parsed.r;
+                  const percentage = Math.round(value);
+                  return [
+                    `Represents ${percentage}% of menu`,
+                    '',
+                    'This shows how prominently',
+                    'this item features on the menu'
+                  ];
+                }
+              }
+            }
           },
           layout: {
             padding: 5
@@ -45,16 +78,24 @@
             r: {
               angleLines: {
                 display: true,
+                color: 'rgba(0, 0, 0, 0.1)'
+              },
+              grid: {
+                color: 'rgba(0, 0, 0, 0.1)'
               },
               pointLabels: {
                 display: true,
                 font: {
-                  size: 12 // Adjust this value to change the font size
+                  size: 12,
+                  weight: '600'
                 },
+                color: '#333'
               },
               ticks: {
                 display: false,
               },
+              min: 0,
+              max: 100,
             },
           },
         },
@@ -67,6 +108,13 @@
       }
     };
   });
+
+  // Update chart when data changes
+  $: if (chartInstance && labels && data) {
+    chartInstance.data.labels = labels;
+    chartInstance.data.datasets[0].data = data;
+    chartInstance.update();
+  }
 </script>
 
 <canvas bind:this={canvas}></canvas>

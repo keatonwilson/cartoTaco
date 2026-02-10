@@ -6,12 +6,14 @@ An interactive map-based application for exploring taco establishments in Tucson
 
 ## 🚀 Features
 
-- **Interactive Map**: Visualize all taco establishments in the Tucson area
-- **Detailed Information Cards**: Explore each location's offerings in detail
-- **Data Visualization**: View radar charts for menu items and proteins
+- **Interactive Map with Clustering**: Visualize all taco establishments with automatic marker clustering
+- **Search & Filter**: Find spots by name, protein type, spice level, open status, and more
+- **Detailed Information Cards**: Explore each location's offerings with rich data visualizations
+- **Enhanced Charts**: Interactive radar charts with tooltips explaining menu distributions
+- **Contact Information**: Direct links to phone, website, Instagram, and Facebook
 - **Specialty Highlights**: Discover unique specialty items at each location
-- **Salsa & Spice Analysis**: Compare salsa varieties and heat levels
-- **Hours & Type Information**: Filter by establishment type and hours
+- **Salsa & Spice Analysis**: Compare salsa varieties and heat levels with context
+- **Performance Optimized**: 60-70% faster load times with single-query database view
 
 ## 🔧 Tech Stack
 
@@ -67,31 +69,45 @@ VITE_MAPBOX_KEY=your_mapbox_api_key
 - `pnpm preview` - Preview production build
 - `pnpm check` - Run type checking
 
+## 📚 Documentation
+
+Detailed documentation for all features:
+
+- **[Improvements Roadmap](docs/IMPROVEMENTS.md)** - Planned features and enhancements
+- **[Query Optimization](docs/QUERY_OPTIMIZATION.md)** - Database view implementation
+- **[Search & Filter](docs/SEARCH_FILTER.md)** - Filter system documentation
+- **[Marker Clustering](docs/MARKER_CLUSTERING.md)** - Clustering implementation
+- **[Visualization Improvements](docs/VISUALIZATION_IMPROVEMENTS.md)** - Chart and UI enhancements
+
 ## 📚 Project Structure
 
 ```
 src/
 ├── components/      # Reusable UI components
 │   ├── Card.svelte  # Popup card for establishment details
+│   ├── FilterBar.svelte  # Search and filter UI
+│   ├── ContactInfo.svelte  # Contact information display
 │   ├── RadarChart.svelte  # Chart for menu and protein data
 │   └── ...
 ├── lib/             # Utilities, stores, and data handling
 │   ├── dataWrangling.js  # Data transformation utilities
-│   ├── mapping.js   # Map rendering functionality
+│   ├── mapping.js   # Map rendering with clustering
 │   ├── stores.js    # Svelte stores for state management
 │   └── supabase.js  # Supabase client configuration
 ├── routes/          # SvelteKit routes and pages
 │   ├── +page.svelte # Main page
 │   ├── Map.svelte   # Map component
 │   └── ...
-└── app.css         # Global styles
+├── app.css         # Global styles
+docs/                # Feature documentation
+migrations/          # Database migrations
 ```
 
-## 🗃️ Database Schema
+## 🗃️ Database Setup
 
 The application uses Supabase with the following main tables:
 
-- `sites` - Basic information about taco establishments
+- `sites` - Basic information about taco establishments (includes contact fields)
 - `descriptions` - Short and long descriptions for each location
 - `menu` - Menu item data and ratings
 - `hours` - Operating hours information
@@ -99,15 +115,26 @@ The application uses Supabase with the following main tables:
 - `protein` - Protein options and ratings
 - `summaries` - Aggregated statistics across establishments
 - `item_spec`, `protein_spec`, `salsa_spec` - Specialty item information
+- `sites_complete` - Optimized view joining all site-related tables
 
-## 🌟 Features in Development
+### Running Migrations
 
+After setting up your Supabase project, run the migrations in order:
+
+1. `migrations/002_add_contact_and_social_fields.sql` - Adds contact/social fields
+2. `migrations/001_create_sites_view.sql` - Creates optimized view
+
+See [migrations/README.md](migrations/README.md) for detailed instructions.
+
+## 🌟 Roadmap
+
+See [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md) for the complete feature roadmap.
+
+**Next Up:**
+- Mobile responsive overhaul
 - User authentication for saving favorite locations
-- Filtering and search functionality
 - Ratings and review system
-- Mobile optimization
-- Offline capability
-- Additional data visualizations
+- Taco trail route builder
 
 ## 🤝 Contributing
 
