@@ -2,6 +2,13 @@
 
 This document outlines potential improvements to enhance CartoTaco's functionality, performance, and user experience.
 
+## ✅ Completed Improvements
+
+1. **Query Optimization** - Reduced initial data fetch from 6 queries to 1 via database view (~60-70% faster load time)
+2. **Search & Filter Bar** - Added comprehensive filtering by name, proteins, type, spice level, and open hours
+
+See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md) and [SEARCH_FILTER.md](./SEARCH_FILTER.md) for details.
+
 ---
 
 ## 🎯 Quick Wins (High Impact, Low Effort)
@@ -214,8 +221,8 @@ This document outlines potential improvements to enhance CartoTaco's functionali
 
 ## 📊 Recommended Priority Order
 
-1. **Query optimization (#1)** - Foundation for everything else
-2. **Search & filter (#2)** - Essential as you add more spots
+1. ✅ **Query optimization (#1)** - Foundation for everything else - **COMPLETED**
+2. ✅ **Search & filter (#2)** - Essential as you add more spots - **COMPLETED**
 3. **Marker clustering (#7)** - Prevent map clutter
 4. **Mobile responsive (#6)** - Serve your mobile users better
 5. **User accounts + favorites (#3)** - Build engagement
