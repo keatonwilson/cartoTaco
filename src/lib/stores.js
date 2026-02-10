@@ -268,6 +268,127 @@ export const specialtiesBySite = derived(
 // Selected site store for popup details
 export const selectedSite = writable(null);
 
+// Filter configuration store
+export const filterConfig = writable({
+  searchText: '',
+  proteins: {
+    chicken: false,
+    beef: false,
+    pork: false,
+    fish: false,
+    veg: false
+  },
+  types: {
+    'Brick and Mortar': false,
+    'Stand': false,
+    'Truck': false
+  },
+  spiceLevel: { min: 0, max: 10 },
+  openNow: false
+});
+
+// Helper function to check if a location is currently open
+function isOpenNow(startHours, endHours) {
+  const now = new Date();
+  const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  const today = days[now.getDay()];
+
+  const startKey = `${today}_start`;
+  const endKey = `${today}_end`;
+
+  const startTime = startHours[startKey];
+  const endTime = endHours[endKey];
+
+  if (!startTime || !endTime) return false;
+
+  // Parse time strings (assuming format like "11:00" or "11:00 AM")
+  const parseTime = (timeStr) => {
+    if (!timeStr) return null;
+    const [time, period] = timeStr.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+
+    if (period) {
+      if (period.toUpperCase() === 'PM' && hours !== 12) hours += 12;
+      if (period.toUpperCase() === 'AM' && hours === 12) hours = 0;
+    }
+
+    return hours * 60 + minutes;
+  };
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const startMinutes = parseTime(startTime);
+  const endMinutes = parseTime(endTime);
+
+  if (startMinutes === null || endMinutes === null) return false;
+
+  // Handle times that cross midnight
+  if (endMinutes < startMinutes) {
+    return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+  }
+
+  return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+}
+
+// Derived store for filtered taco data
+export const filteredTacoData = derived(
+  [processedTacoData, filterConfig],
+  ([$processedTacoData, $filterConfig]) => {
+    if (!$processedTacoData || $processedTacoData.length === 0) {
+      return [];
+    }
+
+    return $processedTacoData.filter(site => {
+      // Search text filter (name)
+      if ($filterConfig.searchText) {
+        const searchLower = $filterConfig.searchText.toLowerCase();
+        if (!site.name.toLowerCase().includes(searchLower)) {
+          return false;
+        }
+      }
+
+      // Protein filters
+      const activeProteins = Object.entries($filterConfig.proteins)
+        .filter(([_, isActive]) => isActive)
+        .map(([protein, _]) => protein);
+
+      if (activeProteins.length > 0) {
+        const hasAnyProtein = activeProteins.some(protein => {
+          const proteinKey = `${protein}_yes`;
+          return site.rawData?.protein?.[proteinKey] === true;
+        });
+        if (!hasAnyProtein) return false;
+      }
+
+      // Type filters
+      const activeTypes = Object.entries($filterConfig.types)
+        .filter(([_, isActive]) => isActive)
+        .map(([type, _]) => type);
+
+      if (activeTypes.length > 0) {
+        if (!activeTypes.includes(site.type)) {
+          return false;
+        }
+      }
+
+      // Spice level filter
+      const siteSpiceLevel = site.heatOverall || 0;
+      if (siteSpiceLevel < $filterConfig.spiceLevel.min ||
+          siteSpiceLevel > $filterConfig.spiceLevel.max) {
+        return false;
+      }
+
+      // Open now filter
+      if ($filterConfig.openNow) {
+        if (!isOpenNow(site.startHours, site.endHours)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }
+);
+
 // async fetch data function - optimized to use single view query
 export async function fetchSiteData() {
   // Set loading state
