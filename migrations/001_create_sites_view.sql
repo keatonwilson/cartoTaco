@@ -24,7 +24,12 @@ SELECT
     'days_loc_2', s.days_loc_2,
     'contact', s.contact,
     'type', s.type,
-    'last_updated', s.last_updated
+    'last_updated', s.last_updated,
+    'phone', s.phone,
+    'website', s.website,
+    'instagram', s.instagram,
+    'facebook', s.facebook,
+    'address', s.address
   ) AS site,
 
   -- Descriptions table fields

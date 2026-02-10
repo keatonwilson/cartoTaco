@@ -111,12 +111,30 @@
     });
   </script>
   
-  <div class="chart-container">
-    <div class="chart-label">Salsa Count</div>
-    <canvas id="salsaBarChart" bind:this={canvas}></canvas>
+  <div class="salsa-wrapper">
+    <div class="chart-container">
+      <div class="chart-label">Salsa Count</div>
+      <canvas id="salsaBarChart" bind:this={canvas}></canvas>
+    </div>
+    <div class="salsa-stats">
+      <span class="stat-item"><strong>{value}</strong> salsas</span>
+      <span class="stat-divider">•</span>
+      <span class="stat-item">Avg: <strong>{Math.round(meanValue)}</strong></span>
+      <span class="stat-divider">•</span>
+      <span class="stat-item">Max: <strong>{maxValue}</strong></span>
+    </div>
+    <div class="salsa-explanation">
+      Number of different salsas available at this location
+    </div>
   </div>
-  
+
   <style>
+    .salsa-wrapper {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
     .chart-container {
       display: flex;
       align-items: center;
@@ -125,6 +143,7 @@
       width: 100%;
       max-height: 100px
     }
+
     .chart-label {
       margin-right: 10px;
       font-weight: bold;
@@ -134,6 +153,34 @@
     #salsaBarChart {
         width: auto;
         height: auto;
+    }
+
+    .salsa-stats {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #555;
+      margin-top: 4px;
+    }
+
+    .stat-item strong {
+      color: #FE795D;
+      font-weight: 700;
+    }
+
+    .stat-divider {
+      color: #ccc;
+    }
+
+    .salsa-explanation {
+      font-size: 11px;
+      color: #666;
+      text-align: center;
+      font-style: italic;
+      margin-top: 4px;
+      padding: 0 10px;
     }
   </style>
   

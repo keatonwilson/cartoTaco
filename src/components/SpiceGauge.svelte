@@ -8,6 +8,18 @@
   let gaugeContainer;
   let chart;
 
+  // Helper function to get spice level description
+  function getSpiceDescription(value) {
+    if (value === 0) return 'No Heat';
+    if (value <= 2) return 'Mild';
+    if (value <= 4) return 'Medium';
+    if (value <= 6) return 'Medium-Hot';
+    if (value <= 8) return 'Hot';
+    return 'Very Hot';
+  }
+
+  $: spiceDescription = getSpiceDescription(spiceValue);
+
   onMount(() => {
     function initializeChart() {
       // Check if gaugeContainer is null
@@ -99,11 +111,41 @@
   }
 </script>
 
-<div bind:this={gaugeContainer} style="width: 100%; height: 150px;"></div>
+<div class="gauge-wrapper">
+  <div bind:this={gaugeContainer} class="gauge-container"></div>
+  <div class="spice-description">{spiceDescription}</div>
+  <div class="spice-explanation">Overall heat level across all salsas</div>
+</div>
 
 <style>
-  div {
+  .gauge-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+
+  .gauge-container {
+    width: 100%;
+    height: 150px;
     max-width: 150px;
     max-height: 150px;
+  }
+
+  .spice-description {
+    font-size: 16px;
+    font-weight: 700;
+    color: #333;
+    margin-top: -10px;
+    margin-bottom: 4px;
+  }
+
+  .spice-explanation {
+    font-size: 11px;
+    color: #666;
+    text-align: center;
+    font-style: italic;
+    max-width: 140px;
+    line-height: 1.3;
   }
 </style>
