@@ -31,6 +31,8 @@
           ],
         },
         options: {
+          responsive: true,
+          maintainAspectRatio: true,
           elements: {
             line: {
               borderWidth: 2,
@@ -92,8 +94,8 @@
               ticks: {
                 display: false,
               },
-              suggestedMin: 0,
-              suggestedMax: 100,
+              min: 0,
+              max: 100,
             },
           },
         },
@@ -106,6 +108,13 @@
       }
     };
   });
+
+  // Update chart when data changes
+  $: if (chartInstance && labels && data) {
+    chartInstance.data.labels = labels;
+    chartInstance.data.datasets[0].data = data;
+    chartInstance.update();
+  }
 </script>
 
 <canvas bind:this={canvas}></canvas>

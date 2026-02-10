@@ -48,6 +48,7 @@
     display: flex;
     justify-content: space-between;
     margin-top: 10px;
+    margin-bottom: 16px;
   }
 
   .icon {

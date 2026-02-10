@@ -228,7 +228,8 @@
     display: flex;
     flex-direction: column;
     justify-content: start;
-    padding-top: 0px;
+    padding: 10px;
+    padding-bottom: 16px;
   }
 
   .radar-chart-container {
