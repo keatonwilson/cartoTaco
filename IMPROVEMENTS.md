@@ -6,8 +6,9 @@ This document outlines potential improvements to enhance CartoTaco's functionali
 
 1. **Query Optimization** - Reduced initial data fetch from 6 queries to 1 via database view (~60-70% faster load time)
 2. **Search & Filter Bar** - Added comprehensive filtering by name, proteins, type, spice level, and open hours
+3. **Marker Clustering** - Efficient clustering of map markers for scalability and clean visualization
 
-See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md) and [SEARCH_FILTER.md](./SEARCH_FILTER.md) for details.
+See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARCH_FILTER.md), and [MARKER_CLUSTERING.md](./MARKER_CLUSTERING.md) for details.
 
 ---
 
@@ -223,7 +224,7 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md) and [SEARCH_FILTER.md](./SE
 
 1. ✅ **Query optimization (#1)** - Foundation for everything else - **COMPLETED**
 2. ✅ **Search & filter (#2)** - Essential as you add more spots - **COMPLETED**
-3. **Marker clustering (#7)** - Prevent map clutter
+3. ✅ **Marker clustering (#7)** - Prevent map clutter - **COMPLETED**
 4. **Mobile responsive (#6)** - Serve your mobile users better
 5. **User accounts + favorites (#3)** - Build engagement
 6. **Taco trail builder (#9)** - Unique differentiator
