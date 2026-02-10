@@ -16,7 +16,6 @@
   import FilterBar from '../components/FilterBar.svelte';
 
   let map;
-  let markers = [];
   let mapContainer;
 
   mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_KEY;
@@ -55,9 +54,10 @@
     };
   });
 
-  // Only update markers when filtered data is available and the map is initialized
+  // Update markers when filtered data changes
+  // Note: With clustering, we don't need a markers array - Mapbox manages it internally
   $: if (map && $filteredTacoData.length >= 0 && !$isLoading) {
-    updateMarkers($filteredTacoData, map, markers, $summaryStats);
+    updateMarkers($filteredTacoData, map, null, $summaryStats);
   }
 
   // Function to retry data loading on error
