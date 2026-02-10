@@ -79,7 +79,7 @@ export const processedTacoData = derived(
 
     return $tacoStore.data.map(site => {
       // Skip sites with missing required data
-      if (!site.site || !site.descriptions || !site.menu || 
+      if (!site.site || !site.descriptions || !site.menu ||
           !site.hours || !site.salsa || !site.protein) {
         return null;
       }
@@ -90,15 +90,23 @@ export const processedTacoData = derived(
         const proteinPercs = filterObjectByKeySubstring(site.protein, "perc");
         const startHours = filterObjectByKeySubstring(site.hours, "start");
         const endHours = filterObjectByKeySubstring(site.hours, "end");
-        
+
         // Pre-compute top five menu items and proteins
         const menuArray = getTopFive(menuPercs);
         const topFiveMenuItems = menuArray.map(subArray => subArray[0]);
-        const topFiveMenuValues = menuArray.map(subArray => subArray[1]);
-        
+        // Convert to numbers and multiply by 100 to get percentages
+        const topFiveMenuValues = menuArray.map(subArray => {
+          const value = parseFloat(subArray[1]);
+          return isNaN(value) ? 0 : value * 100;
+        });
+
         const proteinArray = getTopFive(proteinPercs);
         const topFiveProteinItems = proteinArray.map(subArray => subArray[0]);
-        const topFiveProteinValues = proteinArray.map(subArray => subArray[1]);
+        // Convert to numbers and multiply by 100 to get percentages
+        const topFiveProteinValues = proteinArray.map(subArray => {
+          const value = parseFloat(subArray[1]);
+          return isNaN(value) ? 0 : value * 100;
+        });
         
         // Return processed site data with pre-computed values
         return {
