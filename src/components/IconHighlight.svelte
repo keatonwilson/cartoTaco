@@ -46,9 +46,19 @@
 <style>
   .icons {
     display: flex;
-    justify-content: space-between;
+    /* Mobile: Center icons with gap */
+    justify-content: center;
+    gap: 20px;
     margin-top: 10px;
     margin-bottom: 16px;
+  }
+
+  /* Desktop: Space between for wider layouts */
+  @media (min-width: 1024px) {
+    .icons {
+      justify-content: space-between;
+      gap: 0;
+    }
   }
 
   .icon {

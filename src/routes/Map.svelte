@@ -121,14 +121,42 @@
     position: absolute;
     top: 10px;
     left: 10px;
-    width: 250px; /* Adjust the width as needed */
+    width: 250px;
     height: auto;
     z-index: 1;
   }
 
+  /* Mobile: Smaller logo positioned below FilterBar */
+  @media (max-width: 768px) {
+    #logo {
+      top: 80px; /* Position below FilterBar with margin */
+      left: 10px;
+      width: 140px; /* Smaller on mobile */
+      z-index: 5; /* Higher than map controls but below FilterBar */
+    }
+  }
+
+  /* Mobile-first responsive popup styles */
   :global(.mapboxgl-popup) {
-    width: 800px !important;
-    max-width: none !important;
+    /* Mobile: Nearly full width with breathing room */
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+  }
+
+  /* Tablet: 90vw centered, max 700px */
+  @media (min-width: 768px) {
+    :global(.mapboxgl-popup) {
+      width: 90vw !important;
+      max-width: 700px !important;
+    }
+  }
+
+  /* Desktop: Fixed 800px as before */
+  @media (min-width: 1024px) {
+    :global(.mapboxgl-popup) {
+      width: 800px !important;
+      max-width: 800px !important;
+    }
   }
 
   :global(.mapboxgl-popup-content) {
@@ -136,10 +164,67 @@
     font-size: 14px;
     border-radius: 2%;
     opacity: 0.95;
+    /* Mobile: Constrain height and enable scrolling */
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  /* Desktop: Allow more height */
+  @media (min-width: 1024px) {
+    :global(.mapboxgl-popup-content) {
+      max-height: 90vh;
+    }
   }
 
   :global(.mapboxgl-popup-tip) {
     border-width: 10px;
+  }
+
+  /* Improved close button styling */
+  :global(.mapboxgl-popup-close-button) {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid #e0e0e0;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    font-size: 20px;
+    font-weight: 600;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 1000;
+    padding: 0 0 2px 0; /* Shift × up slightly */
+    line-height: 0; /* Better vertical centering */
+  }
+
+  :global(.mapboxgl-popup-close-button):hover {
+    background: #fff;
+    border-color: #FE795D;
+    color: #FE795D;
+    transform: scale(1.1);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  :global(.mapboxgl-popup-close-button):active {
+    transform: scale(0.95);
+  }
+
+  /* Mobile: Larger touch target */
+  @media (max-width: 768px) {
+    :global(.mapboxgl-popup-close-button) {
+      width: 36px;
+      height: 36px;
+      right: 6px;
+      top: 6px;
+      font-size: 22px;
+    }
   }
   
   .loading-container, .error-container {

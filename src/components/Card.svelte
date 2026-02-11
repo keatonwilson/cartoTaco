@@ -7,7 +7,9 @@
   import SpecCarousel from "./SpecCarousel.svelte";
   import SpecCard from "./SpecCard.svelte";
   import ContactInfo from "./ContactInfo.svelte";
+  import CollapsibleSection from "./CollapsibleSection.svelte";
   import { selectedSite, summaryStats, specialtiesBySite } from "$lib/stores";
+  import { isMobile } from "$lib/deviceDetection";
 
   // Use the site ID to find the site in the selectedSite store
   export let siteId = null;
@@ -47,6 +49,9 @@
         instagram={$selectedSite.site?.instagram}
         facebook={$selectedSite.site?.facebook}
         address={$selectedSite.site?.address}
+        latitude={$selectedSite.latitude}
+        longitude={$selectedSite.longitude}
+        name={$selectedSite.name || 'Taco Location'}
       />
       <h2 class="text-m font-semibold text-gray-800 my-2">Type</h2>
       <IconHighlight type="siteType" data={$selectedSite.type || 'unknown'} />
@@ -60,30 +65,61 @@
           {showLongDescription ? "Show less" : "Read more"}
         </span>
       </div>
-      <h2 class="text-m font-semibold text-gray-800 my-2">Menu Summary</h2>
-      <div class="radar-chart-container">
-        <RadarChart 
-          labels={$selectedSite.topFiveMenuItems || []} 
-          data={$selectedSite.topFiveMenuValues || []} 
-        />
-      </div>
-    </div>
-    <div class="right-panel" id="chart">
-      <div class="top-row">
-        <div class="protein-chart-container">
-          <h2 class="text-m font-semibold text-gray-800 my-2">Protein</h2>
-          <RadarChart 
-            labels={$selectedSite.topFiveProteinItems || []} 
-            data={$selectedSite.topFiveProteinValues || []} 
+      {#if $isMobile}
+        <CollapsibleSection title="Menu Summary" defaultOpen={false}>
+          <div class="radar-chart-container">
+            <RadarChart
+              labels={$selectedSite.topFiveMenuItems || []}
+              data={$selectedSite.topFiveMenuValues || []}
+            />
+          </div>
+        </CollapsibleSection>
+      {:else}
+        <h2 class="text-m font-semibold text-gray-800 my-2">Menu Summary</h2>
+        <div class="radar-chart-container">
+          <RadarChart
+            labels={$selectedSite.topFiveMenuItems || []}
+            data={$selectedSite.topFiveMenuValues || []}
           />
         </div>
-        <div class="right-box">
-          <h2 class="text-m font-semibold text-gray-800" id="spicy-label">Spiciness</h2>
-          <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
-          <h2 class="text-m font-semibold text-gray-800 my-2">Tortilla Type</h2>
-          <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
+      {/if}
+    </div>
+    <div class="right-panel" id="chart">
+      {#if $isMobile}
+        <CollapsibleSection title="Protein Chart" defaultOpen={false}>
+          <div class="protein-chart-container">
+            <RadarChart
+              labels={$selectedSite.topFiveProteinItems || []}
+              data={$selectedSite.topFiveProteinValues || []}
+            />
+          </div>
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Spiciness & Details" defaultOpen={true}>
+          <div class="right-box">
+            <h2 class="text-m font-semibold text-gray-800" id="spicy-label">Spiciness</h2>
+            <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
+            <h2 class="text-m font-semibold text-gray-800 my-2">Tortilla Type</h2>
+            <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
+          </div>
+        </CollapsibleSection>
+      {:else}
+        <div class="top-row">
+          <div class="protein-chart-container">
+            <h2 class="text-m font-semibold text-gray-800 my-2">Protein</h2>
+            <RadarChart
+              labels={$selectedSite.topFiveProteinItems || []}
+              data={$selectedSite.topFiveProteinValues || []}
+            />
+          </div>
+          <div class="right-box">
+            <h2 class="text-m font-semibold text-gray-800" id="spicy-label">Spiciness</h2>
+            <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
+            <h2 class="text-m font-semibold text-gray-800 my-2">Tortilla Type</h2>
+            <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
+          </div>
         </div>
-      </div>
+      {/if}
       <div class='salsa-container'>
         <SalsaCount 
           value={$selectedSite.salsaCount || 0} 
@@ -94,55 +130,34 @@
       
       <!-- Specialty Items Section -->
       <div class="specialties-section">
-        <h2 class="text-lg font-semibold text-gray-800 mb-2">Specialties</h2>
-        
-        {#if $specialtiesBySite && $specialtiesBySite.has($selectedSite.est_id)}
-          <div class="specialties-grid">
-            <!-- All Specialties in a Grid Layout -->
-            <div class="grid-container">
-              <!-- Item Specialties -->
-              {#if $specialtiesBySite.get($selectedSite.est_id).itemSpecs.length > 0}
-                {#each $specialtiesBySite.get($selectedSite.est_id).itemSpecs as itemSpec}
-                  <div class="grid-item">
-                    <SpecCard 
-                      itemDescrip={itemSpec.description || ''} 
-                      itemName={itemSpec.name || ''} 
-                      cardType='Item'
-                    />
-                  </div>
-                {/each}
-              {/if}
-              
-              <!-- Protein Specialties -->
-              {#if $specialtiesBySite.get($selectedSite.est_id).proteinSpecs.length > 0}
-                {#each $specialtiesBySite.get($selectedSite.est_id).proteinSpecs as proteinSpec}
-                  <div class="grid-item">
-                    <SpecCard 
-                      itemDescrip={proteinSpec.description || ''} 
-                      itemName={proteinSpec.name || ''} 
-                      cardType='Protein'
-                    />
-                  </div>
-                {/each}
-              {/if}
-              
-              <!-- Salsa Specialties -->
-              {#if $specialtiesBySite.get($selectedSite.est_id).salsaSpecs.length > 0}
-                {#each $specialtiesBySite.get($selectedSite.est_id).salsaSpecs as salsaSpec}
-                  <div class="grid-item">
-                    <SpecCard 
-                      itemDescrip={salsaSpec.description || ''} 
-                      itemName={salsaSpec.name || ''} 
-                      cardType='Salsa'
-                    />
-                  </div>
-                {/each}
-              {/if}
-            </div>
-          </div>
+        {#if $isMobile}
+          <CollapsibleSection title="Specialties" defaultOpen={true}>
+            {#if $specialtiesBySite && $specialtiesBySite.has($selectedSite.est_id)}
+              {@const siteSpecs = $specialtiesBySite.get($selectedSite.est_id)}
+              {@const allSpecialties = [
+                ...siteSpecs.itemSpecs.map(s => ({ ...s, type: 'Item' })),
+                ...siteSpecs.proteinSpecs.map(s => ({ ...s, type: 'Protein' })),
+                ...siteSpecs.salsaSpecs.map(s => ({ ...s, type: 'Salsa' }))
+              ]}
+              <SpecCarousel specialties={allSpecialties} />
+            {:else}
+              <p class="text-sm text-gray-500 italic">No specialty information available for this location.</p>
+            {/if}
+          </CollapsibleSection>
         {:else}
-          <!-- Fallback to message if no specialty data exists -->
-          <p class="text-sm text-gray-500 italic">No specialty information available for this location.</p>
+          <!-- Desktop: Also use carousel -->
+          <h2 class="text-lg font-semibold text-gray-800 mb-2">Specialties</h2>
+          {#if $specialtiesBySite && $specialtiesBySite.has($selectedSite.est_id)}
+            {@const siteSpecs = $specialtiesBySite.get($selectedSite.est_id)}
+            {@const allSpecialties = [
+              ...siteSpecs.itemSpecs.map(s => ({ ...s, type: 'Item' })),
+              ...siteSpecs.proteinSpecs.map(s => ({ ...s, type: 'Protein' })),
+              ...siteSpecs.salsaSpecs.map(s => ({ ...s, type: 'Salsa' }))
+            ]}
+            <SpecCarousel specialties={allSpecialties} />
+          {:else}
+            <p class="text-sm text-gray-500 italic">No specialty information available for this location.</p>
+          {/if}
         {/if}
       </div>
     </div>
@@ -159,8 +174,10 @@
     margin: 10px;
   }
 
+  /* Mobile-first: Single column vertical stack */
   #popup-content {
     display: flex;
+    flex-direction: column;
     width: 100%;
     gap: 10px;
   }
@@ -172,14 +189,33 @@
     display: flex;
     flex-direction: column;
     border-radius: 2%;
+    width: 100%;
   }
 
-  .left-panel {
-    width: 40%;
+  /* Tablet: 50/50 split (improved from desktop 40/60) */
+  @media (min-width: 768px) {
+    #popup-content {
+      flex-direction: row;
+    }
+
+    .left-panel {
+      width: 50%;
+    }
+
+    .right-panel {
+      width: 50%;
+    }
   }
 
-  .right-panel {
-    width: 60%;
+  /* Desktop: Original 40/60 split */
+  @media (min-width: 1024px) {
+    .left-panel {
+      width: 40%;
+    }
+
+    .right-panel {
+      width: 60%;
+    }
   }
 
   .description {
@@ -206,12 +242,17 @@
     cursor: pointer;
     color: blue;
     text-decoration: underline;
+    /* Touch-friendly button size on mobile */
+    display: inline-block;
+    padding: 8px 4px;
+    margin-top: 4px;
   }
 
+  /* Mobile: Stack protein chart and right-box vertically */
   .top-row {
     display: flex;
+    flex-direction: column;
     width: 100%;
-    max-height: 40%;
     border-bottom: 1px solid lightgray;
   }
 
@@ -219,23 +260,51 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    width: 65%;
+    width: 100%;
     padding: 2%;
   }
 
   .right-box {
-    width: 35%;
+    width: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: start;
+    align-items: center; /* Center items on mobile */
+    justify-content: center;
     padding: 10px;
     padding-bottom: 16px;
+    gap: 16px; /* Add spacing between items */
+  }
+
+  /* Tablet & Desktop: Horizontal layout for top-row */
+  @media (min-width: 768px) {
+    .top-row {
+      flex-direction: row;
+      max-height: 40%;
+    }
+
+    .protein-chart-container {
+      width: 65%;
+    }
+
+    .right-box {
+      width: 35%;
+      align-items: stretch; /* Reset alignment for desktop */
+      justify-content: start;
+      gap: 0;
+    }
   }
 
   .radar-chart-container {
     display: flex;
     justify-content: center;
-    max-height: 500px;
+    max-height: 300px;
+  }
+
+  /* Larger radar charts on tablet/desktop */
+  @media (min-width: 768px) {
+    .radar-chart-container {
+      max-height: 500px;
+    }
   }
 
   .salsa-container {
@@ -246,6 +315,29 @@
     margin-top: 1rem;
     padding-top: 0.5rem;
     border-top: 1px solid lightgray;
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Desktop: More height for better centering */
+  @media (min-width: 1024px) {
+    .specialties-section {
+      min-height: 340px;
+    }
+  }
+
+  /* Heading stays at top */
+  .specialties-section h2 {
+    flex-shrink: 0;
+  }
+
+  /* Carousel wrapper grows and centers content */
+  .specialties-section :global(.carousel-wrapper) {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
   
   .specialties-grid {
