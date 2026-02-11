@@ -412,8 +412,9 @@
   /* Responsive adjustments */
   @media (max-width: 768px) {
     .filter-container {
-      right: 10px;
+      top: 10px;
       left: 10px;
+      right: 60px; /* Leave space for map controls */
       max-width: none;
     }
 

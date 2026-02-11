@@ -1,10 +1,18 @@
 <script>
   import { Card } from 'flowbite-svelte';
+  import { isMobile } from '$lib/deviceDetection';
 
   export let cardType;
   export let itemName;
   export let itemDescrip;
   export let imgUrl = null;
+
+  // Expandable state
+  let isExpanded = false;
+
+  function toggleExpand() {
+    isExpanded = !isExpanded;
+  }
 
   // Determine image based on card type if not explicitly provided
   $: cardImage = imgUrl || getImageByType(cardType);
@@ -45,152 +53,256 @@
     : itemDescrip;
 </script>
   
-<div class="specialty-card {cardClass}" title={itemDescrip}>
+<div
+  class="specialty-card {cardClass}"
+  class:mobile={$isMobile}
+  class:expanded={isExpanded}
+  on:click={toggleExpand}
+  on:keydown={(e) => e.key === 'Enter' && toggleExpand()}
+  role="button"
+  tabindex="0"
+  aria-expanded={isExpanded}
+>
   <div class="compact-card">
     <div class="icon-container">
+      <span class="type-label">{cardType}</span>
       <img src={cardImage} alt={cardType} class="specialty-icon" />
     </div>
     <div class="content">
-      <p class="card-type">{cardType}</p>
       <h5 class="card-title">{itemName}</h5>
+      <!-- Show description inline on all devices -->
+      <p class="card-description">{itemDescrip}</p>
+      {#if isExpanded}
+        <div class="expand-hint">Click to collapse</div>
+      {:else}
+        <div class="expand-hint">Click to read more</div>
+      {/if}
     </div>
-  </div>
-  
-  <!-- Tooltip that shows on hover -->
-  <div class="hover-description">
-    <p>{itemDescrip}</p>
   </div>
 </div>
   
 <style>
   .specialty-card {
     margin-bottom: 0.5rem;
-    transition: transform 0.2s ease-in-out;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
     position: relative;
     width: 100%;
+    cursor: pointer;
+    border-radius: 10px; /* Match the inner card's border-radius */
   }
-  
+
   .specialty-card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
     z-index: 10;
   }
-  
+
+  .specialty-card:focus {
+    outline: none; /* Remove default outline */
+  }
+
+  /* Subtle rounded outline on expanded/focused cards */
+  .specialty-card.expanded,
+  .specialty-card:focus {
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.25);
+  }
+
+  .specialty-card.expanded:hover,
+  .specialty-card:focus:hover {
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.35), 0 6px 16px rgba(0,0,0,0.18);
+  }
+
   .compact-card {
     display: flex;
-    background-color: white;
-    border-radius: 8px;
+    background: white;
+    border-radius: 10px;
     overflow: hidden;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    height: 90px; /* Increased height */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    height: auto;
+    min-height: 170px;
     width: 100%;
     position: relative;
+    border-left: 5px solid transparent;
+    transition: all 0.3s ease;
+  }
+
+  .specialty-card:hover .compact-card {
+    box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+  }
+
+  /* Expanded state - taller to show full content */
+  .specialty-card.expanded .compact-card {
+    min-height: auto;
+  }
+
+  /* Mobile: Taller cards */
+  .specialty-card.mobile .compact-card {
+    min-height: 190px;
+  }
+
+  /* Desktop: Even taller for more content */
+  @media (min-width: 768px) {
+    .compact-card {
+      min-height: 200px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .compact-card {
+      min-height: 220px;
+    }
   }
   
   .icon-container {
-    flex: 0 0 45px; /* Significantly reduced width to prioritize text */
-    height: 90px; /* Keep consistent height */
+    flex: 0 0 95px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 6px;
+    gap: 8px;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
   }
-  
+
+  .type-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    color: white;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+  }
+
   .specialty-icon {
-    width: 28px; /* Smaller icon size */
-    height: 28px; /* Smaller icon size */
+    width: 45px;
+    height: 45px;
     object-fit: contain;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+  }
+
+  @media (min-width: 1024px) {
+    .specialty-icon {
+      width: 50px;
+      height: 50px;
+    }
   }
   
   .content {
-    flex: 1 1 auto; /* Allow content to expand and fill the available space */
-    padding: 12px 14px 12px 8px; /* Adjusted padding to give more room to text */
+    flex: 1 1 auto;
+    padding: 12px 14px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     overflow: hidden;
-    min-width: 0; /* Important for text overflow to work */
+    min-width: 0;
   }
-  
-  .card-type {
-    font-size: 11px; /* Slightly increased font size */
-    font-style: italic;
-    color: #6b7280;
-    margin: 0;
-    line-height: 1.1;
-  }
-  
+
   .card-title {
-    font-size: 15px; /* Slightly adjusted font size */
-    font-weight: 600;
-    margin: 4px 0 0 0;
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    color: #1a1a1a;
+    line-height: 1.35;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* Desktop: Larger text */
+  @media (min-width: 768px) {
+    .card-title {
+      font-size: 18px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .card-title {
+      font-size: 19px;
+    }
+  }
+
+  /* Description shown inline on all devices */
+  .card-description {
+    font-size: 12px;
+    color: #555;
+    line-height: 1.4;
+    margin: 6px 0 0 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
-    line-height: 1.3;
-    display: -webkit-box;
-    -webkit-line-clamp: 2; /* Show up to 2 lines */
-    -webkit-box-orient: vertical;
-    white-space: normal; /* Allow wrapping */
-    max-height: 3em; /* Limit height */
+    transition: all 0.3s ease;
   }
-  
-  /* Hover description */
-  .hover-description {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 100%;
-    margin-top: 5px;
-    background-color: white;
-    padding: 8px;
-    border-radius: 6px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-    z-index: 100;
-    font-size: 12px;
-    line-height: 1.4;
-    max-width: 250px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s, transform 0.2s;
-    transform: translateY(-5px);
+
+  /* Expanded: Show full description */
+  .specialty-card.expanded .card-description {
+    display: block;
+    -webkit-line-clamp: unset;
     overflow: visible;
   }
-  
-  .specialty-card:hover .hover-description {
+
+  /* Desktop: Slightly larger text */
+  @media (min-width: 768px) {
+    .card-description {
+      font-size: 13px;
+    }
+  }
+
+  .expand-hint {
+    font-size: 11px;
+    color: #888;
+    font-style: italic;
+    margin-top: 8px;
+    opacity: 0.7;
+  }
+
+  .specialty-card:hover .expand-hint {
     opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
   }
   
-  .hover-description p {
-    margin: 0;
-    white-space: normal; /* Allow text to wrap */
-  }
   
-  /* Color theming */
+  /* Color theming - Item (Green) */
+  .specialty-item .compact-card {
+    border-left-color: #4CAF50;
+    background: linear-gradient(to right, rgba(76, 175, 80, 0.03), white);
+  }
+
   .specialty-item .icon-container {
-    background-color: rgba(76, 175, 80, 0.1);
-    border-right: 2px solid #4CAF50;
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.15), rgba(76, 175, 80, 0.08));
   }
-  
+
+  .specialty-item .type-label {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+  }
+
+  /* Color theming - Protein (Orange) */
+  .specialty-protein .compact-card {
+    border-left-color: #FF9800;
+    background: linear-gradient(to right, rgba(255, 152, 0, 0.03), white);
+  }
+
   .specialty-protein .icon-container {
-    background-color: rgba(255, 152, 0, 0.1);
-    border-right: 2px solid #FF9800;
+    background: linear-gradient(135deg, rgba(255, 152, 0, 0.15), rgba(255, 152, 0, 0.08));
   }
-  
+
+  .specialty-protein .type-label {
+    background: linear-gradient(135deg, #FF9800, #F57C00);
+  }
+
+  /* Color theming - Salsa (Red) */
+  .specialty-salsa .compact-card {
+    border-left-color: #F44336;
+    background: linear-gradient(to right, rgba(244, 67, 54, 0.03), white);
+  }
+
   .specialty-salsa .icon-container {
-    background-color: rgba(244, 67, 54, 0.1);
-    border-right: 2px solid #F44336;
+    background: linear-gradient(135deg, rgba(244, 67, 54, 0.15), rgba(244, 67, 54, 0.08));
   }
-  
-  .specialty-item .hover-description {
-    border-top: 3px solid #4CAF50;
-  }
-  
-  .specialty-protein .hover-description {
-    border-top: 3px solid #FF9800;
-  }
-  
-  .specialty-salsa .hover-description {
-    border-top: 3px solid #F44336;
+
+  .specialty-salsa .type-label {
+    background: linear-gradient(135deg, #F44336, #E53935);
   }
 </style>

@@ -8,6 +8,10 @@
   let canvas;
   let chartInstance;
 
+  // Calculate dynamic max value based on data
+  $: maxDataValue = data && data.length > 0 ? Math.max(...data) : 100;
+  $: dynamicMax = maxDataValue < 50 ? 50 : 75;
+
   onMount(() => {
     if (canvas) {
       chartInstance = new Chart(canvas, {
@@ -95,7 +99,7 @@
                 display: false,
               },
               min: 0,
-              max: 100,
+              max: dynamicMax,
             },
           },
         },
@@ -109,10 +113,11 @@
     };
   });
 
-  // Update chart when data changes
+  // Update chart when data or max changes
   $: if (chartInstance && labels && data) {
     chartInstance.data.labels = labels;
     chartInstance.data.datasets[0].data = data;
+    chartInstance.options.scales.r.max = dynamicMax;
     chartInstance.update();
   }
 </script>

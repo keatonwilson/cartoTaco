@@ -1,6 +1,8 @@
 import PopupContent from '../components/Card.svelte';
 import mapboxgl from 'mapbox-gl';
 import { selectedSite } from './stores';
+import { deviceType } from './deviceDetection';
+import { get } from 'svelte/store';
 
 // Keep track of active popup
 let currentPopup = null;
@@ -179,11 +181,26 @@ export const updateMarkers = (processedSites, map, markers, summaryStats) => {
     // Set the selected site in the store
     selectedSite.set(siteData);
 
-    // Create popup
-    currentPopup = new mapboxgl.Popup({
+    // Get current device type for responsive popup options
+    const currentDeviceType = get(deviceType);
+
+    // Device-specific popup options
+    const popupOptions = {
       closeButton: true,
-      closeOnClick: true
-    })
+      closeOnClick: true,
+      maxWidth: currentDeviceType === 'mobile' ? 'calc(100vw - 20px)' :
+                currentDeviceType === 'tablet' ? '700px' : '800px'
+    };
+
+    // Mobile: top-anchored (popup extends downward) to avoid overlapping with search bar at top
+    // Desktop/Tablet: use default positioning (no anchor specified)
+    if (currentDeviceType === 'mobile') {
+      popupOptions.anchor = 'top';
+      popupOptions.offset = [0, 10]; // Add 10px offset below the marker
+    }
+
+    // Create popup
+    currentPopup = new mapboxgl.Popup(popupOptions)
       .setLngLat(coordinates)
       .setDOMContent(createPopupContent(properties.est_id))
       .addTo(map);
