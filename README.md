@@ -8,6 +8,7 @@ An interactive map-based application for exploring taco establishments in Tucson
 
 - **Interactive Map with Clustering**: Visualize all taco establishments with automatic marker clustering
 - **Search & Filter**: Find spots by name, protein type, spice level, open status, and more
+- **Mobile-First Responsive Design**: Optimized layouts for all screen sizes with touch-friendly controls
 - **Detailed Information Cards**: Explore each location's offerings with rich data visualizations
 - **Enhanced Charts**: Interactive radar charts with tooltips explaining menu distributions
 - **Contact Information**: Direct links to phone, website, Instagram, and Facebook
@@ -130,8 +131,14 @@ See [migrations/README.md](migrations/README.md) for detailed instructions.
 
 See [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md) for the complete feature roadmap.
 
+**Recently Completed:**
+- ✅ Query optimization (60-70% faster load times)
+- ✅ Search and filter system
+- ✅ Marker clustering
+- ✅ Mobile-first responsive design
+
 **Next Up:**
-- Mobile responsive overhaul
+- User-submitted location mechanism
 - User authentication for saving favorite locations
 - Ratings and review system
 - Taco trail route builder

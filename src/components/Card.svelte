@@ -11,9 +11,6 @@
   import { selectedSite, summaryStats, specialtiesBySite } from "$lib/stores";
   import { isMobile } from "$lib/deviceDetection";
 
-  // Use the site ID to find the site in the selectedSite store
-  export let siteId = null;
-  
   // Local state
   let showLongDescription = false;
   let errorState = false;
@@ -61,9 +58,14 @@
         <div class="long-description" class:visible={showLongDescription}>
           <p>{$selectedSite.longDescription || 'No detailed description available'}</p>
         </div>
-        <span class="expand-button" on:click={toggleLongDescription}>
+        <button
+          class="expand-button"
+          on:click={toggleLongDescription}
+          aria-expanded={showLongDescription}
+          aria-label={showLongDescription ? "Show less description" : "Read more description"}
+        >
           {showLongDescription ? "Show less" : "Read more"}
-        </span>
+        </button>
       </div>
       {#if $isMobile}
         <CollapsibleSection title="Menu Summary" defaultOpen={false}>
@@ -338,43 +340,5 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-  }
-  
-  .specialties-grid {
-    margin-top: 0.5rem;
-    width: 100%;
-    display: flex;
-    justify-content: center; /* Center horizontally */
-  }
-  
-  .grid-container {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center; /* Center horizontally */
-    align-items: center; /* Center vertically */
-    gap: 12px; /* Increased gap for better spacing */
-    width: 100%;
-    max-width: 900px; /* Prevent stretching too wide on large screens */
-  }
-  
-  .grid-item {
-    flex: 0 0 calc(50% - 8px); /* Fixed width calculation with new gap */
-    min-width: 170px; /* Slightly adjusted minimum width */
-    max-width: calc(50% - 8px); /* Maximum width with new gap */
-    margin-bottom: 4px; /* Reduced margin to account for increased gap */
-  }
-  
-  @media (min-width: 600px) {
-    .grid-item {
-      flex: 0 0 calc(33.333% - 8px); /* Each item takes a third of the width minus gap */
-      max-width: calc(33.333% - 8px);
-    }
-  }
-  
-  @media (min-width: 1024px) {
-    .grid-item {
-      flex: 0 0 calc(33.333% - 8px); /* Keep at 3 per row for better readability */
-      max-width: calc(33.333% - 8px);
-    }
   }
 </style>

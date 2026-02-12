@@ -128,8 +128,9 @@
         </h3>
         <div class="range-inputs">
           <div class="range-input-group">
-            <label>Min</label>
+            <label for="spice-min">Min</label>
             <input
+              id="spice-min"
               type="range"
               min="0"
               max="10"
@@ -138,8 +139,9 @@
             />
           </div>
           <div class="range-input-group">
-            <label>Max</label>
+            <label for="spice-max">Max</label>
             <input
+              id="spice-max"
               type="range"
               min="0"
               max="10"
