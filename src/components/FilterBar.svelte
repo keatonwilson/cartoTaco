@@ -178,7 +178,7 @@
 <style>
   .filter-container {
     position: absolute;
-    top: 20px;
+    top: 86px; /* 66px header + 20px margin */
     right: 60px;
     z-index: 10;
     background: white;
@@ -414,7 +414,7 @@
   /* Responsive adjustments */
   @media (max-width: 768px) {
     .filter-container {
-      top: 10px;
+      top: 76px; /* 66px header + 10px margin */
       left: 10px;
       right: 60px; /* Leave space for map controls */
       max-width: none;

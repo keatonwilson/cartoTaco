@@ -102,9 +102,6 @@
   {/if}
 </div>
 
-<!-- Logo Element outside of the map container -->
-<img id="logo" src="/color_light_bg.png" alt="Logo">
-
 <!-- Filter Bar -->
 {#if !$isLoading && !$hasError}
   <FilterBar />
@@ -117,23 +114,9 @@
     position: relative;
   }
 
-  #logo {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    width: 250px;
-    height: auto;
-    z-index: 1;
-  }
-
-  /* Mobile: Smaller logo positioned below FilterBar */
-  @media (max-width: 768px) {
-    #logo {
-      top: 80px; /* Position below FilterBar with margin */
-      left: 10px;
-      width: 140px; /* Smaller on mobile */
-      z-index: 5; /* Higher than map controls but below FilterBar */
-    }
+  /* Position map controls below the transparent header */
+  :global(.mapboxgl-ctrl-top-right) {
+    top: 76px !important;
   }
 
   /* Mobile-first responsive popup styles */
