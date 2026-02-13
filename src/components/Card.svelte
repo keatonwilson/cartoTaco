@@ -8,6 +8,7 @@
   import SpecCard from "./SpecCard.svelte";
   import ContactInfo from "./ContactInfo.svelte";
   import CollapsibleSection from "./CollapsibleSection.svelte";
+  import FavoriteButton from "./FavoriteButton.svelte";
   import { selectedSite, summaryStats, specialtiesBySite } from "$lib/stores";
   import { isMobile } from "$lib/deviceDetection";
 
@@ -33,9 +34,12 @@
 {:else}
   <div id="popup-content">
     <div class="left-panel">
-      <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-100 mb-4">
-        {$selectedSite.name || 'Unknown Location'}
-      </h2>
+      <div class="header-section">
+        <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-100">
+          {$selectedSite.name || 'Unknown Location'}
+        </h2>
+        <FavoriteButton estId={$selectedSite.est_id} size="sm" />
+      </div>
       <HoursOpen
         startHours={$selectedSite.startHours || {}}
         endHours={$selectedSite.endHours || {}}
@@ -180,6 +184,28 @@
     background-color: #7f1d1d;
     border-color: #991b1b;
     color: #fecaca;
+  }
+
+  /* Header section with title and favorite button */
+  .header-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  /* Tablet & Desktop: Side-by-side layout */
+  @media (min-width: 768px) {
+    .header-section {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .header-section h2 {
+      margin-bottom: 0;
+    }
   }
 
   /* Mobile-first: Single column vertical stack */

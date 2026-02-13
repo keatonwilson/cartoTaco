@@ -1,13 +1,25 @@
 <script>
 	import { onMount } from 'svelte';
 	import { initTheme } from '$lib/theme.js';
+	import { loadFavorites } from '$lib/favoritesStore.js';
+	import { isAuthenticated } from '$lib/authStore.js';
 	import '../app.css';
 	import Header from '$lib/../components/Header.svelte';
 
 	onMount(() => {
 		// Initialize theme system
 		initTheme();
+
+		// Load favorites if authenticated
+		if ($isAuthenticated) {
+			loadFavorites();
+		}
 	});
+
+	// Reload favorites when authentication state changes
+	$: if ($isAuthenticated) {
+		loadFavorites();
+	}
 </script>
 
 <div class="app">

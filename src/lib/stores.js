@@ -2,8 +2,9 @@
 
 // imports
 import { writable, derived } from "svelte/store";
-import { supabase } from "./supabase";
+import { supabaseBrowser } from "./supabaseBrowser";
 import { filterObjectByKeySubstring, getTopFive } from "./dataWrangling";
+import { favoriteIds } from "./favoritesStore";
 
 // Create store that includes data and loading/error state
 function createDataStore() {
@@ -292,7 +293,8 @@ export const filterConfig = writable({
     'Truck': false
   },
   spiceLevel: { min: 0, max: 10 },
-  openNow: false
+  openNow: false,
+  showFavoritesOnly: false
 });
 
 // Helper function to check if a location is currently open
@@ -339,13 +341,20 @@ function isOpenNow(startHours, endHours) {
 
 // Derived store for filtered taco data
 export const filteredTacoData = derived(
-  [processedTacoData, filterConfig],
-  ([$processedTacoData, $filterConfig]) => {
+  [processedTacoData, filterConfig, favoriteIds],
+  ([$processedTacoData, $filterConfig, $favoriteIds]) => {
     if (!$processedTacoData || $processedTacoData.length === 0) {
       return [];
     }
 
     return $processedTacoData.filter(site => {
+      // Favorites only filter
+      if ($filterConfig.showFavoritesOnly) {
+        if (!$favoriteIds.has(site.est_id)) {
+          return false;
+        }
+      }
+
       // Search text filter (name)
       if ($filterConfig.searchText) {
         const searchLower = $filterConfig.searchText.toLowerCase();
@@ -404,7 +413,7 @@ export async function fetchSiteData() {
 
   try {
     // Fetch all site data from the optimized view in a single query
-    let { data: sitesCompleteData, error: sitesCompleteError } = await supabase
+    let { data: sitesCompleteData, error: sitesCompleteError } = await supabaseBrowser
       .from("sites_complete")
       .select();
 
@@ -429,7 +438,7 @@ export async function fetchSummaryData() {
   
   try {
     // Fetch summary data
-    let { data: summaryData, error: summaryError } = await supabase
+    let { data: summaryData, error: summaryError } = await supabaseBrowser
       .from("summaries")
       .select();
     if (summaryError) {
@@ -451,7 +460,7 @@ export async function fetchSpecialtyData() {
   
   try {
     // Fetch item specialties
-    let { data: itemSpecData, error: itemSpecError } = await supabase
+    let { data: itemSpecData, error: itemSpecError } = await supabaseBrowser
       .from("item_spec")
       .select();
     if (itemSpecError) {
@@ -461,7 +470,7 @@ export async function fetchSpecialtyData() {
     }
 
     // Fetch protein specialties
-    let { data: proteinSpecData, error: proteinSpecError } = await supabase
+    let { data: proteinSpecData, error: proteinSpecError } = await supabaseBrowser
       .from("protein_spec")
       .select();
     if (proteinSpecError) {
@@ -471,7 +480,7 @@ export async function fetchSpecialtyData() {
     }
 
     // Fetch salsa specialties
-    let { data: salsaSpecData, error: salsaSpecError } = await supabase
+    let { data: salsaSpecData, error: salsaSpecError } = await supabaseBrowser
       .from("salsa_spec")
       .select();
     if (salsaSpecError) {

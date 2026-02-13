@@ -3,7 +3,7 @@
  * Handles creating and querying user submissions
  */
 
-import { supabase } from './supabase';
+import { supabaseBrowser } from './supabaseBrowser';
 
 /**
  * Submit a new location for admin review
@@ -16,7 +16,7 @@ export async function submitLocation(submissionData) {
 		const {
 			data: { user },
 			error: userError
-		} = await supabase.auth.getUser();
+		} = await supabaseBrowser.auth.getUser();
 
 		if (userError || !user) {
 			return {
@@ -44,7 +44,7 @@ export async function submitLocation(submissionData) {
 		};
 
 		// Insert into database
-		const { data, error } = await supabase
+		const { data, error } = await supabaseBrowser
 			.from('location_submissions')
 			.insert([submission])
 			.select()
@@ -82,7 +82,7 @@ export async function getUserSubmissions(status = null) {
 		const {
 			data: { user },
 			error: userError
-		} = await supabase.auth.getUser();
+		} = await supabaseBrowser.auth.getUser();
 
 		if (userError || !user) {
 			return {
@@ -92,7 +92,7 @@ export async function getUserSubmissions(status = null) {
 		}
 
 		// Build query
-		let query = supabase
+		let query = supabaseBrowser
 			.from('location_submissions')
 			.select('*')
 			.eq('user_id', user.id)
@@ -137,7 +137,7 @@ export async function getSubmissionById(submissionId) {
 		const {
 			data: { user },
 			error: userError
-		} = await supabase.auth.getUser();
+		} = await supabaseBrowser.auth.getUser();
 
 		if (userError || !user) {
 			return {
@@ -146,7 +146,7 @@ export async function getSubmissionById(submissionId) {
 			};
 		}
 
-		const { data, error } = await supabase
+		const { data, error } = await supabaseBrowser
 			.from('location_submissions')
 			.select('*')
 			.eq('id', submissionId)
@@ -186,7 +186,7 @@ export async function updateSubmission(submissionId, updates) {
 		const {
 			data: { user },
 			error: userError
-		} = await supabase.auth.getUser();
+		} = await supabaseBrowser.auth.getUser();
 
 		if (userError || !user) {
 			return {
@@ -196,7 +196,7 @@ export async function updateSubmission(submissionId, updates) {
 		}
 
 		// RLS policy will enforce user_id and pending status
-		const { data, error } = await supabase
+		const { data, error } = await supabaseBrowser
 			.from('location_submissions')
 			.update(updates)
 			.eq('id', submissionId)
@@ -237,7 +237,7 @@ export async function deleteSubmission(submissionId) {
 		const {
 			data: { user },
 			error: userError
-		} = await supabase.auth.getUser();
+		} = await supabaseBrowser.auth.getUser();
 
 		if (userError || !user) {
 			return {
@@ -247,7 +247,7 @@ export async function deleteSubmission(submissionId) {
 		}
 
 		// RLS policy will enforce user_id and pending status
-		const { error } = await supabase
+		const { error } = await supabaseBrowser
 			.from('location_submissions')
 			.delete()
 			.eq('id', submissionId)
@@ -284,7 +284,7 @@ export async function getUserSubmissionStats() {
 		const {
 			data: { user },
 			error: userError
-		} = await supabase.auth.getUser();
+		} = await supabaseBrowser.auth.getUser();
 
 		if (userError || !user) {
 			return {
@@ -294,7 +294,7 @@ export async function getUserSubmissionStats() {
 		}
 
 		// Get all user submissions
-		const { data, error } = await supabase
+		const { data, error } = await supabaseBrowser
 			.from('location_submissions')
 			.select('status')
 			.eq('user_id', user.id);
