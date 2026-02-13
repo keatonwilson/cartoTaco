@@ -125,6 +125,11 @@
     transition: all 0.3s ease;
   }
 
+  :global(.dark) .compact-card {
+    background: #1f2937;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+
   .specialty-card:hover .compact-card {
     box-shadow: 0 6px 16px rgba(0,0,0,0.18);
   }
@@ -210,6 +215,10 @@
     overflow-wrap: break-word;
   }
 
+  :global(.dark) .card-title {
+    color: #f9fafb;
+  }
+
   /* Desktop: Larger text */
   @media (min-width: 768px) {
     .card-title {
@@ -237,6 +246,10 @@
     transition: all 0.3s ease;
   }
 
+  :global(.dark) .card-description {
+    color: #d1d5db;
+  }
+
   /* Expanded: Show full description */
   .specialty-card.expanded .card-description {
     display: block;
@@ -259,6 +272,10 @@
     opacity: 0.7;
   }
 
+  :global(.dark) .expand-hint {
+    color: #9ca3af;
+  }
+
   .specialty-card:hover .expand-hint {
     opacity: 1;
   }
@@ -270,8 +287,16 @@
     background: linear-gradient(to right, rgba(76, 175, 80, 0.03), white);
   }
 
+  :global(.dark) .specialty-item .compact-card {
+    background: linear-gradient(to right, rgba(76, 175, 80, 0.1), #1f2937);
+  }
+
   .specialty-item .icon-container {
     background: linear-gradient(135deg, rgba(76, 175, 80, 0.15), rgba(76, 175, 80, 0.08));
+  }
+
+  :global(.dark) .specialty-item .icon-container {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.25), rgba(76, 175, 80, 0.15));
   }
 
   .specialty-item .type-label {
@@ -284,8 +309,16 @@
     background: linear-gradient(to right, rgba(255, 152, 0, 0.03), white);
   }
 
+  :global(.dark) .specialty-protein .compact-card {
+    background: linear-gradient(to right, rgba(255, 152, 0, 0.1), #1f2937);
+  }
+
   .specialty-protein .icon-container {
     background: linear-gradient(135deg, rgba(255, 152, 0, 0.15), rgba(255, 152, 0, 0.08));
+  }
+
+  :global(.dark) .specialty-protein .icon-container {
+    background: linear-gradient(135deg, rgba(255, 152, 0, 0.25), rgba(255, 152, 0, 0.15));
   }
 
   .specialty-protein .type-label {
@@ -298,8 +331,16 @@
     background: linear-gradient(to right, rgba(244, 67, 54, 0.03), white);
   }
 
+  :global(.dark) .specialty-salsa .compact-card {
+    background: linear-gradient(to right, rgba(244, 67, 54, 0.1), #1f2937);
+  }
+
   .specialty-salsa .icon-container {
     background: linear-gradient(135deg, rgba(244, 67, 54, 0.15), rgba(244, 67, 54, 0.08));
+  }
+
+  :global(.dark) .specialty-salsa .icon-container {
+    background: linear-gradient(135deg, rgba(244, 67, 54, 0.25), rgba(244, 67, 54, 0.15));
   }
 
   .specialty-salsa .type-label {

@@ -140,6 +140,10 @@
     margin-bottom: 4px;
   }
 
+  :global(.dark) .spice-description {
+    color: #f9fafb;
+  }
+
   .spice-explanation {
     font-size: 11px;
     color: #666;
@@ -147,5 +151,9 @@
     font-style: italic;
     max-width: 140px;
     line-height: 1.3;
+  }
+
+  :global(.dark) .spice-explanation {
+    color: #9ca3af;
   }
 </style>

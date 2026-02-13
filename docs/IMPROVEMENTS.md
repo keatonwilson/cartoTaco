@@ -8,6 +8,9 @@ This document outlines potential improvements to enhance CartoTaco's functionali
 2. **Search & Filter Bar** - Added comprehensive filtering by name, proteins, type, spice level, and open hours
 3. **Marker Clustering** - Efficient clustering of map markers for scalability and clean visualization
 4. **Mobile Responsive Design** - Comprehensive mobile-first responsive overhaul with optimized layouts for all screen sizes
+5. **User Authentication System** - Complete auth flow with transparent login/signup UI and protected routes
+6. **User Location Submissions** - Community-driven submission system with geocoding, interactive map picker, and admin review workflow
+7. **Dark Mode** - Theme toggle with light/dark/auto modes and time-based automatic switching (6am-8pm light, else dark)
 
 See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARCH_FILTER.md), and [MARKER_CLUSTERING.md](./MARKER_CLUSTERING.md) for details.
 
@@ -277,6 +280,50 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 - "Hidden gem" tag based on visit counts or ratings
 - Animated pulse on featured marker
 - Social media integration for sharing weekly spotlight
+
+---
+
+### 11. AI-Powered Menu Data Extraction
+**Feature**: Automatically extract menu information from uploaded photos using AI vision models
+
+**Details**:
+- Allow users to upload menu photos when submitting new locations
+- Use AI API (GPT-4 Vision, Claude Vision, or similar) to extract:
+  - Menu items and descriptions
+  - Prices
+  - Protein types (chicken, beef, pork, fish, vegetarian)
+  - Salsa varieties and heat levels
+  - Special items or house specialties
+- Auto-populate submission form fields with extracted data
+- User can review and edit AI-extracted information before submitting
+- Reduces friction in submission process and improves data completeness
+
+**Impact**:
+- Dramatically reduces time/effort for user submissions
+- Increases data quality and completeness
+- Makes it easier for users to contribute comprehensive information
+- Could become a unique selling point for the platform
+
+**Effort**: High (2-3 weeks)
+
+**Technical Details**:
+- Image upload component with preview
+- Integration with AI vision API (OpenAI GPT-4V, Anthropic Claude, or Google Gemini)
+- Prompt engineering to extract structured data from menu photos
+- JSON schema for standardized menu data extraction
+- Confidence scoring for extracted data
+- User interface for reviewing and correcting AI extractions
+- Cost considerations (API usage fees per extraction)
+- Image storage (Supabase Storage or S3)
+- Rate limiting and queue system for batch processing
+- Fallback to manual entry if AI extraction fails
+
+**Future Enhancements**:
+- OCR pre-processing for better accuracy
+- Multi-photo support (full menu across multiple images)
+- Training custom model on taco menu dataset
+- Batch processing for admin to backfill existing locations
+- Community validation of AI-extracted data
 
 ---
 

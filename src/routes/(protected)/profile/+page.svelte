@@ -89,7 +89,10 @@
             </div>
           </div>
 
-          <div class="feature-item">
+          <button
+            class="feature-item clickable"
+            on:click={() => goto('/submit')}
+          >
             {#if browser}
               <PaperPlaneOutline class="feature-icon" />
             {/if}
@@ -97,7 +100,7 @@
               <h3 class="feature-title">Submit New Spots</h3>
               <p class="feature-description">Help grow the CartoTaco community by suggesting new locations</p>
             </div>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -121,6 +124,11 @@
     min-height: calc(100vh - 60px);
     padding: 2rem 1rem;
     background: linear-gradient(135deg, #FFF5F2 0%, #FFE4DE 100%);
+    transition: background 0.3s ease;
+  }
+
+  :global(.dark) .profile-container {
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
   }
 
   .profile-content {
@@ -147,11 +155,20 @@
     color: #111827;
   }
 
+  :global(.dark) .profile-title {
+    color: #f9fafb;
+  }
+
   .info-card {
     background: white;
     border-radius: 0.75rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     padding: 2rem;
+  }
+
+  :global(.dark) .info-card {
+    background: #1f2937;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   }
 
   .info-section {
@@ -169,6 +186,10 @@
     margin-bottom: 1rem;
   }
 
+  :global(.dark) .section-title {
+    color: #f9fafb;
+  }
+
   .info-item {
     display: flex;
     justify-content: space-between;
@@ -177,6 +198,10 @@
     background: #F9FAFB;
     border-radius: 0.5rem;
     margin-bottom: 0.75rem;
+  }
+
+  :global(.dark) .info-item {
+    background: #111827;
   }
 
   .info-item:last-child {
@@ -192,6 +217,10 @@
     color: #374151;
   }
 
+  :global(.dark) .info-label {
+    color: #d1d5db;
+  }
+
   .info-icon {
     color: #FE795D;
   }
@@ -199,6 +228,10 @@
   .info-value {
     font-size: 0.875rem;
     color: #6B7280;
+  }
+
+  :global(.dark) .info-value {
+    color: #9ca3af;
   }
 
   .divider {
@@ -211,6 +244,10 @@
     font-size: 0.875rem;
     color: #6B7280;
     margin-bottom: 1.5rem;
+  }
+
+  :global(.dark) .coming-soon-text {
+    color: #9ca3af;
   }
 
   .feature-grid {
@@ -226,6 +263,29 @@
     background: #F9FAFB;
     border-radius: 0.5rem;
     border: 1px solid #E5E7EB;
+    width: 100%;
+    text-align: left;
+  }
+
+  :global(.dark) .feature-item {
+    background: #111827;
+    border-color: #374151;
+  }
+
+  .feature-item.clickable {
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .feature-item.clickable:hover {
+    background: white;
+    border-color: #FE795D;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(254, 121, 93, 0.2);
+  }
+
+  :global(.dark) .feature-item.clickable:hover {
+    background: #1f2937;
   }
 
   .feature-icon {
@@ -244,9 +304,17 @@
     margin-bottom: 0.25rem;
   }
 
+  :global(.dark) .feature-title {
+    color: #f9fafb;
+  }
+
   .feature-description {
     font-size: 0.75rem;
     color: #6B7280;
+  }
+
+  :global(.dark) .feature-description {
+    color: #9ca3af;
   }
 
   .actions-section {

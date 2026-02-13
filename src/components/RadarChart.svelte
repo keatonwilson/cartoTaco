@@ -1,6 +1,7 @@
 <script>
   import { onMount } from "svelte";
   import { Chart } from "chart.js/auto";
+  import { effectiveTheme } from '$lib/theme';
 
   export let labels;
   export let data;
@@ -11,6 +12,10 @@
   // Calculate dynamic max value based on data
   $: maxDataValue = data && data.length > 0 ? Math.max(...data) : 100;
   $: dynamicMax = maxDataValue < 50 ? 50 : 75;
+
+  // Theme-reactive colors
+  $: gridColor = $effectiveTheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+  $: labelColor = $effectiveTheme === 'dark' ? '#f9fafb' : '#333';
 
   onMount(() => {
     if (canvas) {
@@ -82,10 +87,10 @@
             r: {
               angleLines: {
                 display: true,
-                color: 'rgba(0, 0, 0, 0.1)'
+                color: gridColor
               },
               grid: {
-                color: 'rgba(0, 0, 0, 0.1)'
+                color: gridColor
               },
               pointLabels: {
                 display: true,
@@ -93,7 +98,7 @@
                   size: 12,
                   weight: '600'
                 },
-                color: '#333'
+                color: labelColor
               },
               ticks: {
                 display: false,
@@ -118,6 +123,14 @@
     chartInstance.data.labels = labels;
     chartInstance.data.datasets[0].data = data;
     chartInstance.options.scales.r.max = dynamicMax;
+    chartInstance.update();
+  }
+
+  // Update chart when theme changes
+  $: if (chartInstance && $effectiveTheme) {
+    chartInstance.options.scales.r.angleLines.color = gridColor;
+    chartInstance.options.scales.r.grid.color = gridColor;
+    chartInstance.options.scales.r.pointLabels.color = labelColor;
     chartInstance.update();
   }
 </script>

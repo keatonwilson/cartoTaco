@@ -1,10 +1,11 @@
 <script>
-  import { isAuthenticated, currentUser, signOut } from '$lib/authStore';
-  import { goto } from '$app/navigation';
-  import { browser } from '$app/environment';
-  import { BarsOutline, CloseOutline, UserCircleOutline } from 'flowbite-svelte-icons';
+	import { isAuthenticated, currentUser, signOut } from '$lib/authStore';
+	import { goto } from '$app/navigation';
+	import { browser } from '$app/environment';
+	import { BarsOutline, CloseOutline, UserCircleOutline } from 'flowbite-svelte-icons';
+	import ThemeToggle from './ThemeToggle.svelte';
 
-  let mobileMenuOpen = false;
+	let mobileMenuOpen = false;
 
   function toggleMobileMenu() {
     mobileMenuOpen = !mobileMenuOpen;
@@ -39,6 +40,7 @@
 
     <!-- Desktop Navigation -->
     <nav class="desktop-nav">
+			<ThemeToggle />
       {#if $isAuthenticated}
         <div class="user-info">
           {#if browser}
@@ -46,6 +48,12 @@
           {/if}
           <span class="user-email">{$currentUser?.email}</span>
         </div>
+        <button
+          class="nav-link"
+          on:click={() => handleNavigation('/submit')}
+        >
+          Submit Location
+        </button>
         <button
           class="nav-link"
           on:click={() => handleNavigation('/profile')}
@@ -103,6 +111,9 @@
   <!-- Mobile Menu -->
   {#if mobileMenuOpen}
     <div class="mobile-menu">
+			<div class="mobile-theme-toggle">
+				<ThemeToggle />
+			</div>
       {#if $isAuthenticated}
         <div class="mobile-user-info">
           {#if browser}
@@ -110,6 +121,12 @@
           {/if}
           <span class="user-email">{$currentUser?.email}</span>
         </div>
+        <button
+          class="mobile-nav-link"
+          on:click={() => handleNavigation('/submit')}
+        >
+          Submit Location
+        </button>
         <button
           class="mobile-nav-link"
           on:click={() => handleNavigation('/profile')}
@@ -151,7 +168,7 @@
     -webkit-backdrop-filter: blur(12px) !important;
     border-bottom: 2px solid rgba(254, 121, 93, 0.5);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
-    z-index: 1000;
+    z-index: 9999;
   }
 
   .header-container {
@@ -391,4 +408,10 @@
   .mobile-nav-link.signup:active {
     background: #EF562F;
   }
+
+	.mobile-theme-toggle {
+		display: flex;
+		justify-content: center;
+		margin-bottom: 0.5rem;
+	}
 </style>

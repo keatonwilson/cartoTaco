@@ -27,7 +27,7 @@ export async function handle({ event, resolve }) {
   }
 
   // Redirect unauthenticated users away from protected pages
-  if (!session && url.startsWith('/profile')) {
+  if (!session && (url.startsWith('/profile') || url.startsWith('/submit'))) {
     throw redirect(303, '/login');
   }
 

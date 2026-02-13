@@ -33,7 +33,7 @@
 {:else}
   <div id="popup-content">
     <div class="left-panel">
-      <h2 class="text-2xl font-semibold text-gray-800 mb-4">
+      <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-100 mb-4">
         {$selectedSite.name || 'Unknown Location'}
       </h2>
       <HoursOpen
@@ -50,13 +50,13 @@
         longitude={$selectedSite.longitude}
         name={$selectedSite.name || 'Taco Location'}
       />
-      <h2 class="text-m font-semibold text-gray-800 my-2">Type</h2>
+      <h2 class="text-m font-semibold text-gray-800 dark:text-gray-100 my-2">Type</h2>
       <IconHighlight type="siteType" data={$selectedSite.type || 'unknown'} />
       <div class="description">
-        <h2 class="text-m font-semibold text-gray-800 my-2">Description</h2>
-        <p>{$selectedSite.shortDescription || 'No description available'}</p>
+        <h2 class="text-m font-semibold text-gray-800 dark:text-gray-100 my-2">Description</h2>
+        <p class="dark:text-gray-300">{$selectedSite.shortDescription || 'No description available'}</p>
         <div class="long-description" class:visible={showLongDescription}>
-          <p>{$selectedSite.longDescription || 'No detailed description available'}</p>
+          <p class="dark:text-gray-300">{$selectedSite.longDescription || 'No detailed description available'}</p>
         </div>
         <button
           class="expand-button"
@@ -77,7 +77,7 @@
           </div>
         </CollapsibleSection>
       {:else}
-        <h2 class="text-m font-semibold text-gray-800 my-2">Menu Summary</h2>
+        <h2 class="text-m font-semibold text-gray-800 dark:text-gray-100 my-2">Menu Summary</h2>
         <div class="radar-chart-container">
           <RadarChart
             labels={$selectedSite.topFiveMenuItems || []}
@@ -99,25 +99,25 @@
 
         <CollapsibleSection title="Spiciness & Details" defaultOpen={true}>
           <div class="right-box">
-            <h2 class="text-m font-semibold text-gray-800" id="spicy-label">Spiciness</h2>
+            <h2 class="text-m font-semibold text-gray-800 dark:text-gray-100 my-2" id="spicy-label">Spiciness</h2>
             <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
-            <h2 class="text-m font-semibold text-gray-800 my-2">Tortilla Type</h2>
+            <h2 class="text-m font-semibold text-gray-800 dark:text-gray-100 my-2">Tortilla Type</h2>
             <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
           </div>
         </CollapsibleSection>
       {:else}
         <div class="top-row">
           <div class="protein-chart-container">
-            <h2 class="text-m font-semibold text-gray-800 my-2">Protein</h2>
+            <h2 class="text-m font-semibold text-gray-800 dark:text-gray-100 my-2">Protein</h2>
             <RadarChart
               labels={$selectedSite.topFiveProteinItems || []}
               data={$selectedSite.topFiveProteinValues || []}
             />
           </div>
           <div class="right-box">
-            <h2 class="text-m font-semibold text-gray-800" id="spicy-label">Spiciness</h2>
+            <h2 class="text-m font-semibold text-gray-800 dark:text-gray-100 my-2" id="spicy-label">Spiciness</h2>
             <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
-            <h2 class="text-m font-semibold text-gray-800 my-2">Tortilla Type</h2>
+            <h2 class="text-m font-semibold text-gray-800 dark:text-gray-100 my-2">Tortilla Type</h2>
             <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
           </div>
         </div>
@@ -143,12 +143,12 @@
               ]}
               <SpecCarousel specialties={allSpecialties} />
             {:else}
-              <p class="text-sm text-gray-500 italic">No specialty information available for this location.</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400 italic">No specialty information available for this location.</p>
             {/if}
           </CollapsibleSection>
         {:else}
           <!-- Desktop: Also use carousel -->
-          <h2 class="text-lg font-semibold text-gray-800 mb-2">Specialties</h2>
+          <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Specialties</h2>
           {#if $specialtiesBySite && $specialtiesBySite.has($selectedSite.est_id)}
             {@const siteSpecs = $specialtiesBySite.get($selectedSite.est_id)}
             {@const allSpecialties = [
@@ -176,6 +176,12 @@
     margin: 10px;
   }
 
+  :global(.dark) #error-content {
+    background-color: #7f1d1d;
+    border-color: #991b1b;
+    color: #fecaca;
+  }
+
   /* Mobile-first: Single column vertical stack */
   #popup-content {
     display: flex;
@@ -192,6 +198,13 @@
     flex-direction: column;
     border-radius: 2%;
     width: 100%;
+    background: white;
+  }
+
+  :global(.dark) .left-panel,
+  :global(.dark) .right-panel {
+    background: #1f2937;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   }
 
   /* Tablet: 50/50 split (improved from desktop 40/60) */
@@ -231,6 +244,12 @@
     transition: background-color 0.2s;
   }
 
+  :global(.dark) .description {
+    background-color: #374151;
+    color: #d1d5db;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  }
+
   .long-description {
     display: none;
     margin-top: 10px;
@@ -248,6 +267,10 @@
     display: inline-block;
     padding: 8px 4px;
     margin-top: 4px;
+  }
+
+  :global(.dark) .expand-button {
+    color: #60a5fa;
   }
 
   /* Mobile: Stack protein chart and right-box vertically */
@@ -282,10 +305,12 @@
     .top-row {
       flex-direction: row;
       max-height: 40%;
+      align-items: flex-start; /* Align both sections to the top */
     }
 
     .protein-chart-container {
       width: 65%;
+      justify-content: flex-start; /* Align content to top instead of center */
     }
 
     .right-box {

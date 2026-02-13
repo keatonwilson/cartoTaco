@@ -1,8 +1,13 @@
-
-
 <script>
-  import "../app.css";
-  import Header from "$lib/../components/Header.svelte";
+	import { onMount } from 'svelte';
+	import { initTheme } from '$lib/theme.js';
+	import '../app.css';
+	import Header from '$lib/../components/Header.svelte';
+
+	onMount(() => {
+		// Initialize theme system
+		initTheme();
+	});
 </script>
 
 <div class="app">

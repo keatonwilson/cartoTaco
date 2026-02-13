@@ -1,3 +1,46 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* CSS Variables for Dark Mode */
+:root {
+	/* Light mode colors (default) */
+	--bg-primary: #ffffff;
+	--bg-secondary: #f9fafb;
+	--bg-tertiary: #f3f4f6;
+	--text-primary: #111827;
+	--text-secondary: #6b7280;
+	--text-tertiary: #9ca3af;
+	--border-color: #e5e7eb;
+	--border-color-strong: #d1d5db;
+	--accent-primary: #fe795d;
+	--accent-hover: #fe6a4a;
+	--success: #10b981;
+	--error: #ef4444;
+}
+
+:root.dark {
+	/* Dark mode colors */
+	--bg-primary: #1f2937;
+	--bg-secondary: #111827;
+	--bg-tertiary: #0f172a;
+	--text-primary: #f9fafb;
+	--text-secondary: #d1d5db;
+	--text-tertiary: #9ca3af;
+	--border-color: #374151;
+	--border-color-strong: #4b5563;
+	--accent-primary: #fe795d;
+	--accent-hover: #fe6a4a;
+	--success: #10b981;
+	--error: #ef4444;
+}
+
+/* Smooth transitions for theme changes */
+* {
+	transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Prevent transition on page load */
+.no-transition * {
+	transition: none !important;
+}
