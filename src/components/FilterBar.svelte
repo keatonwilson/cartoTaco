@@ -128,8 +128,9 @@
         </h3>
         <div class="range-inputs">
           <div class="range-input-group">
-            <label>Min</label>
+            <label for="spice-min">Min</label>
             <input
+              id="spice-min"
               type="range"
               min="0"
               max="10"
@@ -138,8 +139,9 @@
             />
           </div>
           <div class="range-input-group">
-            <label>Max</label>
+            <label for="spice-max">Max</label>
             <input
+              id="spice-max"
               type="range"
               min="0"
               max="10"
@@ -176,13 +178,18 @@
 <style>
   .filter-container {
     position: absolute;
-    top: 20px;
+    top: 86px; /* 66px header + 20px margin */
     right: 60px;
     z-index: 10;
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     max-width: 400px;
+  }
+
+  :global(.dark) .filter-container {
+    background: #1f2937;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   }
 
   .filter-header {
@@ -205,6 +212,10 @@
     pointer-events: none;
   }
 
+  :global(.dark) :global(.search-icon) {
+    color: #9ca3af;
+  }
+
   .search-input {
     width: 100%;
     padding: 8px 12px 8px 36px;
@@ -213,6 +224,14 @@
     font-size: 14px;
     outline: none;
     transition: border-color 0.2s;
+    background: white;
+    color: #111827;
+  }
+
+  :global(.dark) .search-input {
+    background: #111827;
+    border-color: #4b5563;
+    color: #f9fafb;
   }
 
   .search-input:focus {
@@ -235,8 +254,17 @@
     position: relative;
   }
 
+  :global(.dark) .expand-button {
+    background: #374151;
+    color: #f9fafb;
+  }
+
   .expand-button:hover {
     background: #e8e8e8;
+  }
+
+  :global(.dark) .expand-button:hover {
+    background: #4b5563;
   }
 
   .filter-text {
@@ -412,7 +440,7 @@
   /* Responsive adjustments */
   @media (max-width: 768px) {
     .filter-container {
-      top: 10px;
+      top: 76px; /* 66px header + 10px margin */
       left: 10px;
       right: 60px; /* Leave space for map controls */
       max-width: none;

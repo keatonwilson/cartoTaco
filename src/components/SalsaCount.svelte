@@ -150,6 +150,10 @@
       width: 20%;
     }
 
+    :global(.dark) .chart-label {
+      color: #f9fafb;
+    }
+
     #salsaBarChart {
         width: auto;
         height: auto;
@@ -165,6 +169,10 @@
       margin-top: 4px;
     }
 
+    :global(.dark) .salsa-stats {
+      color: #d1d5db;
+    }
+
     .stat-item strong {
       color: #FE795D;
       font-weight: 700;
@@ -174,6 +182,10 @@
       color: #ccc;
     }
 
+    :global(.dark) .stat-divider {
+      color: #6b7280;
+    }
+
     .salsa-explanation {
       font-size: 11px;
       color: #666;
@@ -181,6 +193,10 @@
       font-style: italic;
       margin-top: 4px;
       padding: 0 10px;
+    }
+
+    :global(.dark) .salsa-explanation {
+      color: #9ca3af;
     }
   </style>
   

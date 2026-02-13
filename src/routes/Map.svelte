@@ -1,67 +1,126 @@
 <script>
-  import { onMount } from 'svelte';
-  import mapboxgl from 'mapbox-gl';
-  import {
-    tacoStore,
-    summaryStore,
-    specStore,
-    isLoading,
-    hasError,
-    processedTacoData,
-    filteredTacoData,
-    summaryStats
-  } from '../lib/stores';
-  import 'mapbox-gl/dist/mapbox-gl.css';
-  import { updateMarkers } from "../lib/mapping.js";
-  import FilterBar from '../components/FilterBar.svelte';
+	import { onMount } from 'svelte';
+	import mapboxgl from 'mapbox-gl';
+	import {
+		tacoStore,
+		summaryStore,
+		specStore,
+		isLoading,
+		hasError,
+		processedTacoData,
+		filteredTacoData,
+		summaryStats
+	} from '../lib/stores';
+	import 'mapbox-gl/dist/mapbox-gl.css';
+	import { updateMarkers } from '../lib/mapping.js';
+	import FilterBar from '../components/FilterBar.svelte';
+	import { effectiveTheme, getMapboxStyle } from '$lib/theme.js';
 
-  let map;
-  let mapContainer;
+	let map;
+	let mapContainer;
+	let mapLoaded = false; // Track if map has completed initial load
 
-  mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_KEY;
+	mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_KEY;
 
-  onMount(() => {
-    if (!mapContainer) return;
+	onMount(() => {
+		if (!mapContainer) return;
 
-    // Clear any residual content in the map container
-    mapContainer.innerHTML = '';
+		// Clear any residual content in the map container
+		mapContainer.innerHTML = '';
 
-    // Initialize the map
-    map = new mapboxgl.Map({
-      container: mapContainer,
-      style: 'mapbox://styles/mapbox/standard',
-      center: [-110.97, 32.16],
-      zoom: 9,
-    });
+		console.log('Initializing map with theme:', $effectiveTheme);
 
-    // Add zoom and rotation controls to the map.
-    const navControl = new mapboxgl.NavigationControl();
-    map.addControl(navControl, 'top-right');
+		// Initialize the map with theme-appropriate style
+		map = new mapboxgl.Map({
+			container: mapContainer,
+			style: getMapboxStyle($effectiveTheme),
+			center: [-110.97, 32.16],
+			zoom: 9
+		});
 
-    // Add geolocation control to the map.
-    const geoLocateControl = new mapboxgl.GeolocateControl({
-      positionOptions: {
-        enableHighAccuracy: true
-      },
-      trackUserLocation: true,
-      showAccuracyCircle: true
-    });
-    map.addControl(geoLocateControl, 'top-right');
+		// Add zoom and rotation controls to the map
+		const navControl = new mapboxgl.NavigationControl();
+		map.addControl(navControl, 'top-right');
 
-    // Cleanup map on component unmount
-    return () => {
-      if (map) map.remove();
-    };
-  });
+		// Add geolocation control to the map
+		const geoLocateControl = new mapboxgl.GeolocateControl({
+			positionOptions: {
+				enableHighAccuracy: true
+			},
+			trackUserLocation: true,
+			showAccuracyCircle: true
+		});
+		map.addControl(geoLocateControl, 'top-right');
 
-  // Update markers when filtered data changes
-  // Note: With clustering, we don't need a markers array - Mapbox manages it internally
-  $: if (map && $filteredTacoData.length >= 0 && !$isLoading) {
-    updateMarkers($filteredTacoData, map, null, $summaryStats);
-  }
+		// Wait for map to fully load before adding markers
+		map.on('load', () => {
+			console.log('Map loaded, ready for markers');
+			mapLoaded = true; // Mark map as loaded
+			// Trigger the reactive statement to add markers
+			if ($filteredTacoData && $filteredTacoData.length > 0) {
+				updateMarkers($filteredTacoData, map, null, $summaryStats);
+			}
+		});
 
-  // Function to retry data loading on error
-  function retryLoading() {
+		// Cleanup map on component unmount
+		return () => {
+			if (map) map.remove();
+		};
+	});
+
+	// Update markers when filtered data changes
+	// Note: With clustering, we don't need a markers array - Mapbox manages it internally
+	$: if (map && map.loaded() && $filteredTacoData && $filteredTacoData.length >= 0 && !$isLoading) {
+		console.log('Reactive: Updating markers with', $filteredTacoData.length, 'sites');
+		updateMarkers($filteredTacoData, map, null, $summaryStats);
+	}
+
+	// Update map style when theme changes (only after initial load)
+	$: if (map && mapLoaded && $effectiveTheme) {
+		const newStyle = getMapboxStyle($effectiveTheme);
+
+		// Check if we need to change the style
+		// Compare the new style URL with current expectations
+		try {
+			const currentStyle = map.getStyle();
+			const isDarkStyle = currentStyle && currentStyle.sprite && currentStyle.sprite.includes('dark');
+			const shouldBeDark = $effectiveTheme === 'dark';
+
+			// Only change if there's a mismatch
+			if (isDarkStyle !== shouldBeDark) {
+				console.log('Theme changed to:', $effectiveTheme, '- updating map style');
+
+				// Store current center and zoom to preserve view
+				const center = map.getCenter();
+				const zoom = map.getZoom();
+
+				// Update map style
+				map.setStyle(newStyle);
+
+				// Wait for style to load, then re-add markers
+				map.once('style.load', () => {
+					console.log('Style loaded, restoring view and markers...');
+
+					// Restore center and zoom
+					map.setCenter(center);
+					map.setZoom(zoom);
+
+					// Wait for map to be idle before adding markers
+					map.once('idle', () => {
+						if ($filteredTacoData && $filteredTacoData.length > 0) {
+							updateMarkers($filteredTacoData, map, null, $summaryStats);
+						}
+					});
+				});
+			}
+		} catch (error) {
+			// Ignore errors if style isn't ready yet
+			console.log('Skipping style check, map not ready yet');
+		}
+	}
+
+	// Function to retry data loading on error
+	function retryLoading() {
     const fetchFunctions = [];
     
     if ($tacoStore.error) {
@@ -86,28 +145,25 @@
 
 <!-- Map Container with loading and error states -->
 <div bind:this={mapContainer} id="map">
-  {#if $isLoading}
-    <div class="loading-container">
-      <div class="loading-spinner"></div>
-      <p>Loading taco data...</p>
-    </div>
-  {/if}
+	{#if $isLoading}
+		<div class="loading-container">
+			<div class="loading-spinner"></div>
+			<p>Loading taco data...</p>
+		</div>
+	{/if}
 
-  {#if $hasError}
-    <div class="error-container">
-      <h3>Error loading data</h3>
-      <p>We couldn't load the taco map data. Please try again.</p>
-      <button on:click={retryLoading} class="retry-button">Retry</button>
-    </div>
-  {/if}
+	{#if $hasError}
+		<div class="error-container">
+			<h3>Error loading data</h3>
+			<p>We couldn't load the taco map data. Please try again.</p>
+			<button on:click={retryLoading} class="retry-button">Retry</button>
+		</div>
+	{/if}
 </div>
-
-<!-- Logo Element outside of the map container -->
-<img id="logo" src="/color_light_bg.png" alt="Logo">
 
 <!-- Filter Bar -->
 {#if !$isLoading && !$hasError}
-  <FilterBar />
+	<FilterBar />
 {/if}
 
 <style>
@@ -117,23 +173,9 @@
     position: relative;
   }
 
-  #logo {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    width: 250px;
-    height: auto;
-    z-index: 1;
-  }
-
-  /* Mobile: Smaller logo positioned below FilterBar */
-  @media (max-width: 768px) {
-    #logo {
-      top: 80px; /* Position below FilterBar with margin */
-      left: 10px;
-      width: 140px; /* Smaller on mobile */
-      z-index: 5; /* Higher than map controls but below FilterBar */
-    }
+  /* Position map controls below the transparent header */
+  :global(.mapboxgl-ctrl-top-right) {
+    top: 76px !important;
   }
 
   /* Mobile-first responsive popup styles */
@@ -167,6 +209,11 @@
     /* Mobile: Constrain height and enable scrolling */
     max-height: 80vh;
     overflow-y: auto;
+    background: white;
+  }
+
+  :global(.dark) :global(.mapboxgl-popup-content) {
+    background: #1f2937;
   }
 
   /* Desktop: Allow more height */
@@ -202,6 +249,12 @@
     z-index: 1000;
     padding: 0 0 2px 0; /* Shift × up slightly */
     line-height: 0; /* Better vertical centering */
+  }
+
+  :global(.dark) :global(.mapboxgl-popup-close-button) {
+    background: rgba(31, 41, 55, 0.95);
+    border-color: #4b5563;
+    color: #9ca3af;
   }
 
   :global(.mapboxgl-popup-close-button):hover {
@@ -266,7 +319,7 @@
     font-weight: bold;
   }
   
-  .retry-button:hover {
-    background-color: #45a049;
-  }
+	.retry-button:hover {
+		background-color: #45a049;
+	}
 </style>

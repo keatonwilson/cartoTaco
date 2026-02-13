@@ -128,6 +128,10 @@
     position: relative;
   }
 
+  :global(.dark) .dot {
+    background-color: #4b5563;
+  }
+
   .dot::before {
     content: '';
     position: absolute;
@@ -145,6 +149,10 @@
 
   .dot:hover {
     background-color: #9ca3af;
+  }
+
+  :global(.dark) .dot:hover {
+    background-color: #6b7280;
   }
 
   .dot.active:hover {

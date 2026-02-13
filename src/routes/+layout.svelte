@@ -1,10 +1,17 @@
-
-
 <script>
-  import "../app.css";
+	import { onMount } from 'svelte';
+	import { initTheme } from '$lib/theme.js';
+	import '../app.css';
+	import Header from '$lib/../components/Header.svelte';
+
+	onMount(() => {
+		// Initialize theme system
+		initTheme();
+	});
 </script>
 
 <div class="app">
+  <Header />
   <main>
     <slot></slot>
   </main>
@@ -12,17 +19,19 @@
 
 <style>
   .app {
-    display: flex;
-    flex-direction: column;
+    position: relative;
     min-height: 100vh;
   }
 
   main {
-    flex: 1;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     display: flex;
     flex-direction: column;
     width: 100%;
-    margin: 0 auto;
     box-sizing: border-box;
   }
 </style>

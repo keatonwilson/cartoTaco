@@ -89,13 +89,28 @@
     text-align: left;
   }
 
+  :global(.dark) .collapsible-header {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
   .collapsible-header:hover {
     background-color: #e9ecef;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
+  :global(.dark) .collapsible-header:hover {
+    background-color: #4b5563;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
   .collapsible-header:active {
     background-color: #dee2e6;
+  }
+
+  :global(.dark) .collapsible-header:active {
+    background-color: #6b7280;
   }
 
   .icon {

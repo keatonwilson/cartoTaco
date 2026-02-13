@@ -7,8 +7,42 @@ This document outlines potential improvements to enhance CartoTaco's functionali
 1. **Query Optimization** - Reduced initial data fetch from 6 queries to 1 via database view (~60-70% faster load time)
 2. **Search & Filter Bar** - Added comprehensive filtering by name, proteins, type, spice level, and open hours
 3. **Marker Clustering** - Efficient clustering of map markers for scalability and clean visualization
+4. **Mobile Responsive Design** - Comprehensive mobile-first responsive overhaul with optimized layouts for all screen sizes
+5. **User Authentication System** - Complete auth flow with transparent login/signup UI and protected routes
+6. **User Location Submissions** - Community-driven submission system with geocoding, interactive map picker, and admin review workflow
+7. **Dark Mode** - Theme toggle with light/dark/auto modes and time-based automatic switching (6am-8pm light, else dark)
 
 See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARCH_FILTER.md), and [MARKER_CLUSTERING.md](./MARKER_CLUSTERING.md) for details.
+
+---
+
+## 🧹 Housekeeping & Maintenance
+
+### 11. Update README Documentation
+**Status**: Pending
+
+**Details**:
+- Update "Next Up" section to reflect completed features
+- Ensure all feature descriptions are current
+- Sync with actual project state
+
+**Impact**: Better developer onboarding, accurate project representation
+
+**Effort**: Low (30 minutes)
+
+---
+
+### 12. Fix Svelte Type Checking Warnings
+**Status**: Pending
+
+**Current Issues**: 10 warnings from `svelte-check`
+- Accessibility warnings (keyboard handlers, ARIA roles, form labels)
+- Unused CSS selectors in Card.svelte
+- Unused export property
+
+**Impact**: Cleaner console output, better accessibility, code quality
+
+**Effort**: Low (1-2 hours)
 
 ---
 
@@ -175,6 +209,35 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 
 ---
 
+### 11. User-Submitted Locations
+**Feature**: Allow end-users to submit new taco locations to the database
+
+**Status**: Design complete, ready for implementation
+
+**Details**:
+- Public submission form at dedicated `/submit` page
+- Moderation queue (`location_submissions` table)
+- Database-level review workflow (no admin UI initially)
+- Email required for spam prevention
+- Geocoding integration for address → lat/lon
+- All fields needed to populate basic location on the map
+
+**Impact**: Crowdsourced data growth, community engagement, reduced admin burden
+
+**Effort**: Moderate-High (4-5 days)
+
+**Documentation**: See [USER_SUBMISSIONS.md](./USER_SUBMISSIONS.md) for complete design specification
+
+**Technical Details**:
+- New table: `location_submissions` with pending/approved/rejected status
+- New route: `src/routes/submit/+page.svelte` with full form
+- Geocoding helper using Mapbox Geocoding API
+- Form captures: name, type, address, contact info, hours, descriptions
+- Manual approval: review in Supabase, copy to `sites`/`descriptions`/`hours` tables
+- Future: admin dashboard, email notifications, duplicate detection
+
+---
+
 ## 🎁 Unique Feature Ideas
 
 ### 9. "Taco Trail" Route Builder
@@ -220,14 +283,60 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 
 ---
 
+### 11. AI-Powered Menu Data Extraction
+**Feature**: Automatically extract menu information from uploaded photos using AI vision models
+
+**Details**:
+- Allow users to upload menu photos when submitting new locations
+- Use AI API (GPT-4 Vision, Claude Vision, or similar) to extract:
+  - Menu items and descriptions
+  - Prices
+  - Protein types (chicken, beef, pork, fish, vegetarian)
+  - Salsa varieties and heat levels
+  - Special items or house specialties
+- Auto-populate submission form fields with extracted data
+- User can review and edit AI-extracted information before submitting
+- Reduces friction in submission process and improves data completeness
+
+**Impact**:
+- Dramatically reduces time/effort for user submissions
+- Increases data quality and completeness
+- Makes it easier for users to contribute comprehensive information
+- Could become a unique selling point for the platform
+
+**Effort**: High (2-3 weeks)
+
+**Technical Details**:
+- Image upload component with preview
+- Integration with AI vision API (OpenAI GPT-4V, Anthropic Claude, or Google Gemini)
+- Prompt engineering to extract structured data from menu photos
+- JSON schema for standardized menu data extraction
+- Confidence scoring for extracted data
+- User interface for reviewing and correcting AI extractions
+- Cost considerations (API usage fees per extraction)
+- Image storage (Supabase Storage or S3)
+- Rate limiting and queue system for batch processing
+- Fallback to manual entry if AI extraction fails
+
+**Future Enhancements**:
+- OCR pre-processing for better accuracy
+- Multi-photo support (full menu across multiple images)
+- Training custom model on taco menu dataset
+- Batch processing for admin to backfill existing locations
+- Community validation of AI-extracted data
+
+---
+
 ## 📊 Recommended Priority Order
 
 1. ✅ **Query optimization (#1)** - Foundation for everything else - **COMPLETED**
 2. ✅ **Search & filter (#2)** - Essential as you add more spots - **COMPLETED**
 3. ✅ **Marker clustering (#7)** - Prevent map clutter - **COMPLETED**
-4. **Mobile responsive (#6)** - Serve your mobile users better
-5. **User accounts + favorites (#3)** - Build engagement
-6. **Taco trail builder (#9)** - Unique differentiator
+4. ✅ **Mobile responsive (#6)** - Serve your mobile users better - **COMPLETED**
+5. **Housekeeping (README + warnings)** - Clean up technical debt - **IN PROGRESS**
+6. **User-submitted locations (#11)** - Enable community contributions
+7. **User accounts + favorites (#3)** - Build engagement
+8. **Taco trail builder (#9)** - Unique differentiator
 
 ---
 
@@ -253,4 +362,4 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 
 ---
 
-**Last Updated**: 2026-02-09
+**Last Updated**: 2026-02-11
