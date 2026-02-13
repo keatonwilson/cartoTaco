@@ -1,8 +1,10 @@
 <script>
+  import { onMount } from 'svelte';
   import { signOut } from '$lib/authStore';
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
-  import { UserCircleOutline, EnvelopeOutline, CalendarMonthOutline, HeartOutline, PaperPlaneOutline, StarOutline } from 'flowbite-svelte-icons';
+  import { UserCircleOutline, EnvelopeOutline, CalendarMonthOutline, HeartSolid, PaperPlaneOutline, StarOutline } from 'flowbite-svelte-icons';
+  import { favoritesCount, loadFavorites } from '$lib/favoritesStore';
 
   export let data;
 
@@ -11,6 +13,11 @@
     year: 'numeric',
     month: 'long',
     day: 'numeric'
+  });
+
+  // Load favorites count
+  onMount(() => {
+    loadFavorites();
   });
 
   async function handleSignOut() {
@@ -57,6 +64,16 @@
           </div>
           <div class="info-value">{signupDate}</div>
         </div>
+
+        <button class="info-item clickable" on:click={() => goto('/favorites')}>
+          <div class="info-label">
+            {#if browser}
+              <HeartSolid class="info-icon" />
+            {/if}
+            <span>Favorite Locations</span>
+          </div>
+          <div class="info-value">{$favoritesCount}</div>
+        </button>
       </div>
 
       <div class="divider"></div>
@@ -71,16 +88,6 @@
         <div class="feature-grid">
           <div class="feature-item">
             {#if browser}
-              <HeartOutline class="feature-icon" />
-            {/if}
-            <div class="feature-content">
-              <h3 class="feature-title">Favorites</h3>
-              <p class="feature-description">Save your favorite taco spots for quick access</p>
-            </div>
-          </div>
-
-          <div class="feature-item">
-            {#if browser}
               <StarOutline class="feature-icon" />
             {/if}
             <div class="feature-content">
@@ -88,19 +95,6 @@
               <p class="feature-description">Share your experiences and rate establishments</p>
             </div>
           </div>
-
-          <button
-            class="feature-item clickable"
-            on:click={() => goto('/submit')}
-          >
-            {#if browser}
-              <PaperPlaneOutline class="feature-icon" />
-            {/if}
-            <div class="feature-content">
-              <h3 class="feature-title">Submit New Spots</h3>
-              <p class="feature-description">Help grow the CartoTaco community by suggesting new locations</p>
-            </div>
-          </button>
         </div>
       </div>
 
@@ -206,6 +200,23 @@
 
   .info-item:last-child {
     margin-bottom: 0;
+  }
+
+  .info-item.clickable {
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+  }
+
+  .info-item.clickable:hover {
+    background: white;
+    border-color: #FE795D;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(254, 121, 93, 0.2);
+  }
+
+  :global(.dark) .info-item.clickable:hover {
+    background: #1f2937;
   }
 
   .info-label {

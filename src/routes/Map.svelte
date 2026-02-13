@@ -12,17 +12,21 @@
 		summaryStats
 	} from '../lib/stores';
 	import 'mapbox-gl/dist/mapbox-gl.css';
-	import { updateMarkers } from '../lib/mapping.js';
+	import { updateMarkers, resetListeners } from '../lib/mapping.js';
 	import FilterBar from '../components/FilterBar.svelte';
 	import { effectiveTheme, getMapboxStyle } from '$lib/theme.js';
 
 	let map;
 	let mapContainer;
 	let mapLoaded = false; // Track if map has completed initial load
+	let lastDataLength = -1; // Track the last data length to avoid unnecessary updates
+	let currentTheme = null; // Track current theme to prevent duplicate style changes
 
 	mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_KEY;
 
 	onMount(() => {
+		console.log('⚠️ MAP COMPONENT MOUNTED - This should only happen ONCE');
+
 		if (!mapContainer) return;
 
 		// Clear any residual content in the map container
@@ -55,32 +59,41 @@
 		// Wait for map to fully load before adding markers
 		map.on('load', () => {
 			console.log('Map loaded, ready for markers');
+			currentTheme = $effectiveTheme; // Set initial theme to prevent reactive trigger
 			mapLoaded = true; // Mark map as loaded
 			// Trigger the reactive statement to add markers
 			if ($filteredTacoData && $filteredTacoData.length > 0) {
-				updateMarkers($filteredTacoData, map, null, $summaryStats);
+				updateMarkers($filteredTacoData, map);
 			}
 		});
 
 		// Cleanup map on component unmount
 		return () => {
 			if (map) map.remove();
+			resetListeners(); // Reset listeners flag for next mount
 		};
 	});
 
 	// Update markers when filtered data changes
 	// Note: With clustering, we don't need a markers array - Mapbox manages it internally
-	$: if (map && map.loaded() && $filteredTacoData && $filteredTacoData.length >= 0 && !$isLoading) {
-		console.log('Reactive: Updating markers with', $filteredTacoData.length, 'sites');
-		updateMarkers($filteredTacoData, map, null, $summaryStats);
+	$: if (map && map.loaded() && $filteredTacoData && !$isLoading) {
+		// Only update if the data length has changed (optimization to prevent unnecessary updates)
+		if ($filteredTacoData.length !== lastDataLength) {
+			console.log('✅ Data length changed:', lastDataLength, '->', $filteredTacoData.length, '- Updating markers');
+			lastDataLength = $filteredTacoData.length;
+			updateMarkers($filteredTacoData, map);
+		} else {
+			console.log('⏭️ Skipping marker update - data length unchanged:', $filteredTacoData.length);
+		}
 	}
 
 	// Update map style when theme changes (only after initial load)
-	$: if (map && mapLoaded && $effectiveTheme) {
+	$: if (map && mapLoaded && $effectiveTheme && $effectiveTheme !== currentTheme) {
+		console.log('Theme reactive statement triggered:', currentTheme, '->', $effectiveTheme);
+
 		const newStyle = getMapboxStyle($effectiveTheme);
 
 		// Check if we need to change the style
-		// Compare the new style URL with current expectations
 		try {
 			const currentStyle = map.getStyle();
 			const isDarkStyle = currentStyle && currentStyle.sprite && currentStyle.sprite.includes('dark');
@@ -90,9 +103,15 @@
 			if (isDarkStyle !== shouldBeDark) {
 				console.log('Theme changed to:', $effectiveTheme, '- updating map style');
 
+				// Update current theme BEFORE changing style to prevent re-triggering
+				currentTheme = $effectiveTheme;
+
 				// Store current center and zoom to preserve view
 				const center = map.getCenter();
 				const zoom = map.getZoom();
+
+				// Reset listeners flag since setStyle removes all layers
+				resetListeners();
 
 				// Update map style
 				map.setStyle(newStyle);
@@ -108,10 +127,14 @@
 					// Wait for map to be idle before adding markers
 					map.once('idle', () => {
 						if ($filteredTacoData && $filteredTacoData.length > 0) {
-							updateMarkers($filteredTacoData, map, null, $summaryStats);
+							updateMarkers($filteredTacoData, map);
 						}
 					});
 				});
+			} else {
+				// Theme matches, just update the tracking variable
+				currentTheme = $effectiveTheme;
+				console.log('Theme already matches, no style change needed');
 			}
 		} catch (error) {
 			// Ignore errors if style isn't ready yet

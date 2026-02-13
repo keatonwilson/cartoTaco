@@ -56,6 +56,12 @@
         </button>
         <button
           class="nav-link"
+          on:click={() => handleNavigation('/favorites')}
+        >
+          Favorites
+        </button>
+        <button
+          class="nav-link"
           on:click={() => handleNavigation('/profile')}
         >
           Profile
@@ -126,6 +132,12 @@
           on:click={() => handleNavigation('/submit')}
         >
           Submit Location
+        </button>
+        <button
+          class="mobile-nav-link"
+          on:click={() => handleNavigation('/favorites')}
+        >
+          Favorites
         </button>
         <button
           class="mobile-nav-link"

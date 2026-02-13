@@ -7,6 +7,18 @@ import { get } from 'svelte/store';
 // Keep track of active popup
 let currentPopup = null;
 
+// Track whether event listeners have been attached
+let listenersAttached = false;
+
+// Track hovered feature for hover effects
+let hoveredFeatureId = null;
+
+// Reset listeners flag (call when map style changes)
+export const resetListeners = () => {
+  listenersAttached = false;
+  hoveredFeatureId = null;
+};
+
 // Convert processed sites to GeoJSON format
 function sitesToGeoJSON(processedSites) {
   return {
@@ -15,6 +27,7 @@ function sitesToGeoJSON(processedSites) {
       .filter(site => site && site.longitude && site.latitude)
       .map(site => ({
         type: 'Feature',
+        id: site.est_id, // Required for feature-state hover effects
         geometry: {
           type: 'Point',
           coordinates: [site.longitude, site.latitude]
@@ -31,7 +44,7 @@ function sitesToGeoJSON(processedSites) {
   };
 }
 
-export const updateMarkers = (processedSites, map, markers, summaryStats) => {
+export const updateMarkers = (processedSites, map) => {
   // Validate inputs to prevent errors
   if (!map) return;
 
@@ -42,7 +55,7 @@ export const updateMarkers = (processedSites, map, markers, summaryStats) => {
 
   // Wait for map to be loaded
   if (!map.loaded()) {
-    map.once('load', () => updateMarkers(processedSites, map, markers, summaryStats));
+    map.once('load', () => updateMarkers(processedSites, map));
     return;
   }
 
@@ -111,7 +124,7 @@ export const updateMarkers = (processedSites, map, markers, summaryStats) => {
     }
   });
 
-  // Add unclustered points layer
+  // Add unclustered points layer with hover effects
   map.addLayer({
     id: 'unclustered-point',
     type: 'circle',
@@ -119,9 +132,26 @@ export const updateMarkers = (processedSites, map, markers, summaryStats) => {
     filter: ['!', ['has', 'point_count']],
     paint: {
       'circle-color': '#FE795D',
-      'circle-radius': 10,
-      'circle-stroke-width': 2,
-      'circle-stroke-color': '#fff'
+      'circle-radius': [
+        'case',
+        ['boolean', ['feature-state', 'hover'], false],
+        14, // Larger radius on hover
+        10  // Default radius
+      ],
+      'circle-stroke-width': [
+        'case',
+        ['boolean', ['feature-state', 'hover'], false],
+        3, // Thicker stroke on hover
+        2  // Default stroke
+      ],
+      'circle-stroke-color': '#fff',
+      'circle-opacity': [
+        'case',
+        ['boolean', ['feature-state', 'hover'], false],
+        1,   // Full opacity on hover
+        0.9  // Slightly transparent by default
+      ],
+      'circle-stroke-opacity': 1
     }
   });
 
@@ -145,28 +175,32 @@ export const updateMarkers = (processedSites, map, markers, summaryStats) => {
     }
   });
 
-  // Click handler for clusters - zoom in
-  map.on('click', 'clusters', (e) => {
-    const features = map.queryRenderedFeatures(e.point, {
-      layers: ['clusters']
+  // Attach event listeners only once
+  if (!listenersAttached) {
+    listenersAttached = true;
+
+    // Click handler for clusters - zoom in
+    map.on('click', 'clusters', (e) => {
+      const features = map.queryRenderedFeatures(e.point, {
+        layers: ['clusters']
+      });
+      const clusterId = features[0].properties.cluster_id;
+
+      map.getSource('taco-sites').getClusterExpansionZoom(
+        clusterId,
+        (err, zoom) => {
+          if (err) return;
+
+          map.easeTo({
+            center: features[0].geometry.coordinates,
+            zoom: zoom
+          });
+        }
+      );
     });
-    const clusterId = features[0].properties.cluster_id;
 
-    map.getSource('taco-sites').getClusterExpansionZoom(
-      clusterId,
-      (err, zoom) => {
-        if (err) return;
-
-        map.easeTo({
-          center: features[0].geometry.coordinates,
-          zoom: zoom
-        });
-      }
-    );
-  });
-
-  // Click handler for unclustered points - show popup
-  map.on('click', 'unclustered-point', (e) => {
+    // Click handler for unclustered points - show popup
+    map.on('click', 'unclustered-point', (e) => {
     const coordinates = e.features[0].geometry.coordinates.slice();
     const properties = e.features[0].properties;
 
@@ -219,13 +253,42 @@ export const updateMarkers = (processedSites, map, markers, summaryStats) => {
     map.getCanvas().style.cursor = '';
   });
 
-  // Change cursor on hover over unclustered points
-  map.on('mouseenter', 'unclustered-point', () => {
-    map.getCanvas().style.cursor = 'pointer';
-  });
-  map.on('mouseleave', 'unclustered-point', () => {
-    map.getCanvas().style.cursor = '';
-  });
+    // Change cursor and apply hover effect on unclustered points
+    map.on('mouseenter', 'unclustered-point', (e) => {
+      map.getCanvas().style.cursor = 'pointer';
+
+      // Set hover state for the feature
+      if (e.features.length > 0) {
+        // Remove hover from previous feature
+        if (hoveredFeatureId !== null) {
+          map.setFeatureState(
+            { source: 'taco-sites', id: hoveredFeatureId },
+            { hover: false }
+          );
+        }
+
+        // Set hover on new feature
+        hoveredFeatureId = e.features[0].id;
+        map.setFeatureState(
+          { source: 'taco-sites', id: hoveredFeatureId },
+          { hover: true }
+        );
+      }
+    });
+
+    map.on('mouseleave', 'unclustered-point', () => {
+      map.getCanvas().style.cursor = '';
+
+      // Remove hover state
+      if (hoveredFeatureId !== null) {
+        map.setFeatureState(
+          { source: 'taco-sites', id: hoveredFeatureId },
+          { hover: false }
+        );
+        hoveredFeatureId = null;
+      }
+    });
+  }
 };
 
 function createPopupContent(siteId) {

@@ -1,6 +1,8 @@
 <script>
   import { filterConfig, filteredTacoData, processedTacoData } from '../lib/stores';
-  import { SearchOutline, ChevronDownOutline, ChevronUpOutline } from 'flowbite-svelte-icons';
+  import { isAuthenticated } from '$lib/authStore';
+  import { SearchOutline, ChevronDownOutline, ChevronUpOutline, HeartSolid } from 'flowbite-svelte-icons';
+  import { browser } from '$app/environment';
 
   let expanded = false;
 
@@ -28,7 +30,8 @@
         'Truck': false
       },
       spiceLevel: { min: 0, max: 10 },
-      openNow: false
+      openNow: false,
+      showFavoritesOnly: false
     });
   }
 
@@ -39,7 +42,8 @@
     Object.values($filterConfig.types).some(v => v) ||
     $filterConfig.spiceLevel.min > 0 ||
     $filterConfig.spiceLevel.max < 10 ||
-    $filterConfig.openNow;
+    $filterConfig.openNow ||
+    $filterConfig.showFavoritesOnly;
 </script>
 
 <div class="filter-container">
@@ -75,6 +79,21 @@
   <!-- Expanded Filter Panel -->
   {#if expanded}
     <div class="filter-panel">
+      <!-- Favorites Filter (only show if authenticated) -->
+      {#if $isAuthenticated}
+        <div class="filter-section favorites-section">
+          <label class="favorites-toggle">
+            <input type="checkbox" bind:checked={$filterConfig.showFavoritesOnly} />
+            <span class="favorites-label">
+              {#if browser}
+                <HeartSolid size="sm" class="heart-icon" />
+              {/if}
+              Show Favorites Only
+            </span>
+          </label>
+        </div>
+      {/if}
+
       <!-- Protein Filters -->
       <div class="filter-section">
         <h3 class="filter-title">Proteins</h3>
@@ -300,6 +319,64 @@
 
   .filter-section {
     margin-top: 16px;
+  }
+
+  /* Favorites section styling */
+  .favorites-section {
+    margin-top: 0;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #fe795d;
+  }
+
+  :global(.dark) .favorites-section {
+    border-bottom-color: #fe795d;
+  }
+
+  .favorites-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, #fff5f2 0%, #ffe4de 100%);
+    border: 2px solid #fe795d;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  :global(.dark) .favorites-toggle {
+    background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+    border-color: #fe795d;
+  }
+
+  .favorites-toggle:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(254, 121, 93, 0.2);
+  }
+
+  .favorites-toggle input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #fe795d;
+  }
+
+  .favorites-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.95rem;
+  }
+
+  :global(.dark) .favorites-label {
+    color: #f9fafb;
+  }
+
+  .favorites-toggle :global(.heart-icon) {
+    color: #fe795d;
   }
 
   .filter-title {
