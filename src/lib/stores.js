@@ -408,6 +408,12 @@ export const filteredTacoData = derived(
 
 // async fetch data function - optimized to use single view query
 export async function fetchSiteData() {
+  // Guard against SSR or missing client
+  if (!supabaseBrowser) {
+    console.warn("Supabase client not available (SSR mode)");
+    return;
+  }
+
   // Set loading state
   tacoStore.setLoading(true);
 
@@ -433,9 +439,15 @@ export async function fetchSiteData() {
 }
 
 export async function fetchSummaryData() {
+  // Guard against SSR or missing client
+  if (!supabaseBrowser) {
+    console.warn("Supabase client not available (SSR mode)");
+    return;
+  }
+
   // Set loading state
   summaryStore.setLoading(true);
-  
+
   try {
     // Fetch summary data
     let { data: summaryData, error: summaryError } = await supabaseBrowser
@@ -446,7 +458,7 @@ export async function fetchSummaryData() {
       summaryStore.setError(summaryError);
       return;
     }
-    
+
     summaryStore.setData(summaryData);
   } catch (error) {
     console.error("Error in fetchSummaryData:", error);
@@ -455,9 +467,15 @@ export async function fetchSummaryData() {
 }
 
 export async function fetchSpecialtyData() {
+  // Guard against SSR or missing client
+  if (!supabaseBrowser) {
+    console.warn("Supabase client not available (SSR mode)");
+    return;
+  }
+
   // Set loading state
   specStore.setLoading(true);
-  
+
   try {
     // Fetch item specialties
     let { data: itemSpecData, error: itemSpecError } = await supabaseBrowser
@@ -492,12 +510,12 @@ export async function fetchSpecialtyData() {
     // combine data
     const specCombinedArray = [
       itemSpecData,
-      proteinSpecData, 
+      proteinSpecData,
       salsaSpecData
     ];
     const specNamesArray = [
-      "itemSpec", 
-      "proteinSpec", 
+      "itemSpec",
+      "proteinSpec",
       "salsaSpec"
     ];
     const specAggregate = combineArraysByEstId(specCombinedArray, specNamesArray);
@@ -511,6 +529,10 @@ export async function fetchSpecialtyData() {
 }
 
 // Initialize data fetching
-fetchSiteData();
-fetchSummaryData();
-fetchSpecialtyData();
+// Note: These are now called from +layout.svelte onMount to prevent
+// SSR build errors when supabaseBrowser is null
+export function initializeStores() {
+  fetchSiteData();
+  fetchSummaryData();
+  fetchSpecialtyData();
+}

@@ -3,10 +3,14 @@
 	import { initTheme } from '$lib/theme.js';
 	import { loadFavorites } from '$lib/favoritesStore.js';
 	import { isAuthenticated } from '$lib/authStore.js';
+	import { initializeStores } from '$lib/stores.js';
 	import '../app.css';
 	import Header from '$lib/../components/Header.svelte';
 
 	onMount(() => {
+		// Initialize data stores
+		initializeStores();
+
 		// Initialize theme system
 		initTheme();
 
