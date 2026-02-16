@@ -38,9 +38,6 @@ importers:
       svg-gauge:
         specifier: ^1.0.7
         version: 1.0.7
-      tailwindcss:
-        specifier: ^3.4.4
-        version: 3.4.4
     devDependencies:
       '@sveltejs/adapter-auto':
         specifier: ^3.0.0
@@ -78,6 +75,9 @@ importers:
       svelte-check:
         specifier: ^3.6.0
         version: 3.8.4(postcss-load-config@4.0.2(postcss@8.4.38))(postcss@8.4.38)(svelte@4.2.18)
+      tailwindcss:
+        specifier: ^3.4.4
+        version: 3.4.4
       typescript:
         specifier: ^5.0.0
         version: 5.5.2
