@@ -26,7 +26,7 @@ function createDataStore() {
 
 // NOTE: No longer used for the main site query (sites_complete view handles that),
 // but still actively used by fetchSpecialtyData() to combine item_spec, protein_spec, and salsa_spec.
-function combineArraysByEstId(arrays, names) {
+export function combineArraysByEstId(arrays, names) {
   const combined = {};
 
   arrays.forEach((array, index) => {
@@ -226,7 +226,7 @@ export const filterConfig = writable({
 });
 
 // Helper function to check if a location is currently open
-function isOpenNow(startHours, endHours) {
+export function isOpenNow(startHours, endHours) {
   const now = new Date();
   const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
   const today = days[now.getDay()];

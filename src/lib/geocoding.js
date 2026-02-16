@@ -153,7 +153,7 @@ export async function reverseGeocode(latitude, longitude) {
  * @param {number} lon2 - Second longitude
  * @returns {number} Distance in kilometers
  */
-function calculateDistance(lat1, lon1, lat2, lon2) {
+export function calculateDistance(lat1, lon1, lat2, lon2) {
 	const R = 6371; // Earth's radius in km
 	const dLat = toRad(lat2 - lat1);
 	const dLon = toRad(lon2 - lon1);
@@ -173,7 +173,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
  * @param {number} degrees - Degrees
  * @returns {number} Radians
  */
-function toRad(degrees) {
+export function toRad(degrees) {
 	return (degrees * Math.PI) / 180;
 }
 
