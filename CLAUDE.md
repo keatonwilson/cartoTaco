@@ -113,7 +113,7 @@ Located in src/lib/dataWrangling.js:
 ### Routes
 - `src/routes/+page.svelte` - Main page (renders Map component)
 - `src/routes/Map.svelte` - Map component with filter integration
-- `src/routes/+page.js` - Enables prerendering
+- `src/routes/+page.js` - Route config (prerendering disabled; app requires Supabase at runtime)
 
 ## Filter System
 
@@ -136,7 +136,7 @@ The filter system works through reactive updates:
 - Single database query using `sites_complete` view instead of multiple joins
 - Pre-computation of derived values in `processedTacoData` store
 - Mapbox clustering for efficient rendering of many markers
-- Static prerendering enabled for faster initial load
+- Prerendering disabled (Supabase auth runs in hooks.server.js on every request)
 
 ## Documentation
 
