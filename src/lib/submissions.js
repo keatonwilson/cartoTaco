@@ -3,7 +3,7 @@
  * Handles creating and querying user submissions
  */
 
-import { supabaseBrowser } from './supabaseBrowser';
+import { supabaseBrowser, getAuthenticatedUser } from './supabaseBrowser';
 
 /**
  * Submit a new location for admin review
@@ -12,17 +12,9 @@ import { supabaseBrowser } from './supabaseBrowser';
  */
 export async function submitLocation(submissionData) {
 	try {
-		// Get current user
-		const {
-			data: { user },
-			error: userError
-		} = await supabaseBrowser.auth.getUser();
-
-		if (userError || !user) {
-			return {
-				success: false,
-				error: 'You must be logged in to submit a location'
-			};
+		const { user, error: authError } = await getAuthenticatedUser();
+		if (authError) {
+			return { success: false, error: 'You must be logged in to submit a location' };
 		}
 
 		// Prepare submission data
@@ -78,17 +70,9 @@ export async function submitLocation(submissionData) {
  */
 export async function getUserSubmissions(status = null) {
 	try {
-		// Get current user
-		const {
-			data: { user },
-			error: userError
-		} = await supabaseBrowser.auth.getUser();
-
-		if (userError || !user) {
-			return {
-				success: false,
-				error: 'You must be logged in to view submissions'
-			};
+		const { user, error: authError } = await getAuthenticatedUser();
+		if (authError) {
+			return { success: false, error: 'You must be logged in to view submissions' };
 		}
 
 		// Build query
@@ -133,17 +117,9 @@ export async function getUserSubmissions(status = null) {
  */
 export async function getSubmissionById(submissionId) {
 	try {
-		// Get current user
-		const {
-			data: { user },
-			error: userError
-		} = await supabaseBrowser.auth.getUser();
-
-		if (userError || !user) {
-			return {
-				success: false,
-				error: 'You must be logged in to view this submission'
-			};
+		const { user, error: authError } = await getAuthenticatedUser();
+		if (authError) {
+			return { success: false, error: 'You must be logged in to view this submission' };
 		}
 
 		const { data, error } = await supabaseBrowser
@@ -182,17 +158,9 @@ export async function getSubmissionById(submissionId) {
  */
 export async function updateSubmission(submissionId, updates) {
 	try {
-		// Get current user
-		const {
-			data: { user },
-			error: userError
-		} = await supabaseBrowser.auth.getUser();
-
-		if (userError || !user) {
-			return {
-				success: false,
-				error: 'You must be logged in to update a submission'
-			};
+		const { user, error: authError } = await getAuthenticatedUser();
+		if (authError) {
+			return { success: false, error: 'You must be logged in to update a submission' };
 		}
 
 		// RLS policy will enforce user_id and pending status
@@ -233,17 +201,9 @@ export async function updateSubmission(submissionId, updates) {
  */
 export async function deleteSubmission(submissionId) {
 	try {
-		// Get current user
-		const {
-			data: { user },
-			error: userError
-		} = await supabaseBrowser.auth.getUser();
-
-		if (userError || !user) {
-			return {
-				success: false,
-				error: 'You must be logged in to delete a submission'
-			};
+		const { user, error: authError } = await getAuthenticatedUser();
+		if (authError) {
+			return { success: false, error: 'You must be logged in to delete a submission' };
 		}
 
 		// RLS policy will enforce user_id and pending status
@@ -280,17 +240,9 @@ export async function deleteSubmission(submissionId) {
  */
 export async function getUserSubmissionStats() {
 	try {
-		// Get current user
-		const {
-			data: { user },
-			error: userError
-		} = await supabaseBrowser.auth.getUser();
-
-		if (userError || !user) {
-			return {
-				success: false,
-				error: 'You must be logged in to view statistics'
-			};
+		const { user, error: authError } = await getAuthenticatedUser();
+		if (authError) {
+			return { success: false, error: 'You must be logged in to view statistics' };
 		}
 
 		// Get all user submissions

@@ -36,9 +36,14 @@ export function applyTheme(theme) {
 	document.documentElement.classList.toggle('dark', effective === 'dark');
 }
 
+// Track interval and subscription for cleanup
+let themeIntervalId = null;
+let themeUnsubscribe = null;
+
 /**
  * Initialize theme system with localStorage persistence
- * Call this once on app initialization
+ * Call this once on app initialization. Returns a cleanup function.
+ * @returns {Function|undefined} Cleanup function to call on teardown
  */
 export function initTheme() {
 	if (!browser) return;
@@ -50,21 +55,35 @@ export function initTheme() {
 	}
 
 	// Subscribe to preference changes
-	themePreference.subscribe((value) => {
+	themeUnsubscribe = themePreference.subscribe((value) => {
 		localStorage.setItem('theme', value);
 		applyTheme(value);
 	});
 
-	// If in auto mode, check hourly for time-based changes
-	if (browser) {
-		setInterval(() => {
-			themePreference.update((pref) => {
-				if (pref === 'auto') {
-					applyTheme('auto');
-				}
-				return pref;
-			});
-		}, 60000); // Check every minute
+	// Check periodically for time-based auto theme changes
+	themeIntervalId = setInterval(() => {
+		themePreference.update((pref) => {
+			if (pref === 'auto') {
+				applyTheme('auto');
+			}
+			return pref;
+		});
+	}, 60000); // Check every minute
+
+	return cleanupTheme;
+}
+
+/**
+ * Clean up theme system resources (interval, subscription)
+ */
+export function cleanupTheme() {
+	if (themeIntervalId !== null) {
+		clearInterval(themeIntervalId);
+		themeIntervalId = null;
+	}
+	if (themeUnsubscribe) {
+		themeUnsubscribe();
+		themeUnsubscribe = null;
 	}
 }
 

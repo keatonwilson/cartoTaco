@@ -9,20 +9,13 @@ const BREAKPOINTS = {
 };
 
 // Create a writable store for screen width
+// Note: This is a singleton store — the resize listener lives for the app lifetime,
+// which is correct for a global store. No cleanup needed since it matches the app lifecycle.
 function createScreenWidthStore() {
   const { subscribe, set } = writable(browser ? window.innerWidth : 1024);
 
   if (browser) {
-    // Update on resize
-    const handleResize = () => set(window.innerWidth);
-    window.addEventListener('resize', handleResize);
-
-    // Cleanup
-    if (typeof window !== 'undefined') {
-      window.addEventListener('beforeunload', () => {
-        window.removeEventListener('resize', handleResize);
-      });
-    }
+    window.addEventListener('resize', () => set(window.innerWidth));
   }
 
   return { subscribe };

@@ -9,11 +9,13 @@ CartoTaco is an interactive map-based application for exploring taco establishme
 ## Development Commands
 
 - `pnpm install` - Install dependencies (use pnpm, not npm)
-- `pnpm dev` - Start development server at http://localhost:5173
+- `pnpm dev` - Start development server at http://localhost:5175
 - `pnpm build` - Build for production
 - `pnpm preview` - Preview production build
 - `pnpm check` - Run Svelte type checking
 - `pnpm check:watch` - Run type checking in watch mode
+- `pnpm test` - Run unit tests (vitest)
+- `pnpm test:watch` - Run tests in watch mode
 
 ## Environment Setup
 

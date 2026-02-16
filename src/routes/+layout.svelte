@@ -11,13 +11,18 @@
 		// Initialize data stores
 		initializeStores();
 
-		// Initialize theme system
-		initTheme();
+		// Initialize theme system (returns cleanup function)
+		const cleanupTheme = initTheme();
 
 		// Load favorites if authenticated
 		if ($isAuthenticated) {
 			loadFavorites();
 		}
+
+		// Cleanup on unmount
+		return () => {
+			if (cleanupTheme) cleanupTheme();
+		};
 	});
 
 	// Reload favorites when authentication state changes
