@@ -40,6 +40,9 @@ The application uses Supabase with a critical performance optimization:
 Migrations must be run in this order:
 1. `migrations/002_add_contact_and_social_fields.sql` - Adds contact/social fields
 2. `migrations/001_create_sites_view.sql` - Creates the `sites_complete` view
+3. `migrations/003_create_profiles_table.sql` - Creates user profiles table with RLS policies (requires Supabase Auth)
+4. `migrations/004_create_location_submissions.sql` - Creates location_submissions table for user submissions with RLS policies
+5. `migrations/005_create_favorites_table.sql` - Creates user_favorites table with RLS policies
 
 ## State Management Architecture
 

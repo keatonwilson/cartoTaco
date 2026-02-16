@@ -24,9 +24,8 @@ function createDataStore() {
   };
 }
 
-// NOTE: This function is no longer used after the query optimization (see migration 001)
-// Kept for reference and potential future use with non-view queries
-// The sites_complete view now handles this combining at the database level
+// NOTE: No longer used for the main site query (sites_complete view handles that),
+// but still actively used by fetchSpecialtyData() to combine item_spec, protein_spec, and salsa_spec.
 function combineArraysByEstId(arrays, names) {
   const combined = {};
 
@@ -181,95 +180,24 @@ export const summaryStats = derived(
 
 // Derived store for specialty items by site
 export const specialtiesBySite = derived(
-  [specStore, processedTacoData],
-  ([$specStore, $processedTacoData]) => {
+  specStore,
+  ($specStore) => {
     const specialtyMap = new Map();
-    
-    // Sample specialty data for demonstration - indexed by est_id
-    const sampleSpecialties = {
-      // El Antojo Poblano (assuming est_id 1)
-      1: {
-        itemSpecs: [
-          { name: 'Cemita', description: 'Pueblan super-torta with chipotle, queso oaxaca, avocado & a variety of proteins.' },
-          { name: 'Tacos Árabes', description: 'Marinated pork on a pita-like tortilla with lime and salsa roja.' }
-        ],
-        proteinSpecs: [
-          { name: 'Milanesa', description: 'Breaded and fried pork or chicken cutlet, seasoned with traditional herbs.' }
-        ],
-        salsaSpecs: [
-          { name: 'Salsa Macha', description: 'Oil-based hot sauce with dried chilies, garlic, and peanuts.' }
-        ]
-      },
-      // Maico's (assuming est_id 2)
-      2: {
-        itemSpecs: [
-          { name: 'Mulitas', description: 'Two tortillas filled with cheese, meat, and topped with guacamole.' },
-          { name: 'Vampiros', description: 'Grilled tortilla until crispy, topped with cheese and carne asada.' }
-        ],
-        proteinSpecs: [
-          { name: 'Carne Asada', description: 'Marinated and grilled beef, cut into small strips with perfect char.' }
-        ],
-        salsaSpecs: [
-          { name: 'Salsa Verde Taquera', description: 'Roasted tomatillos, serranos, and avocado blended into a smooth sauce.' }
-        ]
-      },
-      // BOCA (assuming est_id 3)
-      3: {
-        itemSpecs: [
-          { name: 'Quesatacos', description: 'Tortillas with melted cheese, meat, and corn pico de gallo.' },
-          { name: 'Seafood Tostadas', description: 'Crispy tortilla topped with marinated seafood and avocado.' }
-        ],
-        proteinSpecs: [
-          { name: 'Camaron', description: 'Marinated shrimp cooked with garlic, lime, and mild spices.' }
-        ],
-        salsaSpecs: [
-          { name: 'Habanero Mango', description: 'Sweet mango balanced with fiery habanero peppers and lime juice.' }
-        ]
-      },
-      // Sample placeholder for others
-      4: {
-        itemSpecs: [
-          { name: 'Birria Tacos', description: 'Slow-cooked beef tacos served with rich consommé for dipping.' }
-        ],
-        proteinSpecs: [
-          { name: 'Barbacoa', description: 'Slow-cooked beef seasoned with chiles and spices until tender.' }
-        ],
-        salsaSpecs: [
-          { name: 'Chile de Árbol', description: 'Bright, spicy red salsa made from toasted chile de árbol peppers.' }
-        ]
-      }
-    };
-    
-    // If we have real data from the database, use it
+
     if ($specStore.data && $specStore.data.length > 0) {
-      // Create a map of site IDs to processed specialty data
       $specStore.data.forEach(spec => {
         if (!spec || !spec.est_id) return;
-        
+
         const siteSpecialties = {
           itemSpecs: spec.itemSpec ? [spec.itemSpec] : [],
           proteinSpecs: spec.proteinSpec ? [spec.proteinSpec] : [],
           salsaSpecs: spec.salsaSpec ? [spec.salsaSpec] : []
         };
-        
+
         specialtyMap.set(spec.est_id, siteSpecialties);
       });
-    } 
-    
-    // For demonstration, add sample data for any site that doesn't have specialty data
-    if ($processedTacoData && $processedTacoData.length > 0) {
-      $processedTacoData.forEach(site => {
-        if (!site || !site.est_id) return;
-        
-        // If this site doesn't have specialty data yet
-        if (!specialtyMap.has(site.est_id)) {
-          // Get sample specialty data based on site ID or use generic data
-          const sampleData = sampleSpecialties[site.est_id] || sampleSpecialties[4];
-          specialtyMap.set(site.est_id, sampleData);
-        }
-      });
     }
-    
+
     return specialtyMap;
   }
 );
