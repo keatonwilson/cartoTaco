@@ -13,8 +13,18 @@ let listenersAttached = false;
 // Track hovered feature for hover effects
 let hoveredFeatureId = null;
 
-// Reset listeners flag (call when map style changes)
-export const resetListeners = () => {
+// Store handler references for cleanup
+let handlers = {};
+
+// Remove existing event listeners from the map and reset state
+export const resetListeners = (map) => {
+  if (map && listenersAttached) {
+    for (const [key, handler] of Object.entries(handlers)) {
+      const [event, layer] = key.split('::');
+      map.off(event, layer, handler);
+    }
+  }
+  handlers = {};
   listenersAttached = false;
   hoveredFeatureId = null;
 };
@@ -180,7 +190,7 @@ export const updateMarkers = (processedSites, map) => {
     listenersAttached = true;
 
     // Click handler for clusters - zoom in
-    map.on('click', 'clusters', (e) => {
+    handlers['click::clusters'] = (e) => {
       const features = map.queryRenderedFeatures(e.point, {
         layers: ['clusters']
       });
@@ -197,64 +207,69 @@ export const updateMarkers = (processedSites, map) => {
           });
         }
       );
-    });
+    };
+    map.on('click', 'clusters', handlers['click::clusters']);
 
     // Click handler for unclustered points - show popup
-    map.on('click', 'unclustered-point', (e) => {
-    const coordinates = e.features[0].geometry.coordinates.slice();
-    const properties = e.features[0].properties;
+    handlers['click::unclustered-point'] = (e) => {
+      const coordinates = e.features[0].geometry.coordinates.slice();
+      const properties = e.features[0].properties;
 
-    // Parse the site data back from JSON
-    const siteData = JSON.parse(properties.siteData);
+      // Parse the site data back from JSON
+      const siteData = JSON.parse(properties.siteData);
 
-    // Close any existing popup
-    if (currentPopup) {
-      currentPopup.remove();
-    }
+      // Close any existing popup
+      if (currentPopup) {
+        currentPopup.remove();
+      }
 
-    // Set the selected site in the store
-    selectedSite.set(siteData);
+      // Set the selected site in the store
+      selectedSite.set(siteData);
 
-    // Get current device type for responsive popup options
-    const currentDeviceType = get(deviceType);
+      // Get current device type for responsive popup options
+      const currentDeviceType = get(deviceType);
 
-    // Device-specific popup options
-    const popupOptions = {
-      closeButton: true,
-      closeOnClick: true,
-      maxWidth: currentDeviceType === 'mobile' ? 'calc(100vw - 20px)' :
-                currentDeviceType === 'tablet' ? '700px' : '800px'
+      // Device-specific popup options
+      const popupOptions = {
+        closeButton: true,
+        closeOnClick: true,
+        maxWidth: currentDeviceType === 'mobile' ? 'calc(100vw - 20px)' :
+                  currentDeviceType === 'tablet' ? '700px' : '800px'
+      };
+
+      // Mobile: top-anchored (popup extends downward) to avoid overlapping with search bar at top
+      // Desktop/Tablet: use default positioning (no anchor specified)
+      if (currentDeviceType === 'mobile') {
+        popupOptions.anchor = 'top';
+        popupOptions.offset = [0, 10]; // Add 10px offset below the marker
+      }
+
+      // Create popup
+      currentPopup = new mapboxgl.Popup(popupOptions)
+        .setLngLat(coordinates)
+        .setDOMContent(createPopupContent(properties.est_id))
+        .addTo(map);
+
+      // Adjust popup position
+      currentPopup.on('open', () => {
+        adjustPopupPosition(currentPopup, map);
+      });
     };
+    map.on('click', 'unclustered-point', handlers['click::unclustered-point']);
 
-    // Mobile: top-anchored (popup extends downward) to avoid overlapping with search bar at top
-    // Desktop/Tablet: use default positioning (no anchor specified)
-    if (currentDeviceType === 'mobile') {
-      popupOptions.anchor = 'top';
-      popupOptions.offset = [0, 10]; // Add 10px offset below the marker
-    }
+    // Change cursor on hover over clusters
+    handlers['mouseenter::clusters'] = () => {
+      map.getCanvas().style.cursor = 'pointer';
+    };
+    map.on('mouseenter', 'clusters', handlers['mouseenter::clusters']);
 
-    // Create popup
-    currentPopup = new mapboxgl.Popup(popupOptions)
-      .setLngLat(coordinates)
-      .setDOMContent(createPopupContent(properties.est_id))
-      .addTo(map);
-
-    // Adjust popup position
-    currentPopup.on('open', () => {
-      adjustPopupPosition(currentPopup, map);
-    });
-  });
-
-  // Change cursor on hover over clusters
-  map.on('mouseenter', 'clusters', () => {
-    map.getCanvas().style.cursor = 'pointer';
-  });
-  map.on('mouseleave', 'clusters', () => {
-    map.getCanvas().style.cursor = '';
-  });
+    handlers['mouseleave::clusters'] = () => {
+      map.getCanvas().style.cursor = '';
+    };
+    map.on('mouseleave', 'clusters', handlers['mouseleave::clusters']);
 
     // Change cursor and apply hover effect on unclustered points
-    map.on('mouseenter', 'unclustered-point', (e) => {
+    handlers['mouseenter::unclustered-point'] = (e) => {
       map.getCanvas().style.cursor = 'pointer';
 
       // Set hover state for the feature
@@ -274,9 +289,10 @@ export const updateMarkers = (processedSites, map) => {
           { hover: true }
         );
       }
-    });
+    };
+    map.on('mouseenter', 'unclustered-point', handlers['mouseenter::unclustered-point']);
 
-    map.on('mouseleave', 'unclustered-point', () => {
+    handlers['mouseleave::unclustered-point'] = () => {
       map.getCanvas().style.cursor = '';
 
       // Remove hover state
@@ -287,7 +303,8 @@ export const updateMarkers = (processedSites, map) => {
         );
         hoveredFeatureId = null;
       }
-    });
+    };
+    map.on('mouseleave', 'unclustered-point', handlers['mouseleave::unclustered-point']);
   }
 };
 

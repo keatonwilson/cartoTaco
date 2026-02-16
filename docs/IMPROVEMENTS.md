@@ -11,6 +11,8 @@ This document outlines potential improvements to enhance CartoTaco's functionali
 5. **User Authentication System** - Complete auth flow with transparent login/signup UI and protected routes
 6. **User Location Submissions** - Community-driven submission system with geocoding, interactive map picker, and admin review workflow
 7. **Dark Mode** - Theme toggle with light/dark/auto modes and time-based automatic switching (6am-8pm light, else dark)
+8. **User Favorites System** - Heart icon favorites with filtering, dedicated favorites page, and map integration
+9. **Vercel Deployment** - Configured adapter-vercel with Node 20, SSR guards in stores
 
 See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARCH_FILTER.md), and [MARKER_CLUSTERING.md](./MARKER_CLUSTERING.md) for details.
 
@@ -18,31 +20,64 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 
 ## 🧹 Housekeeping & Maintenance
 
-### 11. Update README Documentation
+### ✅ Update README Documentation
+**Status**: Completed (2026-02-11, commit 7a3824c)
+
+### ✅ Fix Svelte Type Checking Warnings
+**Status**: Completed (2026-02-11, commit 7a3824c)
+
+### H1. Fix Inaccurate Dead-Code Comment in stores.js
 **Status**: Pending
 
 **Details**:
-- Update "Next Up" section to reflect completed features
-- Ensure all feature descriptions are current
-- Sync with actual project state
+- `combineArraysByEstId()` has a comment saying "no longer used" but it IS actively called by `fetchSpecialtyData()` on line 521
+- The comment is misleading — the function is only unused for the *main site query* (which now uses the `sites_complete` view), but still needed for specialty data
 
-**Impact**: Better developer onboarding, accurate project representation
+**Impact**: Prevents developer confusion
 
-**Effort**: Low (30 minutes)
+**Effort**: Minimal
 
 ---
 
-### 12. Fix Svelte Type Checking Warnings
+### H2. Remove Hardcoded Sample Specialty Data from stores.js
 **Status**: Pending
 
-**Current Issues**: 10 warnings from `svelte-check`
-- Accessibility warnings (keyboard handlers, ARIA roles, form labels)
-- Unused CSS selectors in Card.svelte
-- Unused export property
+**Details**:
+- `specialtiesBySite` derived store (lines 189-241) contains hardcoded sample data for est_ids 1-4 with assumed establishment names
+- Sites without real specialty data silently fall back to est_id 4's sample data
+- This scaffolding should be cleaned up — either replace with real DB data or remove the fallback so missing data is surfaced honestly
 
-**Impact**: Cleaner console output, better accessibility, code quality
+**Impact**: Data integrity — users currently see fake specialty data for most establishments
 
-**Effort**: Low (1-2 hours)
+**Effort**: Low
+
+---
+
+### H3. Update CLAUDE.md Migration Documentation
+**Status**: Pending
+
+**Details**:
+- CLAUDE.md only documents running migrations 001 and 002
+- Migrations 003 (profiles), 004 (submissions), and 005 (favorites) are undocumented
+- New developers setting up the project won't know about these required migrations
+
+**Impact**: Developer onboarding, project setup reliability
+
+**Effort**: Minimal
+
+---
+
+### H4. Vercel Adapter Runtime Deprecation
+**Status**: Noted
+
+**Details**:
+- `svelte.config.js` uses `runtime: 'nodejs20.x'` which is valid but deprecated
+- In a future adapter-vercel release, this option will be removed in favor of Vercel project-level Node version config
+- No immediate action needed, but should be tracked for when the adapter is updated
+
+**Impact**: Future compatibility
+
+**Effort**: Minimal (when needed)
 
 ---
 
@@ -329,14 +364,20 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 
 ## 📊 Recommended Priority Order
 
-1. ✅ **Query optimization (#1)** - Foundation for everything else - **COMPLETED**
-2. ✅ **Search & filter (#2)** - Essential as you add more spots - **COMPLETED**
-3. ✅ **Marker clustering (#7)** - Prevent map clutter - **COMPLETED**
-4. ✅ **Mobile responsive (#6)** - Serve your mobile users better - **COMPLETED**
-5. **Housekeeping (README + warnings)** - Clean up technical debt - **IN PROGRESS**
-6. **User-submitted locations (#11)** - Enable community contributions
-7. **User accounts + favorites (#3)** - Build engagement
-8. **Taco trail builder (#9)** - Unique differentiator
+1. ✅ **Query optimization (#1)** - **COMPLETED**
+2. ✅ **Search & filter (#2)** - **COMPLETED**
+3. ✅ **Marker clustering (#7)** - **COMPLETED**
+4. ✅ **Mobile responsive (#6)** - **COMPLETED**
+5. ✅ **User authentication (#3 partial)** - **COMPLETED**
+6. ✅ **User-submitted locations (#11)** - **COMPLETED**
+7. ✅ **Dark mode** - **COMPLETED**
+8. ✅ **User favorites (#3 partial)** - **COMPLETED**
+9. ✅ **Vercel deployment** - **COMPLETED**
+10. **Housekeeping (H1-H4)** - Clean up technical debt
+11. **Community ratings & reviews (#4)** - Add social proof
+12. **Heat map view (#5)** - Alternative visualization
+13. **Lazy load popup content (#8)** - Performance improvement
+14. **Taco trail builder (#9)** - Unique differentiator
 
 ---
 
@@ -362,4 +403,4 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 
 ---
 
-**Last Updated**: 2026-02-11
+**Last Updated**: 2026-02-16

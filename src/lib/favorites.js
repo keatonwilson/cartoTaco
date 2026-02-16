@@ -2,7 +2,7 @@
  * Favorites management - CRUD operations for user favorite locations
  */
 
-import { supabaseBrowser } from './supabaseBrowser';
+import { supabaseBrowser, getAuthenticatedUser } from './supabaseBrowser';
 
 /**
  * Add a location to user's favorites
@@ -11,10 +11,8 @@ import { supabaseBrowser } from './supabaseBrowser';
  */
 export async function addFavorite(estId) {
 	try {
-		const { data: { user } } = await supabaseBrowser.auth.getUser();
-		if (!user) {
-			return { success: false, error: 'Not authenticated' };
-		}
+		const { user, error: authError } = await getAuthenticatedUser();
+		if (authError) return { success: false, error: authError };
 
 		const { error } = await supabaseBrowser
 			.from('user_favorites')
@@ -46,10 +44,8 @@ export async function addFavorite(estId) {
  */
 export async function removeFavorite(estId) {
 	try {
-		const { data: { user } } = await supabaseBrowser.auth.getUser();
-		if (!user) {
-			return { success: false, error: 'Not authenticated' };
-		}
+		const { user, error: authError } = await getAuthenticatedUser();
+		if (authError) return { success: false, error: authError };
 
 		const { error } = await supabaseBrowser
 			.from('user_favorites')
@@ -76,7 +72,7 @@ export async function removeFavorite(estId) {
  */
 export async function isFavorite(estId) {
 	try {
-		const { data: { user } } = await supabaseBrowser.auth.getUser();
+		const { user } = await getAuthenticatedUser();
 		if (!user) return false;
 
 		const { data, error } = await supabaseBrowser
@@ -104,10 +100,8 @@ export async function isFavorite(estId) {
  */
 export async function getUserFavorites() {
 	try {
-		const { data: { user } } = await supabaseBrowser.auth.getUser();
-		if (!user) {
-			return { success: false, error: 'Not authenticated' };
-		}
+		const { user, error: authError } = await getAuthenticatedUser();
+		if (authError) return { success: false, error: authError };
 
 		const { data, error } = await supabaseBrowser
 			.from('user_favorites')
@@ -133,7 +127,7 @@ export async function getUserFavorites() {
  */
 export async function getFavoritesCount() {
 	try {
-		const { data: { user } } = await supabaseBrowser.auth.getUser();
+		const { user } = await getAuthenticatedUser();
 		if (!user) return 0;
 
 		const { count, error } = await supabaseBrowser

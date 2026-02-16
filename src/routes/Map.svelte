@@ -25,14 +25,10 @@
 	mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_KEY;
 
 	onMount(() => {
-		console.log('⚠️ MAP COMPONENT MOUNTED - This should only happen ONCE');
-
 		if (!mapContainer) return;
 
 		// Clear any residual content in the map container
 		mapContainer.innerHTML = '';
-
-		console.log('Initializing map with theme:', $effectiveTheme);
 
 		// Initialize the map with theme-appropriate style
 		map = new mapboxgl.Map({
@@ -58,7 +54,6 @@
 
 		// Wait for map to fully load before adding markers
 		map.on('load', () => {
-			console.log('Map loaded, ready for markers');
 			currentTheme = $effectiveTheme; // Set initial theme to prevent reactive trigger
 			mapLoaded = true; // Mark map as loaded
 			// Trigger the reactive statement to add markers
@@ -69,28 +64,22 @@
 
 		// Cleanup map on component unmount
 		return () => {
+			resetListeners(map); // Remove event listeners before destroying map
 			if (map) map.remove();
-			resetListeners(); // Reset listeners flag for next mount
 		};
 	});
 
 	// Update markers when filtered data changes
 	// Note: With clustering, we don't need a markers array - Mapbox manages it internally
 	$: if (map && map.loaded() && $filteredTacoData && !$isLoading) {
-		// Only update if the data length has changed (optimization to prevent unnecessary updates)
 		if ($filteredTacoData.length !== lastDataLength) {
-			console.log('✅ Data length changed:', lastDataLength, '->', $filteredTacoData.length, '- Updating markers');
 			lastDataLength = $filteredTacoData.length;
 			updateMarkers($filteredTacoData, map);
-		} else {
-			console.log('⏭️ Skipping marker update - data length unchanged:', $filteredTacoData.length);
 		}
 	}
 
 	// Update map style when theme changes (only after initial load)
 	$: if (map && mapLoaded && $effectiveTheme && $effectiveTheme !== currentTheme) {
-		console.log('Theme reactive statement triggered:', currentTheme, '->', $effectiveTheme);
-
 		const newStyle = getMapboxStyle($effectiveTheme);
 
 		// Check if we need to change the style
@@ -101,8 +90,6 @@
 
 			// Only change if there's a mismatch
 			if (isDarkStyle !== shouldBeDark) {
-				console.log('Theme changed to:', $effectiveTheme, '- updating map style');
-
 				// Update current theme BEFORE changing style to prevent re-triggering
 				currentTheme = $effectiveTheme;
 
@@ -110,16 +97,14 @@
 				const center = map.getCenter();
 				const zoom = map.getZoom();
 
-				// Reset listeners flag since setStyle removes all layers
-				resetListeners();
+				// Remove existing listeners since setStyle removes all layers
+				resetListeners(map);
 
 				// Update map style
 				map.setStyle(newStyle);
 
 				// Wait for style to load, then re-add markers
 				map.once('style.load', () => {
-					console.log('Style loaded, restoring view and markers...');
-
 					// Restore center and zoom
 					map.setCenter(center);
 					map.setZoom(zoom);
@@ -132,38 +117,20 @@
 					});
 				});
 			} else {
-				// Theme matches, just update the tracking variable
 				currentTheme = $effectiveTheme;
-				console.log('Theme already matches, no style change needed');
 			}
-		} catch (error) {
-			// Ignore errors if style isn't ready yet
-			console.log('Skipping style check, map not ready yet');
+		} catch {
+			// Style not ready yet, will be handled on next reactive trigger
 		}
 	}
 
 	// Function to retry data loading on error
-	function retryLoading() {
-    const fetchFunctions = [];
-    
-    if ($tacoStore.error) {
-      import('../lib/stores').then(module => {
-        module.fetchSiteData();
-      });
-    }
-    
-    if ($summaryStore.error) {
-      import('../lib/stores').then(module => {
-        module.fetchSummaryData();
-      });
-    }
-    
-    if ($specStore.error) {
-      import('../lib/stores').then(module => {
-        module.fetchSpecialtyData();
-      });
-    }
-  }
+	async function retryLoading() {
+		const { fetchSiteData, fetchSummaryData, fetchSpecialtyData } = await import('../lib/stores');
+		if ($tacoStore.error) fetchSiteData();
+		if ($summaryStore.error) fetchSummaryData();
+		if ($specStore.error) fetchSpecialtyData();
+	}
 </script>
 
 <!-- Map Container with loading and error states -->

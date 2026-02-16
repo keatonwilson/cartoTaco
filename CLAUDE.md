@@ -9,11 +9,13 @@ CartoTaco is an interactive map-based application for exploring taco establishme
 ## Development Commands
 
 - `pnpm install` - Install dependencies (use pnpm, not npm)
-- `pnpm dev` - Start development server at http://localhost:5173
+- `pnpm dev` - Start development server at http://localhost:5175
 - `pnpm build` - Build for production
 - `pnpm preview` - Preview production build
 - `pnpm check` - Run Svelte type checking
 - `pnpm check:watch` - Run type checking in watch mode
+- `pnpm test` - Run unit tests (vitest)
+- `pnpm test:watch` - Run tests in watch mode
 
 ## Environment Setup
 
@@ -40,6 +42,9 @@ The application uses Supabase with a critical performance optimization:
 Migrations must be run in this order:
 1. `migrations/002_add_contact_and_social_fields.sql` - Adds contact/social fields
 2. `migrations/001_create_sites_view.sql` - Creates the `sites_complete` view
+3. `migrations/003_create_profiles_table.sql` - Creates user profiles table with RLS policies (requires Supabase Auth)
+4. `migrations/004_create_location_submissions.sql` - Creates location_submissions table for user submissions with RLS policies
+5. `migrations/005_create_favorites_table.sql` - Creates user_favorites table with RLS policies
 
 ## State Management Architecture
 
@@ -108,7 +113,7 @@ Located in src/lib/dataWrangling.js:
 ### Routes
 - `src/routes/+page.svelte` - Main page (renders Map component)
 - `src/routes/Map.svelte` - Map component with filter integration
-- `src/routes/+page.js` - Enables prerendering
+- `src/routes/+page.js` - Route config (prerendering disabled; app requires Supabase at runtime)
 
 ## Filter System
 
@@ -131,7 +136,7 @@ The filter system works through reactive updates:
 - Single database query using `sites_complete` view instead of multiple joins
 - Pre-computation of derived values in `processedTacoData` store
 - Mapbox clustering for efficient rendering of many markers
-- Static prerendering enabled for faster initial load
+- Prerendering disabled (Supabase auth runs in hooks.server.js on every request)
 
 ## Documentation
 
