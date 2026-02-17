@@ -27,9 +27,6 @@
 	onMount(() => {
 		if (!mapContainer) return;
 
-		// Clear any residual content in the map container
-		mapContainer.innerHTML = '';
-
 		// Initialize the map with theme-appropriate style
 		map = new mapboxgl.Map({
 			container: mapContainer,
@@ -133,8 +130,10 @@
 	}
 </script>
 
-<!-- Map Container with loading and error states -->
-<div bind:this={mapContainer} id="map">
+<!-- Map wrapper: keeps Mapbox container separate from Svelte-managed overlays -->
+<div class="map-wrapper">
+	<div bind:this={mapContainer} id="map"></div>
+
 	{#if $isLoading}
 		<div class="loading-container">
 			<div class="loading-spinner"></div>
@@ -157,10 +156,15 @@
 {/if}
 
 <style>
-  #map {
+  .map-wrapper {
     width: 100%;
     height: 100vh;
     position: relative;
+  }
+
+  #map {
+    width: 100%;
+    height: 100%;
   }
 
   /* Position map controls below the transparent header */

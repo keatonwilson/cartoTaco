@@ -11,14 +11,18 @@ import { redirect } from '@sveltejs/kit';
  * - Handles route protection logic
  */
 export async function handle({ event, resolve }) {
-  // Create Supabase client for this request
-  event.locals.supabase = createSupabaseServerClient(event);
-
-  // Get session and store in event.locals
-  event.locals.session = await getSession(event);
-
-  // Route protection logic
   const url = event.url.pathname;
+
+  // Try to set up Supabase auth; if credentials are missing the app
+  // should still render public pages (map, login, signup).
+  try {
+    event.locals.supabase = createSupabaseServerClient(event);
+    event.locals.session = await getSession(event);
+  } catch {
+    event.locals.supabase = null;
+    event.locals.session = null;
+  }
+
   const session = event.locals.session;
 
   // Redirect authenticated users away from auth pages
