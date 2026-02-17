@@ -35,7 +35,7 @@
   <div id="popup-content">
     <div class="left-panel">
       <div class="header-section">
-        <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-100">
+        <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">
           {$selectedSite.name || 'Unknown Location'}
         </h2>
         <FavoriteButton estId={$selectedSite.est_id} size="sm" />
@@ -54,10 +54,10 @@
         longitude={$selectedSite.longitude}
         name={$selectedSite.name || 'Taco Location'}
       />
-      <h2 class="text-m font-semibold text-gray-800 dark:text-gray-100 my-2">Type</h2>
+      <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Type</h2>
       <IconHighlight type="siteType" data={$selectedSite.type || 'unknown'} />
       <div class="description">
-        <h2 class="text-m font-semibold text-gray-800 dark:text-gray-100 my-2">Description</h2>
+        <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Description</h2>
         <p class="dark:text-gray-300">{$selectedSite.shortDescription || 'No description available'}</p>
         <div class="long-description" class:visible={showLongDescription}>
           <p class="dark:text-gray-300">{$selectedSite.longDescription || 'No detailed description available'}</p>
@@ -81,7 +81,7 @@
           </div>
         </CollapsibleSection>
       {:else}
-        <h2 class="text-m font-semibold text-gray-800 dark:text-gray-100 my-2">Menu Summary</h2>
+        <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Menu Summary</h2>
         <div class="radar-chart-container">
           <RadarChart
             labels={$selectedSite.topFiveMenuItems || []}
@@ -103,25 +103,25 @@
 
         <CollapsibleSection title="Spiciness & Details" defaultOpen={true}>
           <div class="right-box">
-            <h2 class="text-m font-semibold text-gray-800 dark:text-gray-100 my-2" id="spicy-label">Spiciness</h2>
+            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1" id="spicy-label">Spiciness</h2>
             <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
-            <h2 class="text-m font-semibold text-gray-800 dark:text-gray-100 my-2">Tortilla Type</h2>
+            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Tortilla Type</h2>
             <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
           </div>
         </CollapsibleSection>
       {:else}
         <div class="top-row">
           <div class="protein-chart-container">
-            <h2 class="text-m font-semibold text-gray-800 dark:text-gray-100 my-2">Protein</h2>
+            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Protein</h2>
             <RadarChart
               labels={$selectedSite.topFiveProteinItems || []}
               data={$selectedSite.topFiveProteinValues || []}
             />
           </div>
           <div class="right-box">
-            <h2 class="text-m font-semibold text-gray-800 dark:text-gray-100 my-2" id="spicy-label">Spiciness</h2>
+            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1" id="spicy-label">Spiciness</h2>
             <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
-            <h2 class="text-m font-semibold text-gray-800 dark:text-gray-100 my-2">Tortilla Type</h2>
+            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Tortilla Type</h2>
             <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
           </div>
         </div>
@@ -152,7 +152,7 @@
           </CollapsibleSection>
         {:else}
           <!-- Desktop: Also use carousel -->
-          <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Specialties</h2>
+          <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">Specialties</h2>
           {#if $specialtiesBySite && $specialtiesBySite.has($selectedSite.est_id)}
             {@const siteSpecs = $specialtiesBySite.get($selectedSite.est_id)}
             {@const allSpecialties = [
@@ -190,8 +190,8 @@
   .header-section {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 8px;
+    margin-bottom: 8px;
   }
 
   /* Tablet & Desktop: Side-by-side layout */
@@ -200,7 +200,7 @@
       flex-direction: row;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
+      gap: 10px;
     }
 
     .header-section h2 {
@@ -213,16 +213,16 @@
     display: flex;
     flex-direction: column;
     width: 100%;
-    gap: 10px;
+    gap: 6px;
   }
 
   .left-panel,
   .right-panel {
-    padding: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
     display: flex;
     flex-direction: column;
-    border-radius: 2%;
+    border-radius: 6px;
     width: 100%;
     background: white;
   }
@@ -230,13 +230,14 @@
   :global(.dark) .left-panel,
   :global(.dark) .right-panel {
     background: #1f2937;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
   }
 
-  /* Tablet: 50/50 split (improved from desktop 40/60) */
+  /* Tablet: 50/50 split */
   @media (min-width: 768px) {
     #popup-content {
       flex-direction: row;
+      gap: 8px;
     }
 
     .left-panel {
@@ -248,26 +249,28 @@
     }
   }
 
-  /* Desktop: Original 40/60 split */
+  /* Desktop: 42/58 split */
   @media (min-width: 1024px) {
     .left-panel {
-      width: 40%;
+      width: 42%;
     }
 
     .right-panel {
-      width: 60%;
+      width: 58%;
     }
   }
 
   .description {
-    margin-top: 10px;
+    margin-top: 6px;
     color: #34495e;
     background-color: #ecf0f1;
-    padding: 20px;
-    border-radius: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
     text-align: left;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
     transition: background-color 0.2s;
+    font-size: 13px;
+    line-height: 1.45;
   }
 
   :global(.dark) .description {
@@ -278,7 +281,7 @@
 
   .long-description {
     display: none;
-    margin-top: 10px;
+    margin-top: 6px;
   }
 
   .long-description.visible {
@@ -289,10 +292,10 @@
     cursor: pointer;
     color: blue;
     text-decoration: underline;
-    /* Touch-friendly button size on mobile */
     display: inline-block;
-    padding: 8px 4px;
-    margin-top: 4px;
+    padding: 6px 4px;
+    margin-top: 2px;
+    font-size: 12px;
   }
 
   :global(.dark) .expand-button {
@@ -319,11 +322,11 @@
     width: 100%;
     display: flex;
     flex-direction: column;
-    align-items: center; /* Center items on mobile */
+    align-items: center;
     justify-content: center;
-    padding: 10px;
-    padding-bottom: 16px;
-    gap: 16px; /* Add spacing between items */
+    padding: 6px;
+    padding-bottom: 10px;
+    gap: 8px;
   }
 
   /* Tablet & Desktop: Horizontal layout for top-row */
@@ -331,17 +334,17 @@
     .top-row {
       flex-direction: row;
       max-height: 40%;
-      align-items: flex-start; /* Align both sections to the top */
+      align-items: flex-start;
     }
 
     .protein-chart-container {
       width: 65%;
-      justify-content: flex-start; /* Align content to top instead of center */
+      justify-content: flex-start;
     }
 
     .right-box {
       width: 35%;
-      align-items: stretch; /* Reset alignment for desktop */
+      align-items: stretch;
       justify-content: start;
       gap: 0;
     }
@@ -350,33 +353,33 @@
   .radar-chart-container {
     display: flex;
     justify-content: center;
-    max-height: 300px;
+    max-height: 220px;
   }
 
   /* Larger radar charts on tablet/desktop */
   @media (min-width: 768px) {
     .radar-chart-container {
-      max-height: 500px;
+      max-height: 280px;
     }
   }
 
   .salsa-container {
     display: flex;
   }
-  
+
   .specialties-section {
-    margin-top: 1rem;
+    margin-top: 0.5rem;
     padding-top: 0.5rem;
     border-top: 1px solid lightgray;
-    min-height: 280px;
+    min-height: 200px;
     display: flex;
     flex-direction: column;
   }
 
-  /* Desktop: More height for better centering */
+  /* Desktop: Slightly more height */
   @media (min-width: 1024px) {
     .specialties-section {
-      min-height: 340px;
+      min-height: 240px;
     }
   }
 

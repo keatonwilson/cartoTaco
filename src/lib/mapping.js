@@ -234,7 +234,7 @@ export const updateMarkers = (processedSites, map) => {
         closeButton: true,
         closeOnClick: true,
         maxWidth: currentDeviceType === 'mobile' ? 'calc(100vw - 20px)' :
-                  currentDeviceType === 'tablet' ? '700px' : '800px'
+                  currentDeviceType === 'tablet' ? '580px' : '650px'
       };
 
       // Mobile: top-anchored (popup extends downward) to avoid overlapping with search bar at top

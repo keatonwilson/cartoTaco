@@ -138,15 +138,16 @@
     .chart-container {
       display: flex;
       align-items: center;
-      margin: 5px;
+      margin: 3px;
       overflow: hidden;
       width: 100%;
-      max-height: 100px
+      max-height: 70px;
     }
 
     .chart-label {
-      margin-right: 10px;
+      margin-right: 8px;
       font-weight: bold;
+      font-size: 12px;
       width: 20%;
     }
 
@@ -163,10 +164,10 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      font-size: 13px;
+      gap: 6px;
+      font-size: 12px;
       color: #555;
-      margin-top: 4px;
+      margin-top: 2px;
     }
 
     :global(.dark) .salsa-stats {
@@ -187,12 +188,12 @@
     }
 
     .salsa-explanation {
-      font-size: 11px;
+      font-size: 10px;
       color: #666;
       text-align: center;
       font-style: italic;
-      margin-top: 4px;
-      padding: 0 10px;
+      margin-top: 2px;
+      padding: 0 8px;
     }
 
     :global(.dark) .salsa-explanation {

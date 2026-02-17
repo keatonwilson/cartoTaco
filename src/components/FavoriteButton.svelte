@@ -93,9 +93,9 @@
 	}
 
 	.favorite-button.size-sm {
-		padding: 6px 12px;
-		font-size: 12px;
-		gap: 6px;
+		padding: 4px 10px;
+		font-size: 11px;
+		gap: 4px;
 	}
 
 	:global(.dark) .favorite-button {
