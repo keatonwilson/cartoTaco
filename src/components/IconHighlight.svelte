@@ -47,14 +47,12 @@
   .icons {
     display: flex;
     align-items: center;
-    /* Mobile: Center icons with gap */
     justify-content: center;
-    gap: 20px;
-    margin-top: 10px;
-    margin-bottom: 16px;
+    gap: 14px;
+    margin-top: 6px;
+    margin-bottom: 8px;
   }
 
-  /* Desktop: Space between for wider layouts */
   @media (min-width: 1024px) {
     .icons {
       justify-content: space-between;
@@ -62,24 +60,22 @@
     }
   }
 
-  /* Default styling for site-type icons */
   .site-icon {
-    width: 50px;
-    height: 50px;
-    opacity: 0.3; /* Default faded */
+    width: 38px;
+    height: 38px;
+    opacity: 0.3;
   }
 
-  /* Specific styling for tortilla icons - smaller and contained */
   .tortilla-icons {
     justify-content: center;
-    gap: 12px;
+    gap: 10px;
   }
 
   .tortilla-icon {
-    width: 40px;
-    height: 40px;
-    max-width: 40px;
-    max-height: 40px;
+    width: 32px;
+    height: 32px;
+    max-width: 32px;
+    max-height: 32px;
     object-fit: contain;
     flex-shrink: 0;
     opacity: 0.3; /* Default faded */

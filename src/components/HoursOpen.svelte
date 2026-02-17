@@ -47,11 +47,12 @@
     display: flex;
     align-items: center;
     border: 1px solid lightgray;
-    border-radius: 8px;
-    padding: 10px;
+    border-radius: 6px;
+    padding: 6px 8px;
     margin: 0px;
     background: #f9fafb;
     color: #111827;
+    font-size: 12px;
   }
 
   :global(.dark) .container {
@@ -106,7 +107,7 @@
 </style>
 
 <div>
-  <h2 class="text-m font-semibold text-gray-800 dark:text-gray-100 mb-2">Hours</h2>
+  <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">Hours</h2>
   <div class="container">
     <div class="days">
       {#each convertedHours as {day, open, close, closed}, i}

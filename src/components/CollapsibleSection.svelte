@@ -67,7 +67,7 @@
 
 <style>
   .collapsible-section {
-    margin-bottom: 12px;
+    margin-bottom: 8px;
   }
 
   .collapsible-header {
@@ -75,15 +75,14 @@
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    /* Touch-optimized: 44px minimum tap target */
-    min-height: 44px;
-    padding: 12px 16px;
+    min-height: 38px;
+    padding: 8px 12px;
     background-color: #f8f9fa;
     border: 1px solid #e0e0e0;
-    border-radius: 8px;
+    border-radius: 6px;
     cursor: pointer;
     transition: background-color 0.2s, box-shadow 0.2s;
-    font-size: 16px;
+    font-size: 13px;
     font-weight: 600;
     color: #333;
     text-align: left;
@@ -134,7 +133,7 @@
   }
 
   .collapsible-content {
-    padding: 12px 0;
+    padding: 8px 0;
     overflow: hidden;
   }
 </style>

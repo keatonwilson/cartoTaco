@@ -79,8 +79,8 @@
             },
             detail: {
               formatter: "{value}",
-              fontSize: 25, // Larger font size for the value
-              offsetCenter: [0, "60%"], // Position the value inside the gauge
+              fontSize: 20,
+              offsetCenter: [0, "60%"],
             },
             data: [{ value: spiceValue }],
           },
@@ -127,17 +127,17 @@
 
   .gauge-container {
     width: 100%;
-    height: 150px;
-    max-width: 150px;
-    max-height: 150px;
+    height: 120px;
+    max-width: 120px;
+    max-height: 120px;
   }
 
   .spice-description {
-    font-size: 16px;
+    font-size: 13px;
     font-weight: 700;
     color: #333;
-    margin-top: -10px;
-    margin-bottom: 4px;
+    margin-top: -8px;
+    margin-bottom: 2px;
   }
 
   :global(.dark) .spice-description {
@@ -145,11 +145,11 @@
   }
 
   .spice-explanation {
-    font-size: 11px;
+    font-size: 10px;
     color: #666;
     text-align: center;
     font-style: italic;
-    max-width: 140px;
+    max-width: 130px;
     line-height: 1.3;
   }
 

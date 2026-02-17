@@ -79,9 +79,9 @@
     overflow-x: auto;
     scroll-snap-type: x mandatory;
     scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch; /* Smooth momentum scrolling on iOS */
-    gap: 12px;
-    padding: 8px 4px;
+    -webkit-overflow-scrolling: touch;
+    gap: 8px;
+    padding: 4px 4px;
     /* Hide scrollbar but keep functionality */
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE/Edge */
@@ -110,14 +110,14 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 8px;
-    margin-top: 12px;
-    padding: 8px;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 4px;
   }
 
   .dot {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background-color: #d1d5db;
     border: none;
@@ -143,8 +143,8 @@
 
   .dot.active {
     background-color: #4CAF50;
-    width: 24px;
-    border-radius: 4px;
+    width: 18px;
+    border-radius: 3px;
   }
 
   .dot:hover {

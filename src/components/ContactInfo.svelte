@@ -23,7 +23,7 @@
 
 {#if hasContactInfo}
   <div class="contact-container">
-    <h2 class="text-m font-semibold text-gray-800 dark:text-gray-100 mb-2">Contact & Links</h2>
+    <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">Contact & Links</h2>
 
     <div class="contact-items">
       <!-- Address -->
@@ -98,10 +98,10 @@
 
 <style>
   .contact-container {
-    margin-top: 12px;
-    padding: 12px;
+    margin-top: 8px;
+    padding: 8px 10px;
     background-color: #f9f9f9;
-    border-radius: 8px;
+    border-radius: 6px;
   }
 
   :global(.dark) .contact-container {
@@ -111,14 +111,14 @@
   .contact-items {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 5px;
   }
 
   .contact-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 13px;
+    gap: 6px;
+    font-size: 12px;
     color: #555;
   }
 
@@ -158,11 +158,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Icon-only compact buttons */
-    padding: 8px;
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
+    padding: 6px;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
     text-decoration: none;
     transition: all 0.2s;
     color: white;
