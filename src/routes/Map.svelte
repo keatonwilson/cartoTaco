@@ -13,6 +13,7 @@
 	} from '../lib/stores';
 	import 'mapbox-gl/dist/mapbox-gl.css';
 	import { updateMarkers, resetListeners } from '../lib/mapping.js';
+	import { mapInstance } from '../lib/mapStore.js';
 	import FilterBar from '../components/FilterBar.svelte';
 	import { effectiveTheme, getMapboxStyle } from '$lib/theme.js';
 
@@ -34,6 +35,9 @@
 			center: [-110.97, 32.16],
 			zoom: 9
 		});
+
+		// Expose map instance to other components (e.g., NewSpotsBadge)
+		mapInstance.set(map);
 
 		// Add zoom and rotation controls to the map
 		const navControl = new mapboxgl.NavigationControl();

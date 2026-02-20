@@ -1,4 +1,5 @@
 <script>
+  import { onMount } from 'svelte';
   import RadarChart from "./RadarChart.svelte";
   import HoursOpen from "./HoursOpen.svelte";
   import SpiceGauge from "./SpiceGauge.svelte";
@@ -9,7 +10,7 @@
   import ContactInfo from "./ContactInfo.svelte";
   import CollapsibleSection from "./CollapsibleSection.svelte";
   import FavoriteButton from "./FavoriteButton.svelte";
-  import { selectedSite, summaryStats, specialtiesBySite } from "$lib/stores";
+  import { selectedSite, summaryStats, specialtiesBySite, fetchSiteSpecialties, siteSpecLoading } from "$lib/stores";
   import { isMobile } from "$lib/deviceDetection";
 
   // Local state
@@ -21,6 +22,14 @@
   function toggleLongDescription() {
     showLongDescription = !showLongDescription;
   }
+
+  // Lazy load specialties when selected site changes
+  $: if ($selectedSite && $selectedSite.est_id) {
+    fetchSiteSpecialties($selectedSite.est_id);
+  }
+
+  // Determine if specialties are loading for current site
+  $: isLoadingSpecialties = $selectedSite && $siteSpecLoading.has($selectedSite.est_id);
 </script>
 
 {#if !$selectedSite}
@@ -138,7 +147,12 @@
       <div class="specialties-section">
         {#if $isMobile}
           <CollapsibleSection title="Specialties" defaultOpen={true}>
-            {#if $specialtiesBySite && $specialtiesBySite.has($selectedSite.est_id)}
+            {#if isLoadingSpecialties}
+              <div class="loading-specialties">
+                <div class="spinner"></div>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Loading specialties...</p>
+              </div>
+            {:else if $specialtiesBySite && $specialtiesBySite.has($selectedSite.est_id)}
               {@const siteSpecs = $specialtiesBySite.get($selectedSite.est_id)}
               {@const allSpecialties = [
                 ...siteSpecs.itemSpecs.map(s => ({ ...s, type: 'Item' })),
@@ -153,7 +167,12 @@
         {:else}
           <!-- Desktop: Also use carousel -->
           <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">Specialties</h2>
-          {#if $specialtiesBySite && $specialtiesBySite.has($selectedSite.est_id)}
+          {#if isLoadingSpecialties}
+            <div class="loading-specialties">
+              <div class="spinner"></div>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Loading specialties...</p>
+            </div>
+          {:else if $specialtiesBySite && $specialtiesBySite.has($selectedSite.est_id)}
             {@const siteSpecs = $specialtiesBySite.get($selectedSite.est_id)}
             {@const allSpecialties = [
               ...siteSpecs.itemSpecs.map(s => ({ ...s, type: 'Item' })),
@@ -394,5 +413,30 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+  }
+
+  /* Loading state for specialties */
+  .loading-specialties {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+    gap: 12px;
+  }
+
+  .spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid rgba(254, 121, 93, 0.2);
+    border-top-color: #FE795D;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 </style>

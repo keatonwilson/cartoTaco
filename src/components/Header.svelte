@@ -4,6 +4,7 @@
 	import { browser } from '$app/environment';
 	import { BarsOutline, CloseOutline, UserCircleOutline } from 'flowbite-svelte-icons';
 	import ThemeToggle from './ThemeToggle.svelte';
+	import NewSpotsBadge from './NewSpotsBadge.svelte';
 
 	let mobileMenuOpen = false;
 
@@ -41,6 +42,7 @@
     <!-- Desktop Navigation -->
     <nav class="desktop-nav">
 			<ThemeToggle />
+			<NewSpotsBadge />
       {#if $isAuthenticated}
         <div class="user-info">
           {#if browser}
@@ -119,6 +121,7 @@
     <div class="mobile-menu">
 			<div class="mobile-theme-toggle">
 				<ThemeToggle />
+				<NewSpotsBadge />
 			</div>
       {#if $isAuthenticated}
         <div class="mobile-user-info">
@@ -424,6 +427,8 @@
 	.mobile-theme-toggle {
 		display: flex;
 		justify-content: center;
+		align-items: center;
+		gap: 1rem;
 		margin-bottom: 0.5rem;
 	}
 </style>
