@@ -117,32 +117,33 @@ export const processedTacoData = derived(
           type: site.site.type,
           longitude: site.site.lon_1,
           latitude: site.site.lat_1,
-          
+          createdAt: site.site.created_at, // Track creation date for "new spots" feature
+
           // Descriptions
           shortDescription: site.descriptions.short_descrip,
           longDescription: site.descriptions.long_descrip,
-          
+
           // Hours (pre-processed)
           startHours,
           endHours,
-          
+
           // Menu data (pre-processed)
           menuItems: menuPercs,
           topFiveMenuItems,
           topFiveMenuValues,
-          
+
           // Protein data (pre-processed)
           menuProtein: proteinPercs,
           topFiveProteinItems,
           topFiveProteinValues,
-          
+
           // Salsa and spice data
           salsaCount: site.salsa.total_num,
           heatOverall: site.salsa.heat_overall,
-          
+
           // Other details
           tortillaType: site.menu.flour_corn,
-          
+
           // Original data (for complex processing that can't be pre-computed)
           rawData: site
         };
@@ -199,6 +200,32 @@ export const specialtiesBySite = derived(
     }
 
     return specialtyMap;
+  }
+);
+
+// Derived store for recently added sites (last 30 days)
+export const recentlyAddedSites = derived(
+  processedTacoData,
+  ($processedTacoData) => {
+    if (!$processedTacoData || $processedTacoData.length === 0) {
+      return [];
+    }
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    return $processedTacoData
+      .filter(site => {
+        if (!site.createdAt) return false;
+        const createdDate = new Date(site.createdAt);
+        return createdDate >= thirtyDaysAgo;
+      })
+      .sort((a, b) => {
+        // Sort by newest first
+        const dateA = new Date(a.createdAt);
+        const dateB = new Date(b.createdAt);
+        return dateB - dateA;
+      });
   }
 );
 
@@ -456,11 +483,92 @@ export async function fetchSpecialtyData() {
   }
 }
 
+// Cache for specialty data to avoid re-fetching
+const siteSpecialtyCache = new Map();
+
+// Store for tracking per-site loading state
+export const siteSpecLoading = writable(new Map());
+
+// Fetch specialty data for a single site (lazy loaded when popup opens)
+export async function fetchSiteSpecialties(estId) {
+  // Check if already cached
+  if (siteSpecialtyCache.has(estId)) {
+    return;
+  }
+
+  // Guard against SSR or missing client
+  if (!supabaseBrowser) {
+    console.warn("Supabase client not available (SSR mode)");
+    return;
+  }
+
+  // Mark as loading
+  siteSpecLoading.update(map => {
+    const newMap = new Map(map);
+    newMap.set(estId, true);
+    return newMap;
+  });
+
+  try {
+    // Fetch all three specialty types in parallel
+    const [itemSpecRes, proteinSpecRes, salsaSpecRes] = await Promise.all([
+      supabaseBrowser.from("item_spec").select().eq("est_id", estId),
+      supabaseBrowser.from("protein_spec").select().eq("est_id", estId),
+      supabaseBrowser.from("salsa_spec").select().eq("est_id", estId)
+    ]);
+
+    if (itemSpecRes.error || proteinSpecRes.error || salsaSpecRes.error) {
+      console.error("Error fetching site specialties:", {
+        itemSpec: itemSpecRes.error,
+        proteinSpec: proteinSpecRes.error,
+        salsaSpec: salsaSpecRes.error
+      });
+      siteSpecLoading.update(map => {
+        const newMap = new Map(map);
+        newMap.delete(estId);
+        return newMap;
+      });
+      return;
+    }
+
+    // Combine the data
+    const specialty = {
+      est_id: estId,
+      itemSpec: itemSpecRes.data?.[0] || null,
+      proteinSpec: proteinSpecRes.data?.[0] || null,
+      salsaSpec: salsaSpecRes.data?.[0] || null
+    };
+
+    // Cache the result
+    siteSpecialtyCache.set(estId, specialty);
+
+    // Update the specialtiesBySite store with the new data
+    specStore.update(store => {
+      const newData = [...store.data, specialty];
+      return { ...store, data: newData };
+    });
+
+    // Mark as done loading
+    siteSpecLoading.update(map => {
+      const newMap = new Map(map);
+      newMap.delete(estId);
+      return newMap;
+    });
+  } catch (error) {
+    console.error("Error in fetchSiteSpecialties:", error);
+    siteSpecLoading.update(map => {
+      const newMap = new Map(map);
+      newMap.delete(estId);
+      return newMap;
+    });
+  }
+}
+
 // Initialize data fetching
 // Note: These are now called from +layout.svelte onMount to prevent
 // SSR build errors when supabaseBrowser is null
 export function initializeStores() {
   fetchSiteData();
   fetchSummaryData();
-  fetchSpecialtyData();
+  // Specialty data is now lazy-loaded per site when the popup opens
 }

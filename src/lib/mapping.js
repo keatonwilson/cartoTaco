@@ -356,3 +356,54 @@ function adjustPopupPosition(popup, map) {
     console.error('Error adjusting popup position:', error);
   }
 }
+
+// Fly to a site and open its popup
+export function flyToSite(map, site) {
+  if (!map || !site) return;
+
+  // Fly to the location
+  map.flyTo({
+    center: [site.longitude, site.latitude],
+    zoom: 15,
+    duration: 1000
+  });
+
+  // Open popup when map finishes moving
+  map.once('moveend', () => {
+    // Set the selected site in the store
+    selectedSite.set(site);
+
+    // Get current device type for responsive popup options
+    const currentDeviceType = get(deviceType);
+
+    // Device-specific popup options
+    const popupOptions = {
+      closeButton: true,
+      closeOnClick: true,
+      maxWidth: currentDeviceType === 'mobile' ? 'calc(100vw - 20px)' :
+                currentDeviceType === 'tablet' ? '580px' : '650px'
+    };
+
+    // Mobile: top-anchored to avoid overlapping with header
+    if (currentDeviceType === 'mobile') {
+      popupOptions.anchor = 'top';
+      popupOptions.offset = [0, 10];
+    }
+
+    // Close existing popup if any
+    if (currentPopup) {
+      currentPopup.remove();
+    }
+
+    // Create new popup
+    currentPopup = new mapboxgl.Popup(popupOptions)
+      .setLngLat([site.longitude, site.latitude])
+      .setDOMContent(createPopupContent(site.est_id))
+      .addTo(map);
+
+    // Adjust popup position
+    currentPopup.on('open', () => {
+      adjustPopupPosition(currentPopup, map);
+    });
+  });
+}
