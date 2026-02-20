@@ -45,6 +45,7 @@ Migrations must be run in this order:
 3. `migrations/003_create_profiles_table.sql` - Creates user profiles table with RLS policies (requires Supabase Auth)
 4. `migrations/004_create_location_submissions.sql` - Creates location_submissions table for user submissions with RLS policies
 5. `migrations/005_create_favorites_table.sql` - Creates user_favorites table with RLS policies
+6. `migrations/006_enable_rls_public_tables.sql` - Enables RLS on public data tables (sites, descriptions, menu, hours, salsa, protein, summaries, specs) with read-only access policies
 
 ## State Management Architecture
 
