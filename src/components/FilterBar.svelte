@@ -5,6 +5,7 @@
   import { browser } from '$app/environment';
 
   let expanded = false;
+  let containerEl;
 
   // Count of filtered results
   $: resultCount = $filteredTacoData.length;
@@ -12,6 +13,18 @@
 
   function toggleExpanded() {
     expanded = !expanded;
+  }
+
+  function handleWindowClick(event) {
+    if (expanded && containerEl && !containerEl.contains(event.target)) {
+      expanded = false;
+    }
+  }
+
+  function handleKeydown(event) {
+    if (event.key === 'Escape' && expanded) {
+      expanded = false;
+    }
   }
 
   function clearFilters() {
@@ -46,7 +59,9 @@
     $filterConfig.showFavoritesOnly;
 </script>
 
-<div class="filter-container">
+<svelte:window on:click={handleWindowClick} on:keydown={handleKeydown} />
+
+<div class="filter-container" bind:this={containerEl}>
   <!-- Compact Search Bar (Always Visible) -->
   <div class="filter-header">
     <div class="search-input-wrapper">

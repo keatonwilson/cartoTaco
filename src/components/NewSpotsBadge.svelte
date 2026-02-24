@@ -7,6 +7,7 @@
   import { isMobile } from '$lib/deviceDetection';
 
   let isOpen = false;
+  let containerEl;
 
   function toggleDropdown() {
     isOpen = !isOpen;
@@ -14,6 +15,18 @@
 
   function closeDropdown() {
     isOpen = false;
+  }
+
+  function handleWindowClick(event) {
+    if (isOpen && !$isMobile && containerEl && !containerEl.contains(event.target)) {
+      closeDropdown();
+    }
+  }
+
+  function handleKeydown(event) {
+    if (event.key === 'Escape' && isOpen) {
+      closeDropdown();
+    }
   }
 
   function handleSpotClick(site) {
@@ -46,7 +59,9 @@
   }
 </script>
 
-<div class="new-spots-container">
+<svelte:window on:click={handleWindowClick} on:keydown={handleKeydown} />
+
+<div class="new-spots-container" bind:this={containerEl}>
   <button
     class="bell-button"
     on:click={toggleDropdown}
@@ -211,6 +226,7 @@
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
     z-index: 999;
+    cursor: pointer; /* Required for iOS Safari to fire click events on non-interactive elements */
   }
 
   .mobile-panel {
