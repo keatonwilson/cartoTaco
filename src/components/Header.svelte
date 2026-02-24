@@ -42,7 +42,7 @@
     <!-- Desktop Navigation -->
     <nav class="desktop-nav">
 			<ThemeToggle />
-			<NewSpotsBadge />
+			<NewSpotsBadge on:spotSelected={closeMobileMenu} />
       {#if $isAuthenticated}
         <div class="user-info">
           {#if browser}
@@ -121,7 +121,7 @@
     <div class="mobile-menu">
 			<div class="mobile-theme-toggle">
 				<ThemeToggle />
-				<NewSpotsBadge />
+				<NewSpotsBadge on:spotSelected={closeMobileMenu} />
 			</div>
       {#if $isAuthenticated}
         <div class="mobile-user-info">

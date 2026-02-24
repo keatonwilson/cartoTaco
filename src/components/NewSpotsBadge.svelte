@@ -1,10 +1,13 @@
 <script>
+  import { createEventDispatcher } from 'svelte';
   import { BellOutline } from 'flowbite-svelte-icons';
   import { recentlyAddedSites } from '$lib/stores';
   import { unseenNewSpotsCount, markNewSpotsAsSeen } from '$lib/newSpotsStore';
   import { mapInstance } from '$lib/mapStore';
   import { flyToSite } from '$lib/mapping';
   import { isMobile } from '$lib/deviceDetection';
+
+  const dispatch = createEventDispatcher();
 
   let isOpen = false;
   let containerEl;
@@ -34,6 +37,7 @@
       flyToSite($mapInstance, site);
     }
     closeDropdown();
+    dispatch('spotSelected');
   }
 
   function handleMarkAsSeen() {
