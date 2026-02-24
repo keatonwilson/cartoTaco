@@ -42,8 +42,9 @@
       {#each specialties as specialty, index}
         <div class="carousel-item">
           <SpecCard
-            itemDescrip={specialty.description || ''}
-            itemName={specialty.name || ''}
+            itemName={specialty.item_name || specialty.protein_name || specialty.salsa_name || specialty.name || ''}
+            shortDescrip={specialty.short_descrip || ''}
+            longDescrip={specialty.long_descrip || ''}
             cardType={specialty.type || 'Item'}
           />
         </div>

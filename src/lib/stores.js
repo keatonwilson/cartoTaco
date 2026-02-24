@@ -190,9 +190,9 @@ export const specialtiesBySite = derived(
         if (!spec || !spec.est_id) return;
 
         const siteSpecialties = {
-          itemSpecs: spec.itemSpec ? [spec.itemSpec] : [],
-          proteinSpecs: spec.proteinSpec ? [spec.proteinSpec] : [],
-          salsaSpecs: spec.salsaSpec ? [spec.salsaSpec] : []
+          itemSpecs: spec.itemSpecs || [],
+          proteinSpecs: spec.proteinSpecs || [],
+          salsaSpecs: spec.salsaSpecs || []
         };
 
         specialtyMap.set(spec.est_id, siteSpecialties);
@@ -531,12 +531,12 @@ export async function fetchSiteSpecialties(estId) {
       return;
     }
 
-    // Combine the data
+    // Store all rows (tables are normalized: multiple rows per est_id)
     const specialty = {
       est_id: estId,
-      itemSpec: itemSpecRes.data?.[0] || null,
-      proteinSpec: proteinSpecRes.data?.[0] || null,
-      salsaSpec: salsaSpecRes.data?.[0] || null
+      itemSpecs: itemSpecRes.data || [],
+      proteinSpecs: proteinSpecRes.data || [],
+      salsaSpecs: salsaSpecRes.data || []
     };
 
     // Cache the result
