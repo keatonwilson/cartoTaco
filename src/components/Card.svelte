@@ -10,7 +10,7 @@
   import ContactInfo from "./ContactInfo.svelte";
   import CollapsibleSection from "./CollapsibleSection.svelte";
   import FavoriteButton from "./FavoriteButton.svelte";
-  import { selectedSite, summaryStats, specialtiesBySite, fetchSiteSpecialties, siteSpecLoading } from "$lib/stores";
+  import { selectedSite, summaryStats, specialtiesBySite, fetchSiteSpecialties, siteSpecLoading, siteSpecErrors } from "$lib/stores";
   import { isMobile } from "$lib/deviceDetection";
 
   // Local state
@@ -30,6 +30,9 @@
 
   // Determine if specialties are loading for current site
   $: isLoadingSpecialties = $selectedSite && $siteSpecLoading.has($selectedSite.est_id);
+
+  // Determine if there was an error fetching specialties for current site
+  $: specFetchError = $selectedSite && $siteSpecErrors.get($selectedSite.est_id);
 </script>
 
 {#if !$selectedSite}
@@ -152,6 +155,8 @@
                 <div class="spinner"></div>
                 <p class="text-sm text-gray-500 dark:text-gray-400">Loading specialties...</p>
               </div>
+            {:else if specFetchError}
+              <p class="text-sm text-red-500 dark:text-red-400 italic">Error loading specialties: {specFetchError}</p>
             {:else if $specialtiesBySite && $specialtiesBySite.has($selectedSite.est_id)}
               {@const siteSpecs = $specialtiesBySite.get($selectedSite.est_id)}
               {@const allSpecialties = [
@@ -172,6 +177,8 @@
               <div class="spinner"></div>
               <p class="text-sm text-gray-500 dark:text-gray-400">Loading specialties...</p>
             </div>
+          {:else if specFetchError}
+            <p class="text-sm text-red-500 dark:text-red-400 italic">Error loading specialties: {specFetchError}</p>
           {:else if $specialtiesBySite && $specialtiesBySite.has($selectedSite.est_id)}
             {@const siteSpecs = $specialtiesBySite.get($selectedSite.est_id)}
             {@const allSpecialties = [

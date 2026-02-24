@@ -489,6 +489,9 @@ const siteSpecialtyCache = new Map();
 // Store for tracking per-site loading state
 export const siteSpecLoading = writable(new Map());
 
+// Store for tracking per-site fetch errors
+export const siteSpecErrors = writable(new Map());
+
 // Fetch specialty data for a single site (lazy loaded when popup opens)
 export async function fetchSiteSpecialties(estId) {
   // Check if already cached
@@ -501,6 +504,13 @@ export async function fetchSiteSpecialties(estId) {
     console.warn("Supabase client not available (SSR mode)");
     return;
   }
+
+  // Clear any previous error for this site
+  siteSpecErrors.update(map => {
+    const newMap = new Map(map);
+    newMap.delete(estId);
+    return newMap;
+  });
 
   // Mark as loading
   siteSpecLoading.update(map => {
@@ -518,10 +528,21 @@ export async function fetchSiteSpecialties(estId) {
     ]);
 
     if (itemSpecRes.error || proteinSpecRes.error || salsaSpecRes.error) {
-      console.error("Error fetching site specialties:", {
+      const errors = {
         itemSpec: itemSpecRes.error,
         proteinSpec: proteinSpecRes.error,
         salsaSpec: salsaSpecRes.error
+      };
+      console.error("Error fetching site specialties:", errors);
+      const errorMsg = [
+        itemSpecRes.error && `item_spec: ${itemSpecRes.error.message}`,
+        proteinSpecRes.error && `protein_spec: ${proteinSpecRes.error.message}`,
+        salsaSpecRes.error && `salsa_spec: ${salsaSpecRes.error.message}`
+      ].filter(Boolean).join('; ');
+      siteSpecErrors.update(map => {
+        const newMap = new Map(map);
+        newMap.set(estId, errorMsg);
+        return newMap;
       });
       siteSpecLoading.update(map => {
         const newMap = new Map(map);
@@ -556,6 +577,11 @@ export async function fetchSiteSpecialties(estId) {
     });
   } catch (error) {
     console.error("Error in fetchSiteSpecialties:", error);
+    siteSpecErrors.update(map => {
+      const newMap = new Map(map);
+      newMap.set(estId, error.message || 'Unknown error');
+      return newMap;
+    });
     siteSpecLoading.update(map => {
       const newMap = new Map(map);
       newMap.delete(estId);
