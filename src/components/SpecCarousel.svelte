@@ -43,7 +43,7 @@
         <div class="carousel-item">
           <SpecCard
             itemName={specialty.item_name || specialty.protein_name || specialty.salsa_name || specialty.name || ''}
-            shortDescrip={specialty.short_descrip || ''}
+            shortDescrip={specialty.short_descrip || specialty.description || ''}
             longDescrip={specialty.long_descrip || ''}
             cardType={specialty.type || 'Item'}
           />
