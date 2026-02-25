@@ -4,7 +4,6 @@
 	import {
 		tacoStore,
 		summaryStore,
-		specStore,
 		isLoading,
 		hasError,
 		processedTacoData,
@@ -127,10 +126,9 @@
 
 	// Function to retry data loading on error
 	async function retryLoading() {
-		const { fetchSiteData, fetchSummaryData, fetchSpecialtyData } = await import('../lib/stores');
+		const { fetchSiteData, fetchSummaryData } = await import('../lib/stores');
 		if ($tacoStore.error) fetchSiteData();
 		if ($summaryStore.error) fetchSummaryData();
-		if ($specStore.error) fetchSpecialtyData();
 	}
 </script>
 

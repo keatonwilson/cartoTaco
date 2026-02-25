@@ -10,7 +10,7 @@
   import ContactInfo from "./ContactInfo.svelte";
   import CollapsibleSection from "./CollapsibleSection.svelte";
   import FavoriteButton from "./FavoriteButton.svelte";
-  import { selectedSite, summaryStats, specialtiesBySite, fetchSiteSpecialties, siteSpecLoading, siteSpecErrors } from "$lib/stores";
+  import { selectedSite, summaryStats } from "$lib/stores";
   import { isMobile } from "$lib/deviceDetection";
 
   // Local state
@@ -22,17 +22,6 @@
   function toggleLongDescription() {
     showLongDescription = !showLongDescription;
   }
-
-  // Lazy load specialties when selected site changes
-  $: if ($selectedSite && $selectedSite.est_id) {
-    fetchSiteSpecialties($selectedSite.est_id);
-  }
-
-  // Determine if specialties are loading for current site
-  $: isLoadingSpecialties = $selectedSite && $siteSpecLoading.has($selectedSite.est_id);
-
-  // Determine if there was an error fetching specialties for current site
-  $: specFetchError = $selectedSite && $siteSpecErrors.get($selectedSite.est_id);
 </script>
 
 {#if !$selectedSite}
@@ -150,21 +139,8 @@
       <div class="specialties-section">
         {#if $isMobile}
           <CollapsibleSection title="Specialties" defaultOpen={true}>
-            {#if isLoadingSpecialties}
-              <div class="loading-specialties">
-                <div class="spinner"></div>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Loading specialties...</p>
-              </div>
-            {:else if specFetchError}
-              <p class="text-sm text-red-500 dark:text-red-400 italic">Error loading specialties: {specFetchError}</p>
-            {:else if $specialtiesBySite && $specialtiesBySite.has($selectedSite.est_id)}
-              {@const siteSpecs = $specialtiesBySite.get($selectedSite.est_id)}
-              {@const allSpecialties = [
-                ...siteSpecs.itemSpecs.map(s => ({ ...s, type: 'Item' })),
-                ...siteSpecs.proteinSpecs.map(s => ({ ...s, type: 'Protein' })),
-                ...siteSpecs.salsaSpecs.map(s => ({ ...s, type: 'Salsa' }))
-              ]}
-              <SpecCarousel specialties={allSpecialties} />
+            {#if $selectedSite.specialties && $selectedSite.specialties.length > 0}
+              <SpecCarousel specialties={$selectedSite.specialties} />
             {:else}
               <p class="text-sm text-gray-500 dark:text-gray-400 italic">No specialty information available for this location.</p>
             {/if}
@@ -172,21 +148,8 @@
         {:else}
           <!-- Desktop: Also use carousel -->
           <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">Specialties</h2>
-          {#if isLoadingSpecialties}
-            <div class="loading-specialties">
-              <div class="spinner"></div>
-              <p class="text-sm text-gray-500 dark:text-gray-400">Loading specialties...</p>
-            </div>
-          {:else if specFetchError}
-            <p class="text-sm text-red-500 dark:text-red-400 italic">Error loading specialties: {specFetchError}</p>
-          {:else if $specialtiesBySite && $specialtiesBySite.has($selectedSite.est_id)}
-            {@const siteSpecs = $specialtiesBySite.get($selectedSite.est_id)}
-            {@const allSpecialties = [
-              ...siteSpecs.itemSpecs.map(s => ({ ...s, type: 'Item' })),
-              ...siteSpecs.proteinSpecs.map(s => ({ ...s, type: 'Protein' })),
-              ...siteSpecs.salsaSpecs.map(s => ({ ...s, type: 'Salsa' }))
-            ]}
-            <SpecCarousel specialties={allSpecialties} />
+          {#if $selectedSite.specialties && $selectedSite.specialties.length > 0}
+            <SpecCarousel specialties={$selectedSite.specialties} />
           {:else}
             <p class="text-sm text-gray-500 italic">No specialty information available for this location.</p>
           {/if}
@@ -422,28 +385,4 @@
     justify-content: center;
   }
 
-  /* Loading state for specialties */
-  .loading-specialties {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 120px;
-    gap: 12px;
-  }
-
-  .spinner {
-    width: 24px;
-    height: 24px;
-    border: 3px solid rgba(254, 121, 93, 0.2);
-    border-top-color: #FE795D;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
 </style>
