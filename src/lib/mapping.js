@@ -3,6 +3,7 @@ import mapboxgl from 'mapbox-gl';
 import { selectedSite } from './stores';
 import { deviceType } from './deviceDetection';
 import { get } from 'svelte/store';
+import { trailModeActive, trailStops, addStop, removeStop } from './trailStore';
 
 // Keep track of active popup
 let currentPopup = null;
@@ -27,6 +28,7 @@ export const resetListeners = (map) => {
   handlers = {};
   listenersAttached = false;
   hoveredFeatureId = null;
+  clearTrailLayers(map);
 };
 
 // Convert processed sites to GeoJSON format
@@ -210,13 +212,20 @@ export const updateMarkers = (processedSites, map) => {
     };
     map.on('click', 'clusters', handlers['click::clusters']);
 
-    // Click handler for unclustered points - show popup
+    // Click handler for unclustered points - show popup or add to trail
     handlers['click::unclustered-point'] = (e) => {
       const coordinates = e.features[0].geometry.coordinates.slice();
       const properties = e.features[0].properties;
 
       // Parse the site data back from JSON
       const siteData = JSON.parse(properties.siteData);
+
+      // Trail mode: add/remove stop instead of opening popup
+      if (get(trailModeActive)) {
+        const alreadyAdded = get(trailStops).find((s) => s.est_id === siteData.est_id);
+        alreadyAdded ? removeStop(siteData.est_id) : addStop(siteData);
+        return;
+      }
 
       // Close any existing popup
       if (currentPopup) {
@@ -406,4 +415,126 @@ export function flyToSite(map, site) {
       adjustPopupPosition(currentPopup, map);
     });
   });
+}
+
+/**
+ * Create or update the trail stop markers (numbered orange circles) on the map.
+ * @param {object} map - Mapbox GL map instance
+ * @param {object[]} stops - Ordered array of processedSite objects
+ */
+export function updateTrailLayers(map, stops) {
+  if (!map || !map.loaded()) return;
+
+  const geojson = {
+    type: 'FeatureCollection',
+    features: (stops || []).map((stop, index) => ({
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: [stop.longitude, stop.latitude]
+      },
+      properties: {
+        est_id: stop.est_id,
+        name: stop.name,
+        stop_number: String(index + 1)
+      }
+    }))
+  };
+
+  if (map.getSource('trail-stops')) {
+    map.getSource('trail-stops').setData(geojson);
+    return;
+  }
+
+  map.addSource('trail-stops', { type: 'geojson', data: geojson });
+
+  map.addLayer({
+    id: 'trail-stop-circles',
+    type: 'circle',
+    source: 'trail-stops',
+    paint: {
+      'circle-color': '#FE795D',
+      'circle-radius': 14,
+      'circle-stroke-width': 2,
+      'circle-stroke-color': '#fff'
+    }
+  });
+
+  map.addLayer({
+    id: 'trail-stop-numbers',
+    type: 'symbol',
+    source: 'trail-stops',
+    layout: {
+      'text-field': ['get', 'stop_number'],
+      'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'],
+      'text-size': 12
+    },
+    paint: {
+      'text-color': '#ffffff'
+    }
+  });
+}
+
+/**
+ * Create or update the trail route line on the map.
+ * Inserted below trail-stop-circles so numbered markers render on top.
+ * @param {object} map - Mapbox GL map instance
+ * @param {object|null} routeGeojson - GeoJSON LineString geometry or null
+ */
+export function updateTrailRoute(map, routeGeojson) {
+  if (!map || !map.loaded()) return;
+
+  const geojson = {
+    type: 'FeatureCollection',
+    features: routeGeojson
+      ? [{ type: 'Feature', geometry: routeGeojson }]
+      : []
+  };
+
+  if (map.getSource('trail-route')) {
+    map.getSource('trail-route').setData(geojson);
+    return;
+  }
+
+  map.addSource('trail-route', { type: 'geojson', data: geojson });
+
+  // Insert below trail-stop-circles so numbers render on top
+  const beforeId = map.getLayer('trail-stop-circles') ? 'trail-stop-circles' : undefined;
+
+  map.addLayer(
+    {
+      id: 'trail-route-line',
+      type: 'line',
+      source: 'trail-route',
+      layout: {
+        'line-join': 'round',
+        'line-cap': 'round'
+      },
+      paint: {
+        'line-color': '#FE795D',
+        'line-width': 4,
+        'line-opacity': 0.8,
+        'line-dasharray': [2, 2]
+      }
+    },
+    beforeId
+  );
+}
+
+/**
+ * Remove all trail layers and sources from the map.
+ * @param {object} map - Mapbox GL map instance
+ */
+export function clearTrailLayers(map) {
+  if (!map) return;
+  try {
+    ['trail-stop-numbers', 'trail-stop-circles', 'trail-route-line'].forEach((layerId) => {
+      if (map.getLayer(layerId)) map.removeLayer(layerId);
+    });
+    ['trail-stops', 'trail-route'].forEach((sourceId) => {
+      if (map.getSource(sourceId)) map.removeSource(sourceId);
+    });
+  } catch {
+    // Map may be in the middle of a style change — ignore
+  }
 }
