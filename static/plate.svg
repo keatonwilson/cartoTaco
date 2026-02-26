@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="40px" height="40px" viewBox="0 0 40 40" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+
+    <!-- Plate shadow/rim -->
+    <ellipse fill="#D7CCC8" cx="20" cy="21" rx="15" ry="3.5"></ellipse>
+
+    <!-- Plate body -->
+    <ellipse fill="#FAFAFA" cx="20" cy="19.5" rx="15" ry="3.5"></ellipse>
+
+    <!-- Plate dish (the bowl shape) -->
+    <path d="M5,19.5 C5,27.5 11.5,33 20,33 C28.5,33 35,27.5 35,19.5 Z" fill="#FFFFFF"></path>
+    <path d="M5,19.5 C5,27.5 11.5,33 20,33 C28.5,33 35,27.5 35,19.5 Z" fill="#F5F5F5"></path>
+
+    <!-- Plate inner rim ring -->
+    <ellipse stroke="#E0E0E0" stroke-width="1" cx="20" cy="19.5" rx="11" ry="2.5" fill="none"></ellipse>
+
+    <!-- Food item: a small herb/garnish sprig in center -->
+    <!-- Green leaf left -->
+    <path d="M16,17 C15,15 13,14 13,14 C13,14 13,16 15,17.5 Z" fill="#66BB6A"></path>
+    <!-- Green leaf right -->
+    <path d="M24,17 C25,15 27,14 27,14 C27,14 27,16 25,17.5 Z" fill="#66BB6A"></path>
+    <!-- Stem -->
+    <line x1="20" y1="19" x2="20" y2="14" stroke="#5D4037" stroke-width="1" stroke-linecap="round"></line>
+    <!-- Berries / dots -->
+    <circle fill="#EF5350" cx="17" cy="14.5" r="1.2"></circle>
+    <circle fill="#EF5350" cx="23" cy="14.5" r="1.2"></circle>
+    <circle fill="#EF5350" cx="20" cy="13" r="1.4"></circle>
+
+    <!-- Plate rim highlight -->
+    <path d="M7,18 C9,16.5 14,16 20,16 C26,16 31,16.5 33,18" stroke="#FFFFFF" stroke-width="1.2" stroke-linecap="round" fill="none" opacity="0.8"></path>
+
+    <!-- Fork (left) -->
+    <g transform="translate(2, 9)">
+      <!-- Handle -->
+      <rect fill="#BDBDBD" x="3" y="8" width="2" height="10" rx="1"></rect>
+      <!-- Tines -->
+      <rect fill="#BDBDBD" x="3" y="2" width="0.6" height="5" rx="0.3"></rect>
+      <rect fill="#BDBDBD" x="4.1" y="2" width="0.6" height="5" rx="0.3"></rect>
+      <rect fill="#BDBDBD" x="5.2" y="2" width="0.6" height="5" rx="0.3"></rect>
+      <!-- Fork neck -->
+      <rect fill="#BDBDBD" x="3.5" y="6.5" width="1.8" height="2" rx="0.5"></rect>
+    </g>
+
+    <!-- Knife (right) -->
+    <g transform="translate(32, 9)">
+      <!-- Handle -->
+      <rect fill="#BDBDBD" x="1" y="8" width="2" height="10" rx="1"></rect>
+      <!-- Blade -->
+      <path d="M1.5,2 C1.5,2 3.5,3 3.5,8 L1.5,8 Z" fill="#9E9E9E"></path>
+    </g>
+
+  </g>
+</svg>
