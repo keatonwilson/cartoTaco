@@ -1,41 +1,44 @@
 <script>
+  import { effectiveTheme } from '$lib/theme';
+
   export let data;
   export let type;
 
   const highlightCorn = data === "both" || data === "corn";
   const highlightFlour = data === "both" || data === "flour";
 
+  $: p = $effectiveTheme === 'dark' ? 'dark_' : '';
 </script>
 
 <div class="icons" class:tortilla-icons={type === "tortilla"}>
   {#if type === "siteType"}
     <img
-      src="/shop_icon.svg"
+      src="/{p}shop_icon.svg"
       alt="Taco Shop"
       class:highlight={data === "Brick and Mortar"}
       class="icon site-icon"
     />
     <img
-      src="/stand_icon.svg"
+      src="/{p}stand_icon.svg"
       alt="Taco Stand"
       class:highlight={data === "Stand"}
       class="icon site-icon"
     />
     <img
-      src="/truck_icon.svg"
+      src="/{p}truck_icon.svg"
       alt="Taco Truck"
       class:highlight={data === "Truck"}
       class="icon site-icon"
     />
   {:else if type === "tortilla"}
     <img
-      src="/corn.svg"
+      src="/{p}corn.svg"
       alt="Corn"
       class:highlight={highlightCorn}
       class="icon tortilla-icon"
     />
     <img
-      src="/wheat.svg"
+      src="/{p}wheat.svg"
       alt="Wheat"
       class:highlight={highlightFlour}
       class="icon tortilla-icon"

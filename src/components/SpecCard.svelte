@@ -1,6 +1,7 @@
 <script>
   import { Card } from 'flowbite-svelte';
   import { isMobile } from '$lib/deviceDetection';
+  import { effectiveTheme } from '$lib/theme';
 
   export let cardType;
   export let itemName;
@@ -20,19 +21,20 @@
   $: hasLongDescrip = !!longDescrip;
 
   // Determine image based on card type if not explicitly provided
-  $: cardImage = imgUrl || getImageByType(cardType);
+  $: cardImage = imgUrl || getImageByType(cardType, $effectiveTheme === 'dark');
 
   // Function to determine which icon to use based on card type
-  function getImageByType(type) {
+  function getImageByType(type, dark = false) {
+    const p = dark ? 'dark_' : '';
     switch(type.toLowerCase()) {
       case 'item':
-        return '/specialty_menu.svg';
+        return `/${p}specialty_menu.svg`;
       case 'protein':
-        return '/cow.svg';
+        return `/${p}cow.svg`;
       case 'salsa':
-        return '/pepper.svg';
+        return `/${p}pepper.svg`;
       default:
-        return '/specialty_menu.svg';
+        return `/${p}specialty_menu.svg`;
     }
   }
 
