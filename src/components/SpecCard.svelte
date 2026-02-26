@@ -26,13 +26,13 @@
   function getImageByType(type) {
     switch(type.toLowerCase()) {
       case 'item':
-        return '/corn.svg';
+        return '/specialty_menu.svg';
       case 'protein':
-        return '/cow.svg'; // Cow icon for protein
+        return '/cow.svg';
       case 'salsa':
-        return '/pepper.svg'; // Pepper icon for salsa
+        return '/pepper.svg';
       default:
-        return '/corn.svg';
+        return '/specialty_menu.svg';
     }
   }
 
