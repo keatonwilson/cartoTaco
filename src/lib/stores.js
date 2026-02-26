@@ -268,12 +268,21 @@ export const filteredTacoData = derived(
         }
       }
 
-      // Search text filter (name)
+      // Search text filter (name, descriptions, type, menu items, proteins, specialties)
       if ($filterConfig.searchText) {
         const searchLower = $filterConfig.searchText.toLowerCase();
-        if (!site.name.toLowerCase().includes(searchLower)) {
-          return false;
-        }
+        const matched =
+          site.name?.toLowerCase().includes(searchLower) ||
+          site.shortDescription?.toLowerCase().includes(searchLower) ||
+          site.longDescription?.toLowerCase().includes(searchLower) ||
+          site.type?.toLowerCase().includes(searchLower) ||
+          site.topFiveMenuItems?.some(item => item.toLowerCase().includes(searchLower)) ||
+          site.topFiveProteinItems?.some(item => item.toLowerCase().includes(searchLower)) ||
+          site.specialties?.some(s =>
+            s.name?.toLowerCase().includes(searchLower) ||
+            s.description?.toLowerCase().includes(searchLower)
+          );
+        if (!matched) return false;
       }
 
       // Protein filters

@@ -1,0 +1,57 @@
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><defs><style>.cls-1{fill:#fff;}</style></defs>
+
+<!-- =====================================================
+     SPECIALTY ITEM icon — matches shop/stand/truck style
+     Black = outer shapes / fills; cls-1 white = inner detail
+     ===================================================== -->
+
+<!-- Outer menu card shape with rounded tab at top -->
+<path d="M15.8,18.8H4.2a1,1,0,0,1-1-1V3.8a1,1,0,0,1,1-1H9V2.2a.75.75,0,0,1,.75-.75h.5A.75.75,0,0,1,11,2.2v.6h4.8a1,1,0,0,1,1,1v14A1,1,0,0,1,15.8,18.8ZM9.5,1.8a.4.4,0,0,0-.4.4v.6h1.8V2.2a.4.4,0,0,0-.4-.4Z"/>
+
+<!-- Card interior (white fill = the card face) -->
+<path class="cls-1" d="M15.8,18.4H4.2a.6.6,0,0,1-.6-.6V3.8a.6.6,0,0,1,.6-.6H9v.3a.4.4,0,0,0,.4.4h.2v.5H10V3.9h.2a.4.4,0,0,0,.4-.4V3.2h5.2a.6.6,0,0,1,.6.6v14A.6.6,0,0,1,15.8,18.4Z"/>
+
+<!-- Header band -->
+<path d="M3.6,4.8H16.4v1.6H3.6Z"/>
+
+<!-- Header text lines (white) -->
+<path class="cls-1" d="M5,5.2H10.5v.8H5Z"/>
+<path class="cls-1" d="M11.2,5.2h3.8v.8H11.2Z"/>
+
+<!-- Star badge top right of card -->
+<path d="M14,2.8l.22.45.5.07-.36.35.09.5-.45-.24-.45.24.09-.5L13.28,3.3l.5-.07Z"/>
+
+<!-- Plate outer rim -->
+<path d="M10,7.4A3.6,3.6,0,1,0,13.6,11,3.6,3.6,0,0,0,10,7.4Zm0,6.8A3.2,3.2,0,1,1,13.2,11,3.2,3.2,0,0,1,10,14.2Z"/>
+
+<!-- Plate face (white) -->
+<path class="cls-1" d="M10,8.2a2.8,2.8,0,1,0,2.8,2.8A2.8,2.8,0,0,0,10,8.2Z"/>
+
+<!-- Plate inner ring -->
+<path d="M10,9a2,2,0,1,0,2,2A2,2,0,0,0,10,9Zm0,3.6A1.6,1.6,0,1,1,11.6,11,1.6,1.6,0,0,1,10,12.6Z"/>
+
+<!-- Plate inner ring fill (white) -->
+<path class="cls-1" d="M10,9.8A1.2,1.2,0,1,0,11.2,11,1.2,1.2,0,0,0,10,9.8Z"/>
+
+<!-- Small garnish dot center of plate -->
+<path d="M10,10.5a.5.5,0,1,0,.5.5A.5.5,0,0,0,10,10.5Z"/>
+
+<!-- Fork left of plate -->
+<path d="M5.8,7.8h.4V9H6.5V7.8h.4V9h.3V7.8h.4v3.8H7.3v1.2a.45.45,0,0,1-.45.45h0A.45.45,0,0,1,6.4,12.8V11.6H6.1V7.8Zm.1,0v.8h.2V7.8Zm.5,0v.8H6.6V7.8Z"/>
+
+<!-- Fork white detail -->
+<path class="cls-1" d="M6.4,9.5H7.2v1.6H6.4Z"/>
+
+<!-- Knife right of plate -->
+<path d="M13.7,7.8h.5v5.1h-.5Zm0,0h.4l.5,3h-.9Z"/>
+
+<!-- Knife white blade highlight -->
+<path class="cls-1" d="M13.8,8.2h.2l.3,2h-.5Z"/>
+
+<!-- Bottom menu lines -->
+<path d="M5,15H12v.5H5Z"/>
+<path d="M5,16H10.5v.5H5Z"/>
+<path d="M12.5,15h2v.5h-2Z"/>
+<path d="M12.5,16h2v.5h-2Z"/>
+
+</svg>

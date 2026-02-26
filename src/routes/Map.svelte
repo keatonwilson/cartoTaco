@@ -11,16 +11,26 @@
 		summaryStats
 	} from '../lib/stores';
 	import 'mapbox-gl/dist/mapbox-gl.css';
-	import { updateMarkers, resetListeners } from '../lib/mapping.js';
+	import { updateMarkers, resetListeners, updateTrailLayers, updateTrailRoute, clearTrailLayers } from '../lib/mapping.js';
 	import { mapInstance } from '../lib/mapStore.js';
 	import FilterBar from '../components/FilterBar.svelte';
+	import TrailTray from '../components/TrailTray.svelte';
 	import { effectiveTheme, getMapboxStyle } from '$lib/theme.js';
+	import {
+		trailModeActive,
+		trailStops,
+		trailRoute,
+		trailTransportMode,
+		enterTrailMode,
+		addStop
+	} from '../lib/trailStore.js';
 
 	let map;
 	let mapContainer;
 	let mapLoaded = false; // Track if map has completed initial load
 	let lastDataLength = -1; // Track the last data length to avoid unnecessary updates
 	let currentTheme = null; // Track current theme to prevent duplicate style changes
+	let trailRestored = false; // Prevent re-running URL trail reconstruction
 
 	mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_KEY;
 
@@ -114,6 +124,11 @@
 						if ($filteredTacoData && $filteredTacoData.length > 0) {
 							updateMarkers($filteredTacoData, map);
 						}
+						// Re-add trail layers if trail mode is active
+						if ($trailModeActive) {
+							updateTrailLayers(map, $trailStops);
+							updateTrailRoute(map, $trailRoute);
+						}
 					});
 				});
 			} else {
@@ -121,6 +136,37 @@
 			}
 		} catch {
 			// Style not ready yet, will be handled on next reactive trigger
+		}
+	}
+
+	// Re-draw numbered stop markers when trail stops change (only while trail mode is active)
+	$: if (map && mapLoaded && $trailModeActive) updateTrailLayers(map, $trailStops);
+
+	// Re-draw route line when route GeoJSON changes (only while trail mode is active)
+	$: if (map && mapLoaded && $trailModeActive) updateTrailRoute(map, $trailRoute);
+
+	// When trail mode exits, explicitly remove all trail layers and sources from the map
+	$: if (map && mapLoaded && !$trailModeActive) clearTrailLayers(map);
+
+	// Map padding: push content up when trail tray is open
+	$: if (map && mapLoaded) map.setPadding({ bottom: $trailModeActive ? 280 : 0 });
+
+	// Reconstruct trail from URL params once processedTacoData is available
+	$: if (!trailRestored && $processedTacoData && $processedTacoData.length > 0 && typeof window !== 'undefined') {
+		const params = new URLSearchParams(window.location.search);
+		const trailParam = params.get('trail');
+		trailRestored = true;
+		if (trailParam) {
+			const ids = trailParam.split(',').map(Number);
+			const modeParam = params.get('mode');
+			if (modeParam === 'drive') {
+				trailTransportMode.set('driving');
+			}
+			const sites = ids.map((id) => $processedTacoData.find((s) => s.est_id === id)).filter(Boolean);
+			if (sites.length > 0) {
+				sites.forEach((site) => addStop(site));
+				enterTrailMode();
+			}
 		}
 	}
 
@@ -152,9 +198,10 @@
 	{/if}
 </div>
 
-<!-- Filter Bar -->
+<!-- Filter Bar + Trail Tray -->
 {#if !$isLoading && !$hasError}
 	<FilterBar />
+	<TrailTray />
 {/if}
 
 <style>

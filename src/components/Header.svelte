@@ -188,6 +188,12 @@
     z-index: 9999;
   }
 
+  :global(.dark) .header {
+    background: rgba(10, 14, 26, 0.82) !important;
+    border-bottom-color: rgba(254, 121, 93, 0.35);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+
   .header-container {
     max-width: 1400px;
     margin: 0 auto;
@@ -206,6 +212,17 @@
   .logo-image {
     height: 40px;
     width: auto;
+    border-radius: 8px;
+    transition: box-shadow 0.3s ease, background 0.3s ease;
+  }
+
+  :global(.dark) .logo-image {
+    background: rgba(255, 255, 255, 0.18);
+    padding: 4px 8px;
+    box-shadow:
+      0 0 10px rgba(254, 121, 93, 0.8),
+      0 0 28px rgba(254, 121, 93, 0.4),
+      inset 0 0 0 1px rgba(254, 121, 93, 0.4);
   }
 
   /* Desktop Navigation */
@@ -228,6 +245,10 @@
     color: #374151;
     font-size: 0.875rem;
     margin-right: 0.5rem;
+  }
+
+  :global(.dark) .user-info {
+    color: #d1d5db;
   }
 
   .user-icon {
@@ -254,8 +275,19 @@
     text-decoration: none;
   }
 
+  :global(.dark) .nav-link {
+    color: #d1d5db;
+    border-color: #374151;
+  }
+
   .nav-link:hover {
     background: #F9FAFB;
+    border-color: #FE795D;
+    color: #FE795D;
+  }
+
+  :global(.dark) .nav-link:hover {
+    background: rgba(255, 255, 255, 0.06);
     border-color: #FE795D;
     color: #FE795D;
   }
@@ -380,6 +412,11 @@
     border-top: 1px solid rgba(229, 231, 235, 0.5);
   }
 
+  :global(.dark) .mobile-menu {
+    background: rgba(10, 14, 26, 0.92);
+    border-top-color: rgba(255, 255, 255, 0.08);
+  }
+
   @media (min-width: 768px) {
     .mobile-menu {
       display: none;
@@ -398,6 +435,11 @@
     margin-bottom: 0.5rem;
   }
 
+  :global(.dark) .mobile-user-info {
+    background: rgba(255, 255, 255, 0.05);
+    color: #d1d5db;
+  }
+
   .mobile-nav-link {
     padding: 0.75rem 1rem;
     color: #374151;
@@ -412,8 +454,17 @@
     width: 100%;
   }
 
+  :global(.dark) .mobile-nav-link {
+    color: #d1d5db;
+    border-color: #374151;
+  }
+
   .mobile-nav-link:active {
     background: #F9FAFB;
+  }
+
+  :global(.dark) .mobile-nav-link:active {
+    background: rgba(255, 255, 255, 0.06);
   }
 
   .mobile-nav-link.signup {

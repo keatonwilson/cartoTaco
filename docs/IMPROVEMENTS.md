@@ -13,6 +13,7 @@ This document outlines potential improvements to enhance CartoTaco's functionali
 7. **Dark Mode** - Theme toggle with light/dark/auto modes and time-based automatic switching (6am-8pm light, else dark)
 8. **User Favorites System** - Heart icon favorites with filtering, dedicated favorites page, and map integration
 9. **Vercel Deployment** - Configured adapter-vercel with Node 20, SSR guards in stores
+10. **Directions Deep-Link** - `DirectionsButton.svelte` detects iOS/Android/desktop and deep-links to Apple Maps, Google Maps intent, or Google Maps web respectively
 
 See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARCH_FILTER.md), and [MARKER_CLUSTERING.md](./MARKER_CLUSTERING.md) for details.
 
@@ -27,43 +28,17 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 **Status**: Completed (2026-02-11, commit 7a3824c)
 
 ### H1. Fix Inaccurate Dead-Code Comment in stores.js
-**Status**: Pending
-
-**Details**:
-- `combineArraysByEstId()` has a comment saying "no longer used" but it IS actively called by `fetchSpecialtyData()` on line 521
-- The comment is misleading — the function is only unused for the *main site query* (which now uses the `sites_complete` view), but still needed for specialty data
-
-**Impact**: Prevents developer confusion
-
-**Effort**: Minimal
+**Status**: ✅ Completed — `combineArraysByEstId()` was removed entirely in the specialty data refactor
 
 ---
 
 ### H2. Remove Hardcoded Sample Specialty Data from stores.js
-**Status**: Pending
-
-**Details**:
-- `specialtiesBySite` derived store (lines 189-241) contains hardcoded sample data for est_ids 1-4 with assumed establishment names
-- Sites without real specialty data silently fall back to est_id 4's sample data
-- This scaffolding should be cleaned up — either replace with real DB data or remove the fallback so missing data is surfaced honestly
-
-**Impact**: Data integrity — users currently see fake specialty data for most establishments
-
-**Effort**: Low
+**Status**: ✅ Completed — `specialtiesBySite` removed; specialty data now embedded in `processedTacoData` via `sites_complete` view (`specialty_items`, `specialty_proteins`, `specialty_salsas` arrays)
 
 ---
 
-### H3. Update CLAUDE.md Migration Documentation
-**Status**: Pending
-
-**Details**:
-- CLAUDE.md only documents running migrations 001 and 002
-- Migrations 003 (profiles), 004 (submissions), and 005 (favorites) are undocumented
-- New developers setting up the project won't know about these required migrations
-
-**Impact**: Developer onboarding, project setup reliability
-
-**Effort**: Minimal
+### H3. Update CLAUDE.md Documentation
+**Status**: ✅ Completed — Migration docs updated through 006; stale `specStore` and `specialtiesBySite` store references removed; `recentlyAddedSites` documented
 
 ---
 
@@ -362,6 +337,171 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 
 ---
 
+---
+
+## 🎮 Social & Gamification
+
+### G1. Taco Passport + Check-Ins
+**Feature**:
+- Users "check in" at spots they've visited (requires auth)
+- Virtual passport that stamps each unique spot visited
+- Badges/achievements: "Al Pastor Pilgrim" (5 spots), "Taco Conquistador" (all spots), "Heat Seeker" (all 10-spice spots), "Carnivore" (tried all protein types)
+- Check-in count displayed on spot cards ("27 tacoheads have been here")
+
+**Impact**: Major retention and engagement driver; makes CartoTaco genuinely memorable vs. just a directory
+
+**Effort**: High (1 week)
+
+**Technical Details**:
+- New `check_ins` table: `user_id`, `est_id`, `checked_in_at`
+- Aggregate check-in counts in view or cached summary
+- Badges computed server-side or derived from check-in history
+- Passport page showing user's visited spots on a mini-map
+- Push notifications when a new spot opens near a frequently visited area
+
+---
+
+### G2. Personal Taco Stats Page
+**Feature**:
+- User profile page with stats: spots visited, proteins tried, favorite neighborhood, hottest spot tried
+- "Your taco journey" — timeline of check-ins
+- Comparison mode: "You vs. the average CartoTaco user"
+
+**Impact**: High engagement, encourages sharing
+
+**Effort**: Moderate (3-4 days, builds on G1)
+
+**Technical Details**:
+- Derived from check-in history in G1
+- Stats page at `/profile` or as a modal
+- Shareable stats card (see G3)
+
+---
+
+## 🔍 Discovery
+
+### D1. "Surprise Me" Button
+**Feature**: One-tap random spot selection that respects active filters. Prominent button in the filter bar or map overlay. Flies the map to the selected spot and opens its card.
+
+**Impact**: Low-effort engagement feature, great for indecisive users
+
+**Effort**: Low (half a day)
+
+**Technical Details**:
+- Pick random item from `filteredTacoData`
+- Set `selectedSite` and fly map camera to coordinates
+- Button lives in `FilterBar.svelte` or as a floating map control
+
+---
+
+### D2. Neighborhood Mode
+**Feature**: Color-code map markers by Tucson neighborhood (South Tucson, Barrio Viejo, Midtown, East Side, etc.). Add a neighborhood filter dropdown. Show a neighborhood summary panel.
+
+**Impact**: Hyper-local and very Tucson-specific — differentiates from generic map apps
+
+**Effort**: Moderate (2-3 days)
+
+**Technical Details**:
+- Add `neighborhood` field to `sites` table
+- Populate via admin or geocoding reverse lookup
+- Color-code `unclustered-point` layer by neighborhood
+- Neighborhood filter in `FilterBar.svelte`
+
+---
+
+### D3. Similar Spots Recommendations
+**Feature**: In the spot card, show 2-3 "You might also like" recommendations based on shared attributes (same protein focus, same type, similar spice level).
+
+**Impact**: Increases time-on-site, drives discovery of lesser-known spots
+
+**Effort**: Moderate (2-3 days)
+
+**Technical Details**:
+- Scoring function: weight by shared top protein, establishment type, spice level proximity
+- Compute in `processedTacoData` or as a derived store
+- Display as small clickable chips in `Card.svelte`
+
+---
+
+## 📢 Sharing & Utility
+
+### S1. Share Card Generator
+**Feature**: Generate a beautiful shareable image card for a spot — spot name, type badge, spice level, top protein. "I found my new favorite taco spot on CartoTaco 🌮" social media bait.
+
+**Impact**: Organic growth through social sharing
+
+**Effort**: Moderate (2-3 days)
+
+**Technical Details**:
+- Use `html2canvas` or `satori` to render a styled card to PNG
+- Download or share via Web Share API on mobile
+- Canonical shareable URL per spot (e.g., `/spot/[est_id]`) for link previews
+
+---
+
+### S2. Taco Tuesday Tracker
+**Feature**: Tag which spots have Taco Tuesday deals. Dedicated "Taco Tuesday" filter toggle in `FilterBar.svelte`. Could expand to other recurring specials.
+
+**Impact**: High weekly recurring engagement — users check every Tuesday
+
+**Effort**: Low (1 day + data entry)
+
+**Technical Details**:
+- Add `taco_tuesday` boolean field to `sites` table
+- Filter toggle in `FilterBar.svelte`
+- Special "TT" badge on markers for participating spots
+
+---
+
+## 🏪 Owner & Data Features
+
+### O1. Owner Portal
+**Feature**: Let business owners claim their listing and update hours, menu highlights, and contact info. Admin approves claims.
+
+**Impact**: Removes data maintenance burden from admin; builds goodwill with establishments
+
+**Effort**: High (1-2 weeks)
+
+**Technical Details**:
+- `site_claims` table: `user_id`, `est_id`, `status` (pending/approved/rejected)
+- Claimed owners get write access to their own site rows via RLS
+- Admin approval flow (Supabase dashboard or simple admin route)
+- Claim button on spot cards for logged-in users
+
+---
+
+## 📊 Data & Visualization
+
+### V1. Tucson Taco Census Page
+**Feature**: A public stats page at `/census` showing aggregate data: total spots on the map, most popular protein city-wide, average spice level, newest additions this month, neighborhood with most spots, etc.
+
+**Impact**: Press-worthy, shareable, positions CartoTaco as the authority on Tucson tacos. Zero new data needed — all derived from existing DB.
+
+**Effort**: Low-Moderate (1-2 days)
+
+**Technical Details**:
+- New route `/census`
+- Query `processedTacoData` aggregates client-side, or create a Supabase view/function for server-side stats
+- Charts using ECharts (already a dependency)
+- "Share the Census" button linking to the page
+
+---
+
+### V2. Price Tier Filter ($-$$$)
+**Feature**: Add affordability data to spots. New filter in `FilterBar.svelte` for price range.
+
+**Impact**: Hugely practical — one of the most common restaurant discovery criteria
+
+**Effort**: Low-Moderate (1-2 days + data entry)
+
+**Technical Details**:
+- Add `price_tier` field (1-3 or $ / $$ / $$$) to `sites` table
+- Migration to add column
+- Price filter in `FilterBar.svelte`
+- Price badge in `Card.svelte` header
+
+---
+
 ## 📊 Recommended Priority Order
 
 1. ✅ **Query optimization (#1)** - **COMPLETED**
@@ -373,11 +513,22 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 7. ✅ **Dark mode** - **COMPLETED**
 8. ✅ **User favorites (#3 partial)** - **COMPLETED**
 9. ✅ **Vercel deployment** - **COMPLETED**
-10. **Housekeeping (H1-H4)** - Clean up technical debt
-11. **Community ratings & reviews (#4)** - Add social proof
-12. **Heat map view (#5)** - Alternative visualization
-13. **Lazy load popup content (#8)** - Performance improvement
-14. **Taco trail builder (#9)** - Unique differentiator
+10. ✅ **Housekeeping (H1-H3)** - **COMPLETED** (all cleaned up in refactors)
+11. ✅ **Directions deep-link** - **COMPLETED** (DirectionsButton.svelte)
+12. **"Surprise Me" button (D1)** - Quick win, fun UX
+13. **Taco Tuesday Tracker (S2)** - Weekly engagement, low effort
+14. **Tucson Taco Census page (V1)** - Press-worthy, no new data needed
+15. **Community ratings & reviews (#4)** - Add social proof
+16. **Taco Passport + Check-ins (G1)** - Big engagement feature
+17. **Personal Taco Stats (G2)** - Builds on G1
+18. **Price Tier filter (V2)** - Practical, needs data entry
+19. **Similar Spots (D3)** - Discovery improvement
+20. **Neighborhood Mode (D2)** - Hyper-local differentiation
+21. **Share Card generator (S1)** - Organic growth
+22. **Heat map view (#5)** - Alternative visualization
+23. **Lazy load popup content (#8)** - Performance improvement
+24. **Taco trail builder (#9)** - Unique differentiator
+25. **Owner Portal (O1)** - Long-term data sustainability
 
 ---
 
@@ -403,4 +554,4 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 
 ---
 
-**Last Updated**: 2026-02-16
+**Last Updated**: 2026-02-25

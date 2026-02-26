@@ -3,6 +3,7 @@
   import { isAuthenticated } from '$lib/authStore';
   import { SearchOutline, ChevronDownOutline, ChevronUpOutline, HeartSolid } from 'flowbite-svelte-icons';
   import { browser } from '$app/environment';
+  import { trailModeActive, enterTrailMode, exitTrailMode } from '../lib/trailStore.js';
 
   let expanded = false;
   let containerEl;
@@ -68,11 +69,27 @@
       <SearchOutline class="search-icon" size="sm" />
       <input
         type="text"
-        placeholder="Search taco spots..."
+        placeholder="Search by name, menu item, type..."
         bind:value={$filterConfig.searchText}
         class="search-input"
       />
     </div>
+
+    <button
+      class="trail-button"
+      class:active={$trailModeActive}
+      on:click={$trailModeActive ? exitTrailMode : enterTrailMode}
+      title={$trailModeActive ? 'Exit Trail Mode' : 'Build a Trail'}
+      aria-label={$trailModeActive ? 'Exit Trail Mode' : 'Build a Trail'}
+    >
+      <!-- Route path icon -->
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="6" cy="19" r="3"/>
+        <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/>
+        <circle cx="18" cy="5" r="3"/>
+      </svg>
+      <span class="trail-text">Trail</span>
+    </button>
 
     <button
       class="expand-button"
@@ -270,6 +287,45 @@
 
   .search-input:focus {
     border-color: #FE795D;
+  }
+
+  /* Trail mode button */
+  .trail-button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #f5f5f5;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  :global(.dark) .trail-button {
+    background: #374151;
+    color: #f9fafb;
+  }
+
+  .trail-button:hover {
+    background: #e8e8e8;
+  }
+
+  :global(.dark) .trail-button:hover {
+    background: #4b5563;
+  }
+
+  .trail-button.active {
+    background: #FE795D;
+    color: white;
+  }
+
+  .trail-button.active:hover {
+    background: #e55a3c;
   }
 
   .expand-button {
@@ -540,6 +596,14 @@
 
     .filter-text {
       display: none;
+    }
+
+    .trail-text {
+      display: none;
+    }
+
+    .trail-button {
+      padding: 8px 10px;
     }
   }
 </style>
