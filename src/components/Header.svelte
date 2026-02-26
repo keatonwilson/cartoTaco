@@ -217,12 +217,12 @@
   }
 
   :global(.dark) .logo-image {
-    background: rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.18);
     padding: 4px 8px;
     box-shadow:
-      0 0 8px rgba(254, 121, 93, 0.5),
-      0 0 20px rgba(254, 121, 93, 0.2),
-      inset 0 0 0 1px rgba(254, 121, 93, 0.2);
+      0 0 10px rgba(254, 121, 93, 0.8),
+      0 0 28px rgba(254, 121, 93, 0.4),
+      inset 0 0 0 1px rgba(254, 121, 93, 0.4);
   }
 
   /* Desktop Navigation */
