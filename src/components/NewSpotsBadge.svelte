@@ -1,4 +1,5 @@
 <script>
+  import { createEventDispatcher } from 'svelte';
   import { BellOutline } from 'flowbite-svelte-icons';
   import { recentlyAddedSites } from '$lib/stores';
   import { unseenNewSpotsCount, markNewSpotsAsSeen } from '$lib/newSpotsStore';
@@ -6,7 +7,21 @@
   import { flyToSite } from '$lib/mapping';
   import { isMobile } from '$lib/deviceDetection';
 
+  const dispatch = createEventDispatcher();
+
   let isOpen = false;
+  let containerEl;
+
+  // Portal action: moves the node to document.body so that position:fixed
+  // is relative to the viewport, not the header (which has backdrop-filter).
+  function portal(node) {
+    document.body.appendChild(node);
+    return {
+      destroy() {
+        if (node.parentNode) node.parentNode.removeChild(node);
+      }
+    };
+  }
 
   function toggleDropdown() {
     isOpen = !isOpen;
@@ -16,11 +31,24 @@
     isOpen = false;
   }
 
+  function handleWindowClick(event) {
+    if (isOpen && !$isMobile && containerEl && !containerEl.contains(event.target)) {
+      closeDropdown();
+    }
+  }
+
+  function handleKeydown(event) {
+    if (event.key === 'Escape' && isOpen) {
+      closeDropdown();
+    }
+  }
+
   function handleSpotClick(site) {
     if ($mapInstance) {
       flyToSite($mapInstance, site);
     }
     closeDropdown();
+    dispatch('spotSelected');
   }
 
   function handleMarkAsSeen() {
@@ -46,7 +74,9 @@
   }
 </script>
 
-<div class="new-spots-container">
+<svelte:window on:click={handleWindowClick} on:keydown={handleKeydown} />
+
+<div class="new-spots-container" bind:this={containerEl}>
   <button
     class="bell-button"
     on:click={toggleDropdown}
@@ -99,8 +129,15 @@
         {/if}
       </div>
     {:else}
-      <!-- Mobile: Full-width panel -->
-      <div class="mobile-panel-overlay" on:click={closeDropdown}>
+      <!-- Mobile: Full-width panel (portalled to body to escape header's backdrop-filter containing block) -->
+      <div
+        class="mobile-panel-overlay"
+        use:portal
+        on:click={closeDropdown}
+        role="button"
+        tabindex="-1"
+        aria-label="Close panel"
+      >
         <div class="mobile-panel" on:click|stopPropagation>
           <div class="panel-header">
             <h3 class="panel-title">New Spots</h3>
@@ -136,6 +173,12 @@
               </div>
             {/if}
           {/if}
+
+          <div class="mobile-panel-close-bar">
+            <button class="mobile-close-button" on:click={closeDropdown}>
+              Close
+            </button>
+          </div>
         </div>
       </div>
     {/if}
@@ -205,28 +248,32 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   }
 
-  /* Mobile: Full-width overlay panel */
-  .mobile-panel-overlay {
+  /* Mobile: Full-width overlay panel
+     These are :global because the elements are portalled to document.body
+     and live outside Svelte's scoped DOM subtree. */
+  :global(.mobile-panel-overlay) {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 999;
+    z-index: 9999;
+    cursor: pointer;
   }
 
-  .mobile-panel {
+  :global(.mobile-panel) {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
     background: white;
     border-radius: 1rem 1rem 0 0;
+    height: 80vh;
     max-height: 80vh;
     display: flex;
     flex-direction: column;
-    z-index: 1000;
+    z-index: 10000;
   }
 
-  :global(.dark) .mobile-panel {
+  :global(.dark .mobile-panel) {
     background: #1f2937;
   }
 
@@ -406,10 +453,40 @@
     background: #EF562F;
   }
 
-  /* Mobile specific adjustments */
-  @media (max-width: 768px) {
-    .spots-list {
-      max-height: calc(80vh - 140px);
-    }
+  /* Mobile close bar */
+  .mobile-panel-close-bar {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #E5E7EB;
   }
+
+  :global(.dark) .mobile-panel-close-bar {
+    border-color: #374151;
+  }
+
+  .mobile-close-button {
+    width: 100%;
+    padding: 0.75rem;
+    background: transparent;
+    color: #6B7280;
+    border: 1px solid #E5E7EB;
+    border-radius: 0.375rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .mobile-close-button:active {
+    background: #F3F4F6;
+  }
+
+  :global(.dark) .mobile-close-button {
+    color: #9CA3AF;
+    border-color: #4B5563;
+  }
+
+  :global(.dark) .mobile-close-button:active {
+    background: #374151;
+  }
+
 </style>

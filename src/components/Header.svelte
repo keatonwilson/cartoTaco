@@ -42,7 +42,7 @@
     <!-- Desktop Navigation -->
     <nav class="desktop-nav">
 			<ThemeToggle />
-			<NewSpotsBadge />
+			<NewSpotsBadge on:spotSelected={closeMobileMenu} on:panelOpened={closeMobileMenu} />
       {#if $isAuthenticated}
         <div class="user-info">
           {#if browser}
@@ -100,6 +100,12 @@
       {/if}
     </nav>
 
+    <!-- Mobile-only controls (always visible in header bar) -->
+    <div class="mobile-header-controls">
+      <ThemeToggle />
+      <NewSpotsBadge on:spotSelected={closeMobileMenu} />
+    </div>
+
     <!-- Mobile Menu Button -->
     <button
       class="mobile-menu-button"
@@ -119,10 +125,6 @@
   <!-- Mobile Menu -->
   {#if mobileMenuOpen}
     <div class="mobile-menu">
-			<div class="mobile-theme-toggle">
-				<ThemeToggle />
-				<NewSpotsBadge />
-			</div>
       {#if $isAuthenticated}
         <div class="mobile-user-info">
           {#if browser}
@@ -424,11 +426,16 @@
     background: #EF562F;
   }
 
-	.mobile-theme-toggle {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		gap: 1rem;
-		margin-bottom: 0.5rem;
-	}
+  /* Mobile-only controls in header bar */
+  .mobile-header-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  @media (min-width: 768px) {
+    .mobile-header-controls {
+      display: none;
+    }
+  }
 </style>

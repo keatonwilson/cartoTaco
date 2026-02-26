@@ -24,48 +24,23 @@ function createDataStore() {
   };
 }
 
-// NOTE: No longer used for the main site query (sites_complete view handles that),
-// but still actively used by fetchSpecialtyData() to combine item_spec, protein_spec, and salsa_spec.
-export function combineArraysByEstId(arrays, names) {
-  const combined = {};
-
-  arrays.forEach((array, index) => {
-    if (!array) return; // Skip null or undefined arrays
-
-    array.forEach((item) => {
-      if (!item || !item.est_id) return; // Skip invalid items
-
-      const est_id = item.est_id;
-      combined[est_id] = combined[est_id] || {};
-      combined[est_id][names[index]] = { ...item };
-      delete combined[est_id][names[index]].est_id;
-    });
-  });
-
-  return Object.keys(combined).map((est_id) => ({
-    est_id: parseInt(est_id),
-    ...combined[est_id],
-  }));
-}
-
 // Create stores with loading and error states
 export const tacoStore = createDataStore();
 export const summaryStore = createDataStore();
-export const specStore = createDataStore();
 
 // Derived store for overall loading state
 export const isLoading = derived(
-  [tacoStore, summaryStore, specStore],
-  ([$tacoStore, $summaryStore, $specStore]) => {
-    return $tacoStore.loading || $summaryStore.loading || $specStore.loading;
+  [tacoStore, summaryStore],
+  ([$tacoStore, $summaryStore]) => {
+    return $tacoStore.loading || $summaryStore.loading;
   }
 );
 
 // Derived store for overall error state
 export const hasError = derived(
-  [tacoStore, summaryStore, specStore],
-  ([$tacoStore, $summaryStore, $specStore]) => {
-    return $tacoStore.error || $summaryStore.error || $specStore.error;
+  [tacoStore, summaryStore],
+  ([$tacoStore, $summaryStore]) => {
+    return $tacoStore.error || $summaryStore.error;
   }
 );
 
@@ -144,6 +119,13 @@ export const processedTacoData = derived(
           // Other details
           tortillaType: site.menu.flour_corn,
 
+          // Specialty items — embedded in the view, no separate fetch needed
+          specialties: [
+            ...(site.menu.specialty_items || []).map(s => ({ ...s, type: 'Item' })),
+            ...(site.protein.specialty_proteins || []).map(s => ({ ...s, type: 'Protein' })),
+            ...(site.salsa.specialty_salsas || []).map(s => ({ ...s, type: 'Salsa' }))
+          ],
+
           // Original data (for complex processing that can't be pre-computed)
           rawData: site
         };
@@ -176,30 +158,6 @@ export const summaryStats = derived(
       maxHeatLevel: summary.max_heat_level || 0,
       avgHeatLevel: summary.avg_heat_level || 0
     };
-  }
-);
-
-// Derived store for specialty items by site
-export const specialtiesBySite = derived(
-  specStore,
-  ($specStore) => {
-    const specialtyMap = new Map();
-
-    if ($specStore.data && $specStore.data.length > 0) {
-      $specStore.data.forEach(spec => {
-        if (!spec || !spec.est_id) return;
-
-        const siteSpecialties = {
-          itemSpecs: spec.itemSpec ? [spec.itemSpec] : [],
-          proteinSpecs: spec.proteinSpec ? [spec.proteinSpec] : [],
-          salsaSpecs: spec.salsaSpec ? [spec.salsaSpec] : []
-        };
-
-        specialtyMap.set(spec.est_id, siteSpecialties);
-      });
-    }
-
-    return specialtyMap;
   }
 );
 
@@ -418,149 +376,6 @@ export async function fetchSummaryData() {
   } catch (error) {
     console.error("Error in fetchSummaryData:", error);
     summaryStore.setError(error);
-  }
-}
-
-export async function fetchSpecialtyData() {
-  // Guard against SSR or missing client
-  if (!supabaseBrowser) {
-    console.warn("Supabase client not available (SSR mode)");
-    return;
-  }
-
-  // Set loading state
-  specStore.setLoading(true);
-
-  try {
-    // Fetch item specialties
-    let { data: itemSpecData, error: itemSpecError } = await supabaseBrowser
-      .from("item_spec")
-      .select();
-    if (itemSpecError) {
-      console.error("Error fetching specialty items:", itemSpecError);
-      specStore.setError(itemSpecError);
-      return;
-    }
-
-    // Fetch protein specialties
-    let { data: proteinSpecData, error: proteinSpecError } = await supabaseBrowser
-      .from("protein_spec")
-      .select();
-    if (proteinSpecError) {
-      console.error("Error fetching specialty proteins:", proteinSpecError);
-      specStore.setError(proteinSpecError);
-      return;
-    }
-
-    // Fetch salsa specialties
-    let { data: salsaSpecData, error: salsaSpecError } = await supabaseBrowser
-      .from("salsa_spec")
-      .select();
-    if (salsaSpecError) {
-      console.error("Error fetching specialty salsas:", salsaSpecError);
-      specStore.setError(salsaSpecError);
-      return;
-    }
-
-    // combine data
-    const specCombinedArray = [
-      itemSpecData,
-      proteinSpecData,
-      salsaSpecData
-    ];
-    const specNamesArray = [
-      "itemSpec",
-      "proteinSpec",
-      "salsaSpec"
-    ];
-    const specAggregate = combineArraysByEstId(specCombinedArray, specNamesArray);
-
-    // Update the store with the new data
-    specStore.setData(specAggregate);
-  } catch (error) {
-    console.error("Error in fetchSpecialtyData:", error);
-    specStore.setError(error);
-  }
-}
-
-// Cache for specialty data to avoid re-fetching
-const siteSpecialtyCache = new Map();
-
-// Store for tracking per-site loading state
-export const siteSpecLoading = writable(new Map());
-
-// Fetch specialty data for a single site (lazy loaded when popup opens)
-export async function fetchSiteSpecialties(estId) {
-  // Check if already cached
-  if (siteSpecialtyCache.has(estId)) {
-    return;
-  }
-
-  // Guard against SSR or missing client
-  if (!supabaseBrowser) {
-    console.warn("Supabase client not available (SSR mode)");
-    return;
-  }
-
-  // Mark as loading
-  siteSpecLoading.update(map => {
-    const newMap = new Map(map);
-    newMap.set(estId, true);
-    return newMap;
-  });
-
-  try {
-    // Fetch all three specialty types in parallel
-    const [itemSpecRes, proteinSpecRes, salsaSpecRes] = await Promise.all([
-      supabaseBrowser.from("item_spec").select().eq("est_id", estId),
-      supabaseBrowser.from("protein_spec").select().eq("est_id", estId),
-      supabaseBrowser.from("salsa_spec").select().eq("est_id", estId)
-    ]);
-
-    if (itemSpecRes.error || proteinSpecRes.error || salsaSpecRes.error) {
-      console.error("Error fetching site specialties:", {
-        itemSpec: itemSpecRes.error,
-        proteinSpec: proteinSpecRes.error,
-        salsaSpec: salsaSpecRes.error
-      });
-      siteSpecLoading.update(map => {
-        const newMap = new Map(map);
-        newMap.delete(estId);
-        return newMap;
-      });
-      return;
-    }
-
-    // Combine the data
-    const specialty = {
-      est_id: estId,
-      itemSpec: itemSpecRes.data?.[0] || null,
-      proteinSpec: proteinSpecRes.data?.[0] || null,
-      salsaSpec: salsaSpecRes.data?.[0] || null
-    };
-
-    // Cache the result
-    siteSpecialtyCache.set(estId, specialty);
-
-    // Update the specialtiesBySite store with the new data
-    specStore.update(store => {
-      const newData = [...store.data, specialty];
-      return { ...store, data: newData };
-    });
-
-    // Mark as done loading
-    siteSpecLoading.update(map => {
-      const newMap = new Map(map);
-      newMap.delete(estId);
-      return newMap;
-    });
-  } catch (error) {
-    console.error("Error in fetchSiteSpecialties:", error);
-    siteSpecLoading.update(map => {
-      const newMap = new Map(map);
-      newMap.delete(estId);
-      return newMap;
-    });
   }
 }
 

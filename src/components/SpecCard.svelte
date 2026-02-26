@@ -4,19 +4,24 @@
 
   export let cardType;
   export let itemName;
-  export let itemDescrip;
+  export let shortDescrip = '';
+  export let longDescrip = '';
   export let imgUrl = null;
 
-  // Expandable state
+  // Expandable state — only meaningful when there is a long description
   let isExpanded = false;
 
   function toggleExpand() {
-    isExpanded = !isExpanded;
+    if (longDescrip) {
+      isExpanded = !isExpanded;
+    }
   }
+
+  $: hasLongDescrip = !!longDescrip;
 
   // Determine image based on card type if not explicitly provided
   $: cardImage = imgUrl || getImageByType(cardType);
-  
+
   // Function to determine which icon to use based on card type
   function getImageByType(type) {
     switch(type.toLowerCase()) {
@@ -30,10 +35,10 @@
         return '/corn.svg';
     }
   }
-  
+
   // Function to determine card color based on type
   $: cardClass = getCardClass(cardType);
-  
+
   function getCardClass(type) {
     switch(type.toLowerCase()) {
       case 'item':
@@ -46,11 +51,6 @@
         return '';
     }
   }
-
-  // Truncate description to keep cards compact
-  $: shortDescription = itemDescrip.length > 50 
-    ? itemDescrip.substring(0, 48) + '...' 
-    : itemDescrip;
 </script>
   
 <div
@@ -70,12 +70,16 @@
     </div>
     <div class="content">
       <h5 class="card-title">{itemName}</h5>
-      <!-- Show description inline on all devices -->
-      <p class="card-description">{itemDescrip}</p>
-      {#if isExpanded}
-        <div class="expand-hint">Click to collapse</div>
-      {:else}
-        <div class="expand-hint">Click to read more</div>
+      <p class="card-description">{shortDescrip}</p>
+      {#if isExpanded && longDescrip}
+        <p class="card-long-description">{longDescrip}</p>
+      {/if}
+      {#if hasLongDescrip}
+        {#if isExpanded}
+          <div class="expand-hint">Click to collapse</div>
+        {:else}
+          <div class="expand-hint">Click to read more</div>
+        {/if}
       {/if}
     </div>
   </div>
@@ -235,27 +239,29 @@
     color: #555;
     line-height: 1.4;
     margin: 4px 0 0 0;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    transition: all 0.3s ease;
   }
 
   :global(.dark) .card-description {
     color: #d1d5db;
   }
 
-  /* Expanded: Show full description */
-  .specialty-card.expanded .card-description {
-    display: block;
-    -webkit-line-clamp: unset;
-    overflow: visible;
+  .card-long-description {
+    font-size: 11px;
+    color: #555;
+    line-height: 1.4;
+    margin: 6px 0 0 0;
+    padding-top: 6px;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  :global(.dark) .card-long-description {
+    color: #d1d5db;
+    border-top-color: #374151;
   }
 
   @media (min-width: 768px) {
-    .card-description {
+    .card-description,
+    .card-long-description {
       font-size: 12px;
     }
   }

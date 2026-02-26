@@ -11,70 +11,7 @@ vi.mock('./favoritesStore', () => {
   return { favoriteIds: writable(new Set()) };
 });
 
-import { combineArraysByEstId, isOpenNow } from './stores.js';
-
-describe('combineArraysByEstId', () => {
-  it('combines multiple arrays by est_id', () => {
-    const arrays = [
-      [{ est_id: 1, name: 'Birria' }, { est_id: 2, name: 'Mulitas' }],
-      [{ est_id: 1, heat: 5 }, { est_id: 2, heat: 3 }]
-    ];
-    const names = ['item', 'salsa'];
-    const result = combineArraysByEstId(arrays, names);
-
-    expect(result).toHaveLength(2);
-
-    const site1 = result.find(r => r.est_id === 1);
-    expect(site1.item).toEqual({ name: 'Birria' });
-    expect(site1.salsa).toEqual({ heat: 5 });
-  });
-
-  it('strips est_id from nested objects', () => {
-    const arrays = [[{ est_id: 1, name: 'Test', value: 42 }]];
-    const names = ['data'];
-    const result = combineArraysByEstId(arrays, names);
-
-    expect(result[0].data.est_id).toBeUndefined();
-    expect(result[0].data.name).toBe('Test');
-  });
-
-  it('handles null arrays gracefully', () => {
-    const arrays = [null, [{ est_id: 1, name: 'Test' }]];
-    const names = ['skipped', 'data'];
-    const result = combineArraysByEstId(arrays, names);
-
-    expect(result).toHaveLength(1);
-    expect(result[0].data.name).toBe('Test');
-  });
-
-  it('handles items with missing est_id', () => {
-    const arrays = [[{ est_id: 1, name: 'Valid' }, { name: 'No ID' }]];
-    const names = ['data'];
-    const result = combineArraysByEstId(arrays, names);
-
-    expect(result).toHaveLength(1);
-    expect(result[0].est_id).toBe(1);
-  });
-
-  it('returns empty array for empty input', () => {
-    expect(combineArraysByEstId([], [])).toEqual([]);
-  });
-
-  it('merges data from same est_id across arrays', () => {
-    const arrays = [
-      [{ est_id: 1, a: 1 }],
-      [{ est_id: 1, b: 2 }],
-      [{ est_id: 1, c: 3 }]
-    ];
-    const names = ['first', 'second', 'third'];
-    const result = combineArraysByEstId(arrays, names);
-
-    expect(result).toHaveLength(1);
-    expect(result[0].first).toEqual({ a: 1 });
-    expect(result[0].second).toEqual({ b: 2 });
-    expect(result[0].third).toEqual({ c: 3 });
-  });
-});
+import { isOpenNow } from './stores.js';
 
 describe('isOpenNow', () => {
   beforeEach(() => {
