@@ -212,6 +212,17 @@
   .logo-image {
     height: 40px;
     width: auto;
+    border-radius: 8px;
+    transition: box-shadow 0.3s ease, background 0.3s ease;
+  }
+
+  :global(.dark) .logo-image {
+    background: rgba(255, 255, 255, 0.07);
+    padding: 4px 8px;
+    box-shadow:
+      0 0 8px rgba(254, 121, 93, 0.5),
+      0 0 20px rgba(254, 121, 93, 0.2),
+      inset 0 0 0 1px rgba(254, 121, 93, 0.2);
   }
 
   /* Desktop Navigation */
