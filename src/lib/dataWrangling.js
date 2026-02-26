@@ -22,20 +22,21 @@ export function filterObjectByKeySubstring(obj, substring) {
 }
 
 /**
- * Function to get the top five items based on the second item of the subarray
+ * Function to get the top N items based on the second item of the subarray
  * and strip the '_perc' suffix from the keys
  * @param {Array} arr - The array of arrays to process
- * @return {Array} - An array with the top five items
+ * @param {number} n - Number of top items to return (default 5)
+ * @return {Array} - An array with the top N items
  */
-export function getTopFive(arr) {
+export function getTopFive(arr, n = 5) {
     // Sort the array based on the second item of the subarrays in descending order
     arr.sort((a, b) => b[1] - a[1]);
 
-    // Get the top five items
-    const topFive = arr.slice(0, 5);
+    // Get the top N items
+    const topN = arr.slice(0, n);
 
     // Strip the '_perc' suffix from the keys
-    return topFive.map(([key, value]) => [key.replace('_perc', ''), value]);
+    return topN.map(([key, value]) => [key.replace('_perc', ''), value]);
 }
 
 export function percentageOfMaxArray(arr) {

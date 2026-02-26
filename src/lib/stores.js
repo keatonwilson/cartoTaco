@@ -66,8 +66,16 @@ export const processedTacoData = derived(
         const startHours = filterObjectByKeySubstring(site.hours, "start");
         const endHours = filterObjectByKeySubstring(site.hours, "end");
 
+        // Filter to items the establishment actually serves (_yes = true) before ranking,
+        // so the radar only shows offered items rather than cutting off real ones
+        // due to global top-5 competition with the full 16-item pool.
+        const activeMenuPercs = menuPercs.filter(([key]) => {
+          const yesKey = key.replace('_perc', '_yes');
+          return site.menu[yesKey] === true;
+        });
+
         // Pre-compute top five menu items and proteins
-        const menuArray = getTopFive(menuPercs);
+        const menuArray = getTopFive(activeMenuPercs, 7);
         const topFiveMenuItems = menuArray.map(subArray => subArray[0]);
         // Convert to numbers and multiply by 100 to get percentages
         const topFiveMenuValues = menuArray.map(subArray => {
