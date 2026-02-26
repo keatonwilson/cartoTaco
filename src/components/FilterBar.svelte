@@ -68,7 +68,7 @@
       <SearchOutline class="search-icon" size="sm" />
       <input
         type="text"
-        placeholder="Search taco spots..."
+        placeholder="Search by name, menu item, type..."
         bind:value={$filterConfig.searchText}
         class="search-input"
       />
