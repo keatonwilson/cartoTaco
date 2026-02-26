@@ -54,13 +54,12 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 ### Core Data Stores
 - `tacoStore` - Main site data from `sites_complete` view
 - `summaryStore` - Summary statistics
-- `specStore` - Specialty items (combined from three tables)
 
 ### Derived Stores
-- `processedTacoData` - Transforms raw site data into component-ready format with pre-computed values (top 5 menu items, proteins, percentages)
+- `processedTacoData` - Transforms raw site data into component-ready format with pre-computed values (top 5 menu items, proteins, percentages, and specialty items embedded from view)
 - `filteredTacoData` - Filters `processedTacoData` based on `filterConfig` (search, protein type, establishment type, spice level, open hours)
 - `summaryStats` - Processes summary data for context (max/avg values)
-- `specialtiesBySite` - Maps specialty items to establishment IDs
+- `recentlyAddedSites` - Spots added in the last 30 days, sorted newest first (used by NewSpotsBadge)
 
 ### UI State Stores
 - `selectedSite` - Currently selected establishment (for popup)
