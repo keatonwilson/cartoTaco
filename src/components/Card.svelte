@@ -159,13 +159,17 @@
           {/if}
         </div>
 
-        <!-- Desktop: Spice, tortilla, salsa together -->
-        <div class="details-row">
-          <div class="right-box">
-            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1" id="spicy-label">Spiciness</h2>
-            <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
-            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Tortilla Type</h2>
-            <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
+        <!-- Desktop: Spice + tortilla side by side, salsa below -->
+        <div class="details-section">
+          <div class="spice-tortilla-row">
+            <div class="spice-box">
+              <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1" id="spicy-label">Spiciness</h2>
+              <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
+            </div>
+            <div class="tortilla-box">
+              <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Tortilla Type</h2>
+              <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
+            </div>
           </div>
           <div class='salsa-container'>
             <SalsaCount
@@ -351,21 +355,24 @@
     padding: 2%;
   }
 
-  .details-row {
+  .details-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .spice-tortilla-row {
     display: flex;
     flex-direction: row;
-    gap: 8px;
+    gap: 12px;
     align-items: flex-start;
   }
 
-  .right-box {
-    flex: 0 0 auto;
+  .spice-box,
+  .tortilla-box {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    align-items: stretch;
-    justify-content: start;
-    padding: 6px;
-    gap: 0;
   }
 
   .radar-chart-container {
