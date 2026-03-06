@@ -127,6 +127,42 @@
           </div>
         </div>
       {/if}
+      <!-- Protein Styles -->
+      {#if $selectedSite.proteinStyles && Object.keys($selectedSite.proteinStyles).length > 0}
+        {#if $isMobile}
+          <CollapsibleSection title="Protein Styles" defaultOpen={false}>
+            <div class="protein-styles">
+              {#each Object.entries($selectedSite.proteinStyles) as [protein, styles]}
+                <div class="protein-style-row">
+                  <span class="protein-label">{protein}</span>
+                  <div class="style-chips">
+                    {#each styles as style}
+                      <span class="style-chip">{style}</span>
+                    {/each}
+                  </div>
+                </div>
+              {/each}
+            </div>
+          </CollapsibleSection>
+        {:else}
+          <div class="protein-styles-section">
+            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Protein Styles</h2>
+            <div class="protein-styles">
+              {#each Object.entries($selectedSite.proteinStyles) as [protein, styles]}
+                <div class="protein-style-row">
+                  <span class="protein-label">{protein}</span>
+                  <div class="style-chips">
+                    {#each styles as style}
+                      <span class="style-chip">{style}</span>
+                    {/each}
+                  </div>
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
+      {/if}
+
       <div class='salsa-container'>
         <SalsaCount 
           value={$selectedSite.salsaCount || 0} 
@@ -350,6 +386,58 @@
     .radar-chart-container {
       max-height: 280px;
     }
+  }
+
+  .protein-styles-section {
+    border-top: 1px solid lightgray;
+    padding-top: 6px;
+  }
+
+  :global(.dark) .protein-styles-section {
+    border-top-color: #374151;
+  }
+
+  .protein-styles {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 4px 0;
+  }
+
+  .protein-style-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .protein-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: capitalize;
+    color: #FF9800;
+    min-width: 52px;
+    flex-shrink: 0;
+  }
+
+  :global(.dark) .protein-label {
+    color: #FFB74D;
+  }
+
+  .style-chip {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid #FF9800;
+    color: #FF9800;
+    background: rgba(255, 152, 0, 0.08);
+    white-space: nowrap;
+  }
+
+  :global(.dark) .style-chip {
+    background: rgba(255, 152, 0, 0.15);
+    color: #FFB74D;
+    border-color: #FFB74D;
   }
 
   .salsa-container {

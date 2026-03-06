@@ -3,7 +3,7 @@
 // imports
 import { writable, derived } from "svelte/store";
 import { supabaseBrowser } from "./supabaseBrowser";
-import { filterObjectByKeySubstring, getTopFive } from "./dataWrangling";
+import { filterObjectByKeySubstring, getTopFive, extractProteinStyles } from "./dataWrangling";
 import { favoriteIds } from "./favoritesStore";
 
 // Create store that includes data and loading/error state
@@ -119,6 +119,7 @@ export const processedTacoData = derived(
           menuProtein: proteinPercs,
           topFiveProteinItems,
           topFiveProteinValues,
+          proteinStyles: extractProteinStyles(site.protein),
 
           // Salsa and spice data
           salsaCount: site.salsa.total_num,
@@ -215,7 +216,14 @@ export const filterConfig = writable({
   },
   spiceLevel: { min: 0, max: 10 },
   openNow: false,
-  showFavoritesOnly: false
+  showFavoritesOnly: false,
+  styleFilters: {
+    chicken: [],
+    beef: [],
+    pork: [],
+    fish: [],
+    veg: []
+  }
 });
 
 // Helper function to check if a location is currently open
@@ -304,6 +312,15 @@ export const filteredTacoData = derived(
           return site.rawData?.protein?.[proteinKey] === true;
         });
         if (!hasAnyProtein) return false;
+      }
+
+      // Style filters — only applied when a protein is active and has style selections
+      for (const protein of activeProteins) {
+        const selectedStyles = $filterConfig.styleFilters[protein];
+        if (!selectedStyles || selectedStyles.length === 0) continue;
+        const siteStyles = (site.proteinStyles?.[protein] || []).map(s => s.toLowerCase());
+        const hasStyle = selectedStyles.some(s => siteStyles.includes(s.toLowerCase()));
+        if (!hasStyle) return false;
       }
 
       // Type filters

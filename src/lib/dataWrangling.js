@@ -50,6 +50,27 @@ export function percentageOfMaxArray(arr) {
 }
 
 
+/**
+ * Extract preparation styles per protein type from a protein data object.
+ * @param {Object} proteinData - The protein object from a site (e.g. site.protein)
+ * @return {Object} - Map of protein type to array of style strings, e.g. { pork: ["Carnitas", "Al Pastor"] }
+ *                    Only includes proteins that have at least one non-empty style.
+ */
+export function extractProteinStyles(proteinData) {
+    if (!proteinData) return {};
+    const proteins = ['chicken', 'beef', 'pork', 'fish', 'veg'];
+    const result = {};
+    for (const protein of proteins) {
+        const styles = [
+            proteinData[`${protein}_style_1`],
+            proteinData[`${protein}_style_2`],
+            proteinData[`${protein}_style_3`],
+        ].filter(s => s && s.trim() !== '');
+        if (styles.length > 0) result[protein] = styles;
+    }
+    return result;
+}
+
 export function convertHoursData(startTimes, endTimes) {
   const dayMap = {
     mon: 'Mo',

@@ -12,6 +12,31 @@
   $: resultCount = $filteredTacoData.length;
   $: totalCount = $processedTacoData.length;
 
+  // Aggregate unique styles per protein across all sites
+  $: availableStyles = (() => {
+    const result = {};
+    for (const site of $processedTacoData) {
+      if (!site.proteinStyles) continue;
+      for (const [protein, styles] of Object.entries(site.proteinStyles)) {
+        if (!result[protein]) result[protein] = new Set();
+        for (const style of styles) result[protein].add(style);
+      }
+    }
+    // Convert Sets to sorted arrays
+    return Object.fromEntries(
+      Object.entries(result).map(([p, set]) => [p, [...set].sort()])
+    );
+  })();
+
+  function toggleStyleFilter(protein, style) {
+    filterConfig.update(cfg => {
+      const current = cfg.styleFilters[protein] || [];
+      const idx = current.indexOf(style);
+      const updated = idx === -1 ? [...current, style] : current.filter((_, i) => i !== idx);
+      return { ...cfg, styleFilters: { ...cfg.styleFilters, [protein]: updated } };
+    });
+  }
+
   function toggleExpanded() {
     expanded = !expanded;
   }
@@ -45,7 +70,8 @@
       },
       spiceLevel: { min: 0, max: 10 },
       openNow: false,
-      showFavoritesOnly: false
+      showFavoritesOnly: false,
+      styleFilters: { chicken: [], beef: [], pork: [], fish: [], veg: [] }
     });
   }
 
@@ -57,7 +83,8 @@
     $filterConfig.spiceLevel.min > 0 ||
     $filterConfig.spiceLevel.max < 10 ||
     $filterConfig.openNow ||
-    $filterConfig.showFavoritesOnly;
+    $filterConfig.showFavoritesOnly ||
+    Object.values($filterConfig.styleFilters).some(arr => arr.length > 0);
 </script>
 
 <svelte:window on:click={handleWindowClick} on:keydown={handleKeydown} />
@@ -151,6 +178,23 @@
             <span>Vegetarian</span>
           </label>
         </div>
+        <!-- Style sub-filters: appear below when a protein is checked and styles exist -->
+        {#each ['chicken', 'beef', 'pork', 'fish', 'veg'] as protein}
+          {#if $filterConfig.proteins[protein] && availableStyles[protein]?.length > 0}
+            <div class="style-sub-row">
+              <span class="style-sub-label">{protein}:</span>
+              {#each availableStyles[protein] as style}
+                <button
+                  class="style-filter-chip"
+                  class:active={$filterConfig.styleFilters[protein]?.includes(style)}
+                  on:click={() => toggleStyleFilter(protein, style)}
+                >
+                  {style}
+                </button>
+              {/each}
+            </div>
+          {/if}
+        {/each}
       </div>
 
       <!-- Type Filters -->
@@ -492,6 +536,63 @@
   .checkbox-label input[type="checkbox"]:checked + span {
     font-weight: 600;
     color: #FE795D;
+  }
+
+  .style-sub-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+    padding-left: 4px;
+  }
+
+  .style-sub-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: capitalize;
+    color: #FF9800;
+    flex-shrink: 0;
+  }
+
+  :global(.dark) .style-sub-label {
+    color: #FFB74D;
+  }
+
+  .style-filter-chip {
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 10px;
+    border: 1px solid #e0e0e0;
+    background: #f9f9f9;
+    color: #555;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  :global(.dark) .style-filter-chip {
+    background: #374151;
+    border-color: #4b5563;
+    color: #d1d5db;
+  }
+
+  .style-filter-chip:hover {
+    border-color: #FF9800;
+    color: #FF9800;
+  }
+
+  .style-filter-chip.active {
+    background: rgba(255, 152, 0, 0.12);
+    border-color: #FF9800;
+    color: #FF9800;
+    font-weight: 600;
+  }
+
+  :global(.dark) .style-filter-chip.active {
+    background: rgba(255, 152, 0, 0.2);
+    border-color: #FFB74D;
+    color: #FFB74D;
   }
 
   .range-inputs {
