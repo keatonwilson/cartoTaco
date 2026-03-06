@@ -89,6 +89,16 @@
             data={$selectedSite.topFiveMenuValues || []}
           />
         </div>
+        <div class="spice-tortilla-row">
+          <div class="spice-box">
+            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Spiciness</h2>
+            <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
+          </div>
+          <div class="tortilla-box">
+            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Tortilla Type</h2>
+            <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
+          </div>
+        </div>
       {/if}
     </div>
     <div class="right-panel" id="chart">
@@ -159,25 +169,12 @@
           {/if}
         </div>
 
-        <!-- Desktop: Spice + tortilla side by side, salsa below -->
-        <div class="details-section">
-          <div class="spice-tortilla-row">
-            <div class="spice-box">
-              <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1" id="spicy-label">Spiciness</h2>
-              <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
-            </div>
-            <div class="tortilla-box">
-              <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Tortilla Type</h2>
-              <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
-            </div>
-          </div>
-          <div class='salsa-container'>
-            <SalsaCount
-              value={$selectedSite.salsaCount || 0}
-              meanValue={$summaryStats.avgSalsaNum || 0}
-              maxValue={$summaryStats.maxSalsaNum || 0}
-            />
-          </div>
+        <div class='salsa-container'>
+          <SalsaCount
+            value={$selectedSite.salsaCount || 0}
+            meanValue={$summaryStats.avgSalsaNum || 0}
+            maxValue={$summaryStats.maxSalsaNum || 0}
+          />
         </div>
       {/if}
       
@@ -353,12 +350,6 @@
     justify-content: center;
     width: 100%;
     padding: 2%;
-  }
-
-  .details-section {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
   }
 
   .spice-tortilla-row {
