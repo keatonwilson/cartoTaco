@@ -139,8 +139,8 @@
 
 
 <style>
-  /* canvas {
-    max-width: 250px;
-    height: auto;
-  } */
+  canvas {
+    display: block;
+    margin: 0 auto;
+  }
 </style>
