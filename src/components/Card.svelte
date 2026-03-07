@@ -346,9 +346,7 @@
 
   .protein-chart-container {
     display: flex;
-    flex-direction: column;
     justify-content: center;
-    width: 100%;
     padding: 2%;
     max-height: 180px;
   }
