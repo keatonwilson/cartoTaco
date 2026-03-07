@@ -350,6 +350,13 @@
     justify-content: center;
     width: 100%;
     padding: 2%;
+    max-height: 180px;
+  }
+
+  @media (min-width: 768px) {
+    .protein-chart-container {
+      max-height: 220px;
+    }
   }
 
   .spice-tortilla-row {
@@ -369,13 +376,13 @@
   .radar-chart-container {
     display: flex;
     justify-content: center;
-    max-height: 220px;
+    max-height: 180px;
   }
 
   /* Larger radar charts on tablet/desktop */
   @media (min-width: 768px) {
     .radar-chart-container {
-      max-height: 280px;
+      max-height: 220px;
     }
   }
 
