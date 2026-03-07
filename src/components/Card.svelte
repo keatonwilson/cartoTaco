@@ -89,19 +89,45 @@
             data={$selectedSite.topFiveMenuValues || []}
           />
         </div>
+        <div class="spice-tortilla-row">
+          <div class="spice-box">
+            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Spiciness</h2>
+            <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
+          </div>
+          <div class="tortilla-box">
+            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Tortilla Type</h2>
+            <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
+          </div>
+        </div>
       {/if}
     </div>
     <div class="right-panel" id="chart">
       {#if $isMobile}
-        <CollapsibleSection title="Protein Chart" defaultOpen={false}>
+        <!-- Protein: chart + styles together -->
+        <CollapsibleSection title="Protein" defaultOpen={false}>
           <div class="protein-chart-container">
             <RadarChart
               labels={$selectedSite.topFiveProteinItems || []}
               data={$selectedSite.topFiveProteinValues || []}
             />
           </div>
+          {#if $selectedSite.proteinStyles && Object.keys($selectedSite.proteinStyles).length > 0}
+            <div class="protein-styles">
+              {#each Object.entries($selectedSite.proteinStyles) as [protein, styles]}
+                <div class="protein-style-row">
+                  <span class="protein-label">{protein}</span>
+                  <div class="style-chips">
+                    {#each styles as style}
+                      <span class="style-chip">{style}</span>
+                    {/each}
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
         </CollapsibleSection>
 
+        <!-- Spice, tortilla, and salsa together -->
         <CollapsibleSection title="Spiciness & Details" defaultOpen={true}>
           <div class="right-box">
             <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1" id="spicy-label">Spiciness</h2>
@@ -109,31 +135,48 @@
             <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Tortilla Type</h2>
             <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
           </div>
+          <div class='salsa-container'>
+            <SalsaCount
+              value={$selectedSite.salsaCount || 0}
+              meanValue={$summaryStats.avgSalsaNum || 0}
+              maxValue={$summaryStats.maxSalsaNum || 0}
+            />
+          </div>
         </CollapsibleSection>
       {:else}
-        <div class="top-row">
+        <!-- Desktop: Protein section (chart + styles) -->
+        <div class="protein-section">
+          <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Protein</h2>
           <div class="protein-chart-container">
-            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Protein</h2>
             <RadarChart
               labels={$selectedSite.topFiveProteinItems || []}
               data={$selectedSite.topFiveProteinValues || []}
             />
           </div>
-          <div class="right-box">
-            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1" id="spicy-label">Spiciness</h2>
-            <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
-            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Tortilla Type</h2>
-            <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
-          </div>
+          {#if $selectedSite.proteinStyles && Object.keys($selectedSite.proteinStyles).length > 0}
+            <div class="protein-styles">
+              {#each Object.entries($selectedSite.proteinStyles) as [protein, styles]}
+                <div class="protein-style-row">
+                  <span class="protein-label">{protein}</span>
+                  <div class="style-chips">
+                    {#each styles as style}
+                      <span class="style-chip">{style}</span>
+                    {/each}
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
+
+        <div class='salsa-container'>
+          <SalsaCount
+            value={$selectedSite.salsaCount || 0}
+            meanValue={$summaryStats.avgSalsaNum || 0}
+            maxValue={$summaryStats.maxSalsaNum || 0}
+          />
         </div>
       {/if}
-      <div class='salsa-container'>
-        <SalsaCount 
-          value={$selectedSite.salsaCount || 0} 
-          meanValue={$summaryStats.avgSalsaNum || 0} 
-          maxValue={$summaryStats.maxSalsaNum || 0} 
-        />
-      </div>
       
       <!-- Specialty Items Section -->
       <div class="specialties-section">
@@ -291,65 +334,97 @@
     color: #60a5fa;
   }
 
-  /* Mobile: Stack protein chart and right-box vertically */
-  .top-row {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
+  .protein-section {
     border-bottom: 1px solid lightgray;
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+  }
+
+  :global(.dark) .protein-section {
+    border-bottom-color: #374151;
   }
 
   .protein-chart-container {
     display: flex;
-    flex-direction: column;
     justify-content: center;
-    width: 100%;
     padding: 2%;
+    max-height: 180px;
   }
 
-  .right-box {
-    width: 100%;
+  @media (min-width: 768px) {
+    .protein-chart-container {
+      max-height: 220px;
+    }
+  }
+
+  .spice-tortilla-row {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .spice-box,
+  .tortilla-box {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 6px;
-    padding-bottom: 10px;
-    gap: 8px;
-  }
-
-  /* Tablet & Desktop: Horizontal layout for top-row */
-  @media (min-width: 768px) {
-    .top-row {
-      flex-direction: row;
-      max-height: 40%;
-      align-items: flex-start;
-    }
-
-    .protein-chart-container {
-      width: 65%;
-      justify-content: flex-start;
-    }
-
-    .right-box {
-      width: 35%;
-      align-items: stretch;
-      justify-content: start;
-      gap: 0;
-    }
   }
 
   .radar-chart-container {
     display: flex;
     justify-content: center;
-    max-height: 220px;
+    max-height: 180px;
   }
 
   /* Larger radar charts on tablet/desktop */
   @media (min-width: 768px) {
     .radar-chart-container {
-      max-height: 280px;
+      max-height: 220px;
     }
+  }
+
+  .protein-styles {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 4px 0;
+  }
+
+  .protein-style-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .protein-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: capitalize;
+    color: #FF9800;
+    min-width: 52px;
+    flex-shrink: 0;
+  }
+
+  :global(.dark) .protein-label {
+    color: #FFB74D;
+  }
+
+  .style-chip {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid #FF9800;
+    color: #FF9800;
+    background: rgba(255, 152, 0, 0.08);
+    white-space: nowrap;
+  }
+
+  :global(.dark) .style-chip {
+    background: rgba(255, 152, 0, 0.15);
+    color: #FFB74D;
+    border-color: #FFB74D;
   }
 
   .salsa-container {

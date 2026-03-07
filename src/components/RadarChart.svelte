@@ -139,8 +139,4 @@
 
 
 <style>
-  /* canvas {
-    max-width: 250px;
-    height: auto;
-  } */
 </style>
