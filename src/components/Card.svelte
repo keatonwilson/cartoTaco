@@ -376,7 +376,6 @@
   .radar-chart-container {
     display: flex;
     justify-content: center;
-    align-items: center;
     max-height: 180px;
   }
 
