@@ -35,8 +35,8 @@ The application uses Supabase with a critical performance optimization:
 - Data is fetched once on app initialization in `stores.js` via `fetchSiteData()`
 
 ### Supporting Tables
-- `summaries` - Aggregated statistics (max/avg salsa count, heat levels)
 - `item_spec`, `protein_spec`, `salsa_spec` - Specialty item information
+- `summaries` - Legacy table (no longer used; summary stats are computed client-side from `processedTacoData`)
 
 ### Running Migrations
 Migrations must be run in this order:
@@ -52,6 +52,14 @@ Migrations must be run in this order:
 10. `migrations/010_update_sites_complete_view.sql` - Updates view again (spec-related)
 11. `migrations/011_remove_spec_text_cols_from_view.sql` - Removes text columns, keeps FK references
 12. `migrations/012_drop_specialty_item_id_4.sql` - Removes specific specialty item record
+13. `migrations/013_add_burro_perc_to_view.sql` - Adds missing burro_perc to view (fixes burritos not showing in radar chart)
+14. `migrations/014_add_foreign_key_constraints.sql` - Adds FK constraints on est_id for child tables (run orphan checks first)
+15. `migrations/015_add_est_id_indexes.sql` - Adds indexes on est_id join columns and spec FK columns
+
+### Schema Management
+- **`schema/sites_complete_view.sql`** is the single source of truth for the `sites_complete` view definition
+- Any migration that rebuilds the view should copy from this canonical file
+- See `schema/README.md` for full workflow
 
 ## State Management Architecture
 
@@ -59,14 +67,13 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 
 ### Core Data Stores
 - `tacoStore` - Main site data from `sites_complete` view `{ data: [], loading: false, error: null }`
-- `summaryStore` - Summary statistics `{ data: [], loading: false, error: null }`
 
 ### Derived Stores
-- `isLoading` - Combined loading state from tacoStore and summaryStore
-- `hasError` - Combined error state from tacoStore and summaryStore
+- `isLoading` - Loading state from tacoStore
+- `hasError` - Error state from tacoStore
 - `processedTacoData` - Transforms raw site data into component-ready format with pre-computed values (top 5 menu items, proteins, percentages, and specialty items embedded from view)
 - `filteredTacoData` - Filters `processedTacoData` based on `filterConfig` (search, protein type, establishment type, spice level, open hours, favorites)
-- `summaryStats` - Processes summary data for context `{ maxSalsaNum, avgSalsaNum, maxHeatLevel, avgHeatLevel }`
+- `summaryStats` - Computed from `processedTacoData` `{ maxSalsaNum, avgSalsaNum, maxHeatLevel, avgHeatLevel }`
 - `recentlyAddedSites` - Spots added in the last 30 days, sorted newest first (used by NewSpotsBadge)
 
 ### UI State Stores
