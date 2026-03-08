@@ -55,6 +55,9 @@ Migrations must be run in this order:
 13. `migrations/013_add_burro_perc_to_view.sql` - Adds missing burro_perc to view (fixes burritos not showing in radar chart)
 14. `migrations/014_add_foreign_key_constraints.sql` - Adds FK constraints on est_id for child tables (run orphan checks first)
 15. `migrations/015_add_est_id_indexes.sql` - Adds indexes on est_id join columns and spec FK columns
+16. `migrations/016_view_naming_cleanup.sql` - Aliases burro→burrito in view, removes unused site fields (contact, lat_2, lon_2, days_loc_2)
+17. `migrations/017_drop_legacy_spec_text_columns.sql` - Drops legacy text columns (specialty_item_N, protein_spec_N, salsa_spec_N) replaced by FK columns
+18. `migrations/018_rename_spec_fk_columns.sql` - Renames spec FK columns to consistent spec_id_N pattern, rebuilds view
 
 ### Schema Management
 - **`schema/sites_complete_view.sql`** is the single source of truth for the `sites_complete` view definition

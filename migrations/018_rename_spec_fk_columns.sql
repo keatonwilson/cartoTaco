@@ -1,10 +1,33 @@
--- Canonical definition of the sites_complete view.
--- This file is the SINGLE SOURCE OF TRUTH for the view schema.
--- Any migration that rebuilds the view should copy from this file.
+-- Migration 018: Rename spec FK columns to consistent spec_id_N pattern
+-- Phase 3.2: Normalizes column names across all three tables.
+--   menu:    specialty_item_id_N → spec_id_N
+--   protein: protein_spec_id_N  → spec_id_N
+--   salsa:   salsa_spec_id_N    → spec_id_N
 --
--- Last updated: Migration 018 (renamed spec FK columns to spec_id_N)
+-- Must drop and rebuild the view since it references these columns.
+-- Indexes (from migration 015) are automatically renamed by Postgres.
+--
+-- Dashboard → SQL Editor → New Query → Paste → Run
 
+-- Drop the view first (it references the old column names)
 DROP VIEW IF EXISTS public.sites_complete;
+
+-- ── menu: rename FK columns ─────────────────────────────────────────────────
+ALTER TABLE public.menu RENAME COLUMN specialty_item_id_1 TO spec_id_1;
+ALTER TABLE public.menu RENAME COLUMN specialty_item_id_2 TO spec_id_2;
+ALTER TABLE public.menu RENAME COLUMN specialty_item_id_3 TO spec_id_3;
+
+-- ── protein: rename FK columns ──────────────────────────────────────────────
+ALTER TABLE public.protein RENAME COLUMN protein_spec_id_1 TO spec_id_1;
+ALTER TABLE public.protein RENAME COLUMN protein_spec_id_2 TO spec_id_2;
+ALTER TABLE public.protein RENAME COLUMN protein_spec_id_3 TO spec_id_3;
+
+-- ── salsa: rename FK columns ────────────────────────────────────────────────
+ALTER TABLE public.salsa RENAME COLUMN salsa_spec_id_1 TO spec_id_1;
+ALTER TABLE public.salsa RENAME COLUMN salsa_spec_id_2 TO spec_id_2;
+
+-- ── Rebuild view from canonical schema (schema/sites_complete_view.sql) ─────
+-- Uses the new spec_id_N column names.
 
 CREATE VIEW public.sites_complete AS
 SELECT
@@ -180,7 +203,7 @@ LEFT JOIN public.menu m            ON s.est_id = m.est_id
 LEFT JOIN public.hours h           ON s.est_id = h.est_id
 LEFT JOIN public.salsa sa          ON s.est_id = sa.est_id
 LEFT JOIN public.protein p         ON s.est_id = p.est_id
--- item_spec joins (up to 3 per site; spec_id_N renamed in migration 018)
+-- item_spec joins (up to 3 per site; spec_id_N renamed in this migration)
 LEFT JOIN public.item_spec   is1   ON m.spec_id_1 = is1.id
 LEFT JOIN public.item_spec   is2   ON m.spec_id_2 = is2.id
 LEFT JOIN public.item_spec   is3   ON m.spec_id_3 = is3.id

@@ -1,8 +1,11 @@
--- Canonical definition of the sites_complete view.
--- This file is the SINGLE SOURCE OF TRUTH for the view schema.
--- Any migration that rebuilds the view should copy from this file.
+-- Migration 016: View naming cleanup
+-- Phase 2.1: Alias burro → burrito in JSONB keys (DB columns unchanged)
+-- Phase 2.2: Remove unused site fields (contact, lat_2, lon_2, days_loc_2) from view
 --
--- Last updated: Migration 018 (renamed spec FK columns to spec_id_N)
+-- NOTE: Still uses OLD FK column names (specialty_item_id_N, protein_spec_id_N,
+-- salsa_spec_id_N). Those get renamed in migration 018.
+--
+-- Dashboard → SQL Editor → New Query → Paste → Run
 
 DROP VIEW IF EXISTS public.sites_complete;
 
@@ -10,7 +13,7 @@ CREATE VIEW public.sites_complete AS
 SELECT
   s.est_id,
 
-  -- Sites table fields (contact, lat_2, lon_2, days_loc_2 removed in migration 016)
+  -- Sites table fields (contact, lat_2, lon_2, days_loc_2 removed)
   jsonb_build_object(
     'est_id', s.est_id,
     'name', s.name,
@@ -35,7 +38,7 @@ SELECT
     'last_updated', d.last_updated
   ) AS descriptions,
 
-  -- Menu table fields (burro aliased to burrito in migration 016)
+  -- Menu table fields (burro aliased to burrito)
   jsonb_build_object(
     'burrito_yes', m.burro_yes,
     'taco_yes', m.taco_yes,
@@ -180,20 +183,20 @@ LEFT JOIN public.menu m            ON s.est_id = m.est_id
 LEFT JOIN public.hours h           ON s.est_id = h.est_id
 LEFT JOIN public.salsa sa          ON s.est_id = sa.est_id
 LEFT JOIN public.protein p         ON s.est_id = p.est_id
--- item_spec joins (up to 3 per site; spec_id_N renamed in migration 018)
-LEFT JOIN public.item_spec   is1   ON m.spec_id_1 = is1.id
-LEFT JOIN public.item_spec   is2   ON m.spec_id_2 = is2.id
-LEFT JOIN public.item_spec   is3   ON m.spec_id_3 = is3.id
+-- item_spec joins (up to 3 per site)
+LEFT JOIN public.item_spec   is1   ON m.specialty_item_id_1 = is1.id
+LEFT JOIN public.item_spec   is2   ON m.specialty_item_id_2 = is2.id
+LEFT JOIN public.item_spec   is3   ON m.specialty_item_id_3 = is3.id
 -- protein_spec joins (up to 3 per site)
-LEFT JOIN public.protein_spec ps1  ON p.spec_id_1 = ps1.id
-LEFT JOIN public.protein_spec ps2  ON p.spec_id_2 = ps2.id
-LEFT JOIN public.protein_spec ps3  ON p.spec_id_3 = ps3.id
+LEFT JOIN public.protein_spec ps1  ON p.protein_spec_id_1 = ps1.id
+LEFT JOIN public.protein_spec ps2  ON p.protein_spec_id_2 = ps2.id
+LEFT JOIN public.protein_spec ps3  ON p.protein_spec_id_3 = ps3.id
 -- salsa_spec joins (up to 2 per site)
-LEFT JOIN public.salsa_spec   ss1  ON sa.spec_id_1 = ss1.id
-LEFT JOIN public.salsa_spec   ss2  ON sa.spec_id_2 = ss2.id;
+LEFT JOIN public.salsa_spec   ss1  ON sa.salsa_spec_id_1 = ss1.id
+LEFT JOIN public.salsa_spec   ss2  ON sa.salsa_spec_id_2 = ss2.id;
 
 -- Grant select permissions
 GRANT SELECT ON public.sites_complete TO anon;
 GRANT SELECT ON public.sites_complete TO authenticated;
 
-COMMENT ON VIEW public.sites_complete IS 'Optimized view combining all site-related tables into a single query. Specialty data embedded as JSONB arrays via FK joins. burro aliased to burrito; unused site fields removed; spec FK columns normalized to spec_id_N.';
+COMMENT ON VIEW public.sites_complete IS 'Optimized view combining all site-related tables. burro aliased to burrito; unused site fields (contact, lat_2, lon_2, days_loc_2) removed.';
