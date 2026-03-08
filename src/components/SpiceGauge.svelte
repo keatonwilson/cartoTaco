@@ -44,7 +44,7 @@
             max: 10,
             splitNumber: 5, // Fewer ticks
             center: ["50%", "50%"], // Center the gauge vertically
-            radius: "65%", // Adjust the radius to reduce whitespace
+            radius: "80%",
             axisLine: {
               lineStyle: {
                 width: 4, // Thinner gauge line
@@ -79,7 +79,7 @@
             },
             detail: {
               formatter: "{value}",
-              fontSize: 20,
+              fontSize: 14,
               offsetCenter: [0, "60%"],
             },
             data: [{ value: spiceValue }],

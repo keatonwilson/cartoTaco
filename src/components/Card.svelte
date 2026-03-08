@@ -436,6 +436,9 @@
     justify-content: space-between;
     gap: 10px;
     padding: 4px 0;
+    overflow: visible;
+    position: relative;
+    z-index: 10;
   }
 
   .desktop-header-left {
@@ -444,6 +447,7 @@
     gap: 12px;
     flex: 1;
     min-width: 0;
+    overflow: visible;
   }
 
   .desktop-header-left h2 {
@@ -542,13 +546,18 @@
   }
 
   .desktop-stat-item :global(.gauge-container) {
-    max-width: 90px;
-    max-height: 90px;
-    height: 90px;
+    max-width: 70px;
+    max-height: 70px;
+    height: 70px;
   }
 
   .desktop-stat-item :global(.gauge-wrapper) {
     gap: 0;
+  }
+
+  .desktop-stat-item :global(.spice-description) {
+    font-size: 11px;
+    margin-top: -4px;
   }
 
   .desktop-stat-item :global(.spice-explanation) {
