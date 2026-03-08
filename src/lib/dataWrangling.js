@@ -66,7 +66,7 @@ export function extractProteinStyles(proteinData) {
             proteinData[`${protein}_style_2`],
             proteinData[`${protein}_style_3`],
         ].filter(s => s && s.trim() !== '' && s.trim().toUpperCase() !== 'NA');
-        if (styles.length >= 3) result[protein] = styles;
+        if (styles.length > 0) result[protein] = styles;
     }
     return result;
 }

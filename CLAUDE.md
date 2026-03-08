@@ -36,7 +36,7 @@ The application uses Supabase with a critical performance optimization:
 
 ### Supporting Tables
 - `item_spec`, `protein_spec`, `salsa_spec` - Specialty item information
-- `summaries` - Legacy table (no longer used; summary stats are computed client-side from `processedTacoData`)
+- `summaries` - Dropped in migration 019 (summary stats now computed client-side from `processedTacoData`)
 
 ### Running Migrations
 Migrations must be run in this order:
@@ -58,6 +58,8 @@ Migrations must be run in this order:
 16. `migrations/016_view_naming_cleanup.sql` - Aliases burro→burrito in view, removes unused site fields (contact, lat_2, lon_2, days_loc_2)
 17. `migrations/017_drop_legacy_spec_text_columns.sql` - Drops legacy text columns (specialty_item_N, protein_spec_N, salsa_spec_N) replaced by FK columns
 18. `migrations/018_rename_spec_fk_columns.sql` - Renames spec FK columns to consistent spec_id_N pattern, rebuilds view
+19. `migrations/019_drop_summaries_table.sql` - Drops the unused summaries table (stats now computed client-side)
+20. `migrations/020_drop_unused_sites_columns.sql` - Drops unused columns from sites table (contact, lat_2, lon_2, days_loc_2)
 
 ### Schema Management
 - **`schema/sites_complete_view.sql`** is the single source of truth for the `sites_complete` view definition

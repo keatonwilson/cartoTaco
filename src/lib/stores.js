@@ -224,16 +224,15 @@ export const filterConfig = writable({
 });
 
 // Helper function to check if a location is currently open
-export function isOpenNow(startHours, endHours) {
+// Accepts the raw hours object from the view (keys like mon_start, mon_end)
+export function isOpenNow(hours) {
+  if (!hours) return false;
   const now = new Date();
   const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
   const today = days[now.getDay()];
 
-  const startKey = `${today}_start`;
-  const endKey = `${today}_end`;
-
-  const startTime = startHours[startKey];
-  const endTime = endHours[endKey];
+  const startTime = hours[`${today}_start`];
+  const endTime = hours[`${today}_end`];
 
   if (!startTime || !endTime) return false;
 
@@ -340,7 +339,7 @@ export const filteredTacoData = derived(
 
       // Open now filter
       if ($filterConfig.openNow) {
-        if (!isOpenNow(site.startHours, site.endHours)) {
+        if (!isOpenNow(site.rawData.hours)) {
           return false;
         }
       }
