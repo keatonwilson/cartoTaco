@@ -3,12 +3,10 @@
 	import mapboxgl from 'mapbox-gl';
 	import {
 		tacoStore,
-		summaryStore,
 		isLoading,
 		hasError,
 		processedTacoData,
-		filteredTacoData,
-		summaryStats
+		filteredTacoData
 	} from '../lib/stores';
 	import 'mapbox-gl/dist/mapbox-gl.css';
 	import { updateMarkers, resetListeners, updateTrailLayers, updateTrailRoute, clearTrailLayers } from '../lib/mapping.js';
@@ -172,9 +170,8 @@
 
 	// Function to retry data loading on error
 	async function retryLoading() {
-		const { fetchSiteData, fetchSummaryData } = await import('../lib/stores');
+		const { fetchSiteData } = await import('../lib/stores');
 		if ($tacoStore.error) fetchSiteData();
-		if ($summaryStore.error) fetchSummaryData();
 	}
 </script>
 
