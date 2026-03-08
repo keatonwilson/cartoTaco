@@ -41,7 +41,7 @@
         },
         options: {
           responsive: true,
-          maintainAspectRatio: true,
+          maintainAspectRatio: false,
           elements: {
             line: {
               borderWidth: 2,
@@ -76,7 +76,7 @@
             }
           },
           layout: {
-            padding: 15
+            padding: 2
           },
           scales: {
             r: {
@@ -130,8 +130,14 @@
   }
 </script>
 
-<canvas bind:this={canvas}></canvas>
-
+<div class="chart-wrapper">
+  <canvas bind:this={canvas}></canvas>
+</div>
 
 <style>
+  .chart-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
 </style>

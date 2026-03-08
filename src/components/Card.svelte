@@ -359,13 +359,13 @@
     display: flex;
     justify-content: center;
     padding: 2%;
-    max-height: 180px;
+    height: 200px;
   }
 
   .radar-chart-container {
     display: flex;
     justify-content: center;
-    max-height: 180px;
+    height: 200px;
   }
 
   .protein-styles {
