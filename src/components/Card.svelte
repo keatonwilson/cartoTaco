@@ -483,7 +483,7 @@
   /* Row 3: Two radar charts side by side */
   .desktop-charts-row {
     display: flex;
-    gap: 8px;
+    gap: 4px;
     padding: 4px 0;
   }
 
@@ -498,8 +498,10 @@
   .desktop-radar-container {
     display: flex;
     justify-content: center;
-    max-height: 170px;
     width: 100%;
+    height: 220px;
+    position: relative;
+    overflow: visible;
   }
 
   .protein-styles-compact {
@@ -522,7 +524,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 4px 8px;
+    padding: 6px 8px;
     background: #f9fafb;
     border-radius: 6px;
   }
@@ -532,9 +534,11 @@
   }
 
   .desktop-stat-item {
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
+    min-width: 0;
   }
 
   .desktop-stat-item :global(.gauge-container) {
@@ -551,25 +555,16 @@
     display: none;
   }
 
-  .desktop-tortilla-item {
-    flex-shrink: 0;
-  }
-
   .desktop-tortilla-item :global(.icons) {
     margin: 0;
-    gap: 6px;
+    gap: 8px;
   }
 
   .desktop-tortilla-item :global(.tortilla-icon) {
-    width: 26px;
-    height: 26px;
-    max-width: 26px;
-    max-height: 26px;
-  }
-
-  .desktop-salsa-item {
-    flex: 1;
-    min-width: 0;
+    width: 28px;
+    height: 28px;
+    max-width: 28px;
+    max-height: 28px;
   }
 
   .desktop-salsa-item :global(.chart-container) {

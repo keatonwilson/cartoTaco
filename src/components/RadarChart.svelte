@@ -55,13 +55,13 @@
               enabled: true,
               backgroundColor: 'rgba(0, 0, 0, 0.8)',
               titleFont: {
-                size: 14,
+                size: 12,
                 weight: 'bold'
               },
               bodyFont: {
-                size: 13
+                size: 11
               },
-              padding: 12,
+              padding: 8,
               displayColors: false,
               callbacks: {
                 title: function(context) {
@@ -70,18 +70,13 @@
                 label: function(context) {
                   const value = context.parsed.r;
                   const percentage = Math.round(value);
-                  return [
-                    `Represents ${percentage}% of menu`,
-                    '',
-                    'This shows how prominently',
-                    'this item features on the menu'
-                  ];
+                  return `${percentage}% of menu`;
                 }
               }
             }
           },
           layout: {
-            padding: 5
+            padding: 15
           },
           scales: {
             r: {
