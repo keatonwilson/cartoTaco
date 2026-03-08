@@ -79,8 +79,8 @@
             },
             detail: {
               formatter: "{value}",
-              fontSize: 14,
-              offsetCenter: [0, "60%"],
+              fontSize: 12,
+              offsetCenter: [0, "65%"],
             },
             data: [{ value: spiceValue }],
           },

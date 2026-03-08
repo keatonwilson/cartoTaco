@@ -429,16 +429,13 @@
     gap: 4px;
   }
 
-  /* Row 1: Header */
+  /* Row 1: Header — right padding avoids overlap with popup close button */
   .desktop-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    padding: 4px 0;
-    overflow: visible;
-    position: relative;
-    z-index: 10;
+    padding: 4px 40px 4px 0;
   }
 
   .desktop-header-left {
@@ -447,7 +444,6 @@
     gap: 12px;
     flex: 1;
     min-width: 0;
-    overflow: visible;
   }
 
   .desktop-header-left h2 {
@@ -466,6 +462,12 @@
   .desktop-header-left :global(.site-icon) {
     width: 26px;
     height: 26px;
+  }
+
+  /* Show type tooltips below icons (not above) so they aren't clipped by popup overflow */
+  .desktop-header-left :global(.tooltip) {
+    bottom: auto;
+    top: calc(100% + 5px);
   }
 
   /* Row 2: Description + Hours/Contact collapsible */
@@ -546,9 +548,10 @@
   }
 
   .desktop-stat-item :global(.gauge-container) {
-    max-width: 70px;
-    max-height: 70px;
-    height: 70px;
+    width: 64px !important;
+    height: 64px !important;
+    max-width: 64px !important;
+    max-height: 64px !important;
   }
 
   .desktop-stat-item :global(.gauge-wrapper) {
@@ -557,7 +560,7 @@
 
   .desktop-stat-item :global(.spice-description) {
     font-size: 11px;
-    margin-top: -4px;
+    margin-top: -2px;
   }
 
   .desktop-stat-item :global(.spice-explanation) {
