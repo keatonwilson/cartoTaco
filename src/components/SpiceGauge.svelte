@@ -44,10 +44,10 @@
             max: 10,
             splitNumber: 5, // Fewer ticks
             center: ["50%", "50%"], // Center the gauge vertically
-            radius: "80%",
+            radius: "85%",
             axisLine: {
               lineStyle: {
-                width: 4, // Thinner gauge line
+                width: 3,
                 color: [
                   [0.3, "#FFD700"],
                   [0.7, "#FF6E76"],
@@ -56,21 +56,19 @@
               },
             },
             pointer: {
-              width: 2, // Thinner pointer
-              length: '50%',
+              width: 2,
+              length: '55%',
               itemStyle: {
                 color: "auto",
               },
             },
             axisTick: {
-              length: 5, // Shorter ticks
-              lineStyle: {
-                color: "auto",
-              },
+              show: false,
             },
             splitLine: {
-              length: 10, // Shorter split lines
+              length: 4,
               lineStyle: {
+                width: 1,
                 color: "auto",
               },
             },
