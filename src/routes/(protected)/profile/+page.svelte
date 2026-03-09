@@ -3,8 +3,9 @@
   import { signOut } from '$lib/authStore';
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
-  import { UserCircleOutline, EnvelopeOutline, CalendarMonthOutline, HeartSolid, PaperPlaneOutline, StarOutline } from 'flowbite-svelte-icons';
+  import { UserCircleOutline, EnvelopeOutline, CalendarMonthOutline, HeartSolid } from 'flowbite-svelte-icons';
   import { favoritesCount, loadFavorites } from '$lib/favoritesStore';
+  import TasteProfile from '../../../components/TasteProfile.svelte';
 
   export let data;
 
@@ -78,24 +79,10 @@
 
       <div class="divider"></div>
 
-      <!-- Coming Soon Features -->
+      <!-- Taste Profile -->
       <div class="info-section">
-        <h2 class="section-title">Coming Soon</h2>
-        <p class="coming-soon-text">
-          We're working on exciting new features to enhance your CartoTaco experience!
-        </p>
-
-        <div class="feature-grid">
-          <div class="feature-item">
-            {#if browser}
-              <StarOutline class="feature-icon" />
-            {/if}
-            <div class="feature-content">
-              <h3 class="feature-title">Ratings & Reviews</h3>
-              <p class="feature-description">Share your experiences and rate establishments</p>
-            </div>
-          </div>
-        </div>
+        <h2 class="section-title">Your Taste Profile</h2>
+        <TasteProfile />
       </div>
 
       <div class="divider"></div>
@@ -251,83 +238,6 @@
     margin: 2rem 0;
   }
 
-  .coming-soon-text {
-    font-size: 0.875rem;
-    color: #6B7280;
-    margin-bottom: 1.5rem;
-  }
-
-  :global(.dark) .coming-soon-text {
-    color: #9ca3af;
-  }
-
-  .feature-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .feature-item {
-    display: flex;
-    gap: 1rem;
-    padding: 1rem;
-    background: #F9FAFB;
-    border-radius: 0.5rem;
-    border: 1px solid #E5E7EB;
-    width: 100%;
-    text-align: left;
-  }
-
-  :global(.dark) .feature-item {
-    background: #111827;
-    border-color: #374151;
-  }
-
-  .feature-item.clickable {
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .feature-item.clickable:hover {
-    background: white;
-    border-color: #FE795D;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px rgba(254, 121, 93, 0.2);
-  }
-
-  :global(.dark) .feature-item.clickable:hover {
-    background: #1f2937;
-  }
-
-  .feature-icon {
-    flex-shrink: 0;
-    color: #FE795D;
-  }
-
-  .feature-content {
-    flex: 1;
-  }
-
-  .feature-title {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #111827;
-    margin-bottom: 0.25rem;
-  }
-
-  :global(.dark) .feature-title {
-    color: #f9fafb;
-  }
-
-  .feature-description {
-    font-size: 0.75rem;
-    color: #6B7280;
-  }
-
-  :global(.dark) .feature-description {
-    color: #9ca3af;
-  }
-
   .actions-section {
     display: flex;
     justify-content: center;
@@ -353,12 +263,6 @@
   @media (min-width: 640px) {
     .info-item {
       padding: 1.25rem;
-    }
-
-    .feature-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 1rem;
     }
   }
 </style>
