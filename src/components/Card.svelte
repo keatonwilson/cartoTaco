@@ -12,6 +12,19 @@
   import FavoriteButton from "./FavoriteButton.svelte";
   import { selectedSite, summaryStats } from "$lib/stores";
   import { isMobile } from "$lib/deviceDetection";
+  import { comparisonSites, addToComparison, removeFromComparison } from '$lib/comparisonStore';
+
+  $: isInComparison = $comparisonSites.some(s => s.est_id === $selectedSite?.est_id);
+  $: comparisonFull = $comparisonSites.length >= 3;
+
+  function toggleComparison() {
+    if (!$selectedSite) return;
+    if (isInComparison) {
+      removeFromComparison($selectedSite.est_id);
+    } else {
+      addToComparison($selectedSite);
+    }
+  }
 
   // Local state
   let showLongDescription = false;
@@ -42,6 +55,15 @@
             {$selectedSite.name || 'Unknown Location'}
           </h2>
           <FavoriteButton estId={$selectedSite.est_id} size="sm" />
+          <button
+            class="compare-btn"
+            class:active={isInComparison}
+            disabled={!isInComparison && comparisonFull}
+            on:click={toggleComparison}
+            title={isInComparison ? 'Remove from comparison' : comparisonFull ? 'Max 3 spots' : 'Add to comparison'}
+          >
+            {isInComparison ? '- Compare' : '+ Compare'}
+          </button>
         </div>
         <HoursOpen
           startHours={$selectedSite.startHours || {}}
@@ -145,7 +167,18 @@
           </h2>
           <IconHighlight type="siteType" data={$selectedSite.type || 'unknown'} />
         </div>
-        <FavoriteButton estId={$selectedSite.est_id} size="sm" />
+        <div class="desktop-header-actions">
+          <FavoriteButton estId={$selectedSite.est_id} size="sm" />
+          <button
+            class="compare-btn"
+            class:active={isInComparison}
+            disabled={!isInComparison && comparisonFull}
+            on:click={toggleComparison}
+            title={isInComparison ? 'Remove from comparison' : comparisonFull ? 'Max 3 spots' : 'Add to comparison'}
+          >
+            {isInComparison ? '- Compare' : '+ Compare'}
+          </button>
+        </div>
       </div>
 
       <!-- Row 2: Description (short, with expand) + Hours/Contact collapsible -->
@@ -595,5 +628,54 @@
 
   :global(.dark) .desktop-specialties {
     border-top-color: #374151;
+  }
+
+  /* Compare button */
+  .compare-btn {
+    padding: 4px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background: #f9fafb;
+    color: #374151;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .compare-btn:hover:not(:disabled) {
+    border-color: #FE795D;
+    color: #FE795D;
+  }
+
+  .compare-btn.active {
+    background: #FE795D;
+    color: white;
+    border-color: #FE795D;
+  }
+
+  .compare-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  :global(.dark) .compare-btn {
+    background: #374151;
+    border-color: #4b5563;
+    color: #d1d5db;
+  }
+
+  :global(.dark) .compare-btn.active {
+    background: #FE795D;
+    color: white;
+    border-color: #FE795D;
+  }
+
+  .desktop-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
   }
 </style>

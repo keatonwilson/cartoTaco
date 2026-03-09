@@ -13,6 +13,8 @@
 	import { mapInstance } from '../lib/mapStore.js';
 	import FilterBar from '../components/FilterBar.svelte';
 	import TrailTray from '../components/TrailTray.svelte';
+	import ComparisonTray from '../components/ComparisonTray.svelte';
+	import { comparisonActive, addToComparison } from '../lib/comparisonStore.js';
 	import { effectiveTheme, getMapboxStyle } from '$lib/theme.js';
 	import {
 		trailModeActive,
@@ -29,6 +31,7 @@
 	let lastDataLength = -1; // Track the last data length to avoid unnecessary updates
 	let currentTheme = null; // Track current theme to prevent duplicate style changes
 	let trailRestored = false; // Prevent re-running URL trail reconstruction
+	let comparisonRestored = false; // Prevent re-running URL comparison reconstruction
 
 	mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_KEY;
 
@@ -146,8 +149,11 @@
 	// When trail mode exits, explicitly remove all trail layers and sources from the map
 	$: if (map && mapLoaded && !$trailModeActive) clearTrailLayers(map);
 
-	// Map padding: push content up when trail tray is open
-	$: if (map && mapLoaded) map.setPadding({ bottom: $trailModeActive ? 280 : 0 });
+	// Map padding: push content up when trail tray or comparison tray is open
+	$: if (map && mapLoaded) {
+		const bottomPadding = $trailModeActive ? 280 : $comparisonActive ? 160 : 0;
+		map.setPadding({ bottom: bottomPadding });
+	}
 
 	// Reconstruct trail from URL params once processedTacoData is available
 	$: if (!trailRestored && $processedTacoData && $processedTacoData.length > 0 && typeof window !== 'undefined') {
@@ -165,6 +171,18 @@
 				sites.forEach((site) => addStop(site));
 				enterTrailMode();
 			}
+		}
+	}
+
+	// Reconstruct comparison from URL params once processedTacoData is available
+	$: if (!comparisonRestored && $processedTacoData && $processedTacoData.length > 0 && typeof window !== 'undefined') {
+		const params = new URLSearchParams(window.location.search);
+		const compareParam = params.get('compare');
+		comparisonRestored = true;
+		if (compareParam) {
+			const ids = compareParam.split(',').map(Number);
+			const sites = ids.map((id) => $processedTacoData.find((s) => s.est_id === id)).filter(Boolean);
+			sites.forEach((site) => addToComparison(site));
 		}
 	}
 
@@ -199,6 +217,7 @@
 {#if !$isLoading && !$hasError}
 	<FilterBar />
 	<TrailTray />
+	<ComparisonTray />
 {/if}
 
 <style>

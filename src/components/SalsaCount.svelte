@@ -114,7 +114,7 @@
   <div class="salsa-wrapper">
     <div class="chart-container">
       <div class="chart-label">Salsa Count</div>
-      <canvas id="salsaBarChart" bind:this={canvas}></canvas>
+      <canvas bind:this={canvas}></canvas>
     </div>
     <div class="salsa-stats">
       <span class="stat-item"><strong>{value}</strong> salsas</span>
@@ -153,11 +153,6 @@
 
     :global(.dark) .chart-label {
       color: #f9fafb;
-    }
-
-    #salsaBarChart {
-        width: auto;
-        height: auto;
     }
 
     .salsa-stats {

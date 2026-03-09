@@ -14,6 +14,7 @@ This document outlines potential improvements to enhance CartoTaco's functionali
 8. **User Favorites System** - Heart icon favorites with filtering, dedicated favorites page, and map integration
 9. **Vercel Deployment** - Configured adapter-vercel with Node 20, SSR guards in stores
 10. **Directions Deep-Link** - `DirectionsButton.svelte` detects iOS/Android/desktop and deep-links to Apple Maps, Google Maps intent, or Google Maps web respectively
+11. **Onboarding Tour** - 7-step guided tour for first-time users with spotlight overlays, auto-start on first visit, and "?" help button to restart
 
 See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARCH_FILTER.md), and [MARKER_CLUSTERING.md](./MARKER_CLUSTERING.md) for details.
 
@@ -409,7 +410,73 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 
 ---
 
-### D3. Similar Spots Recommendations
+### D3. Spot Comparison Mode
+**Feature**: Select 2-3 spots and compare them side-by-side in a dedicated comparison view.
+
+**Details**:
+- "Compare" button in spot cards adds a site to the comparison tray
+- Comparison tray (fixed bottom bar) shows selected spots with a "Compare Now" CTA
+- Comparison view displays sites in columns with synchronized rows:
+  - Radar charts (menu distribution) side-by-side
+  - Protein offerings with style breakdowns
+  - Spice level gauges
+  - Salsa counts
+  - Hours of operation
+  - Establishment type
+  - Specialty items
+- Highlight "winner" per category (e.g., most salsas, hottest spice)
+- Shareable comparison URL (e.g., `?compare=1,3,7`)
+- Mobile: swipeable columns or stacked vertical cards
+
+**Impact**: Helps users decide between similar spots; increases time-on-site and engagement
+
+**Effort**: Moderate-High (3-5 days)
+
+**Technical Details**:
+- New `comparisonStore.js`: `comparisonSites` (array, max 3), `comparisonActive`, `addToComparison()`, `removeFromComparison()`, `clearComparison()`
+- New `ComparisonTray.svelte`: fixed bottom bar showing selected spots (like TrailTray pattern)
+- New `ComparisonView.svelte`: side-by-side layout with shared row structure
+- "Add to Compare" button in `Card.svelte`
+- URL param reconstruction on mount (like trail URL sharing)
+- Reuse existing visualization components (RadarChart, SpiceGauge, SalsaCount)
+
+---
+
+### D4. Personal Taste Profile
+**Feature**: Build a personalized flavor profile for each user based on their favorites and browsing patterns, then surface tailored recommendations.
+
+**Details**:
+- Analyze user's favorited spots to compute preference scores:
+  - Preferred proteins (e.g., 60% chicken, 25% beef, 15% fish)
+  - Spice tolerance (average heat level of favorites)
+  - Preferred establishment types (truck vs. brick-and-mortar)
+  - Salsa variety preference (avg salsa count of favorites)
+- "Your Taste Profile" page/modal showing:
+  - Radar chart of protein preferences
+  - Spice tolerance gauge
+  - "Your Type" badge (e.g., "Heat Seeker", "Salsa Explorer", "Chicken Champion")
+  - Top recommended spots you haven't favorited yet
+- Recommendations engine: score all spots against user's taste profile, surface top matches
+- Optional: explicit taste quiz as onboarding (fallback when no favorites exist)
+
+**Impact**: Highly personalized experience; drives exploration of new spots; increases favorites/engagement
+
+**Effort**: Moderate (3-4 days)
+
+**Technical Details**:
+- New `tasteProfileStore.js`: derived from `favoriteIds` + `processedTacoData`
+  - Computes protein affinity scores, avg spice preference, type preferences
+  - Generates personality label from dominant traits
+  - Scores non-favorited spots for recommendations
+- New `TasteProfile.svelte`: profile visualization (radar chart, gauge, badge, recommendation list)
+- Accessible from user profile page or dedicated `/taste` route
+- No new DB tables needed — fully derived from existing favorites + site data
+- Archetype labels: "Heat Seeker" (high spice avg), "Salsa Explorer" (high salsa avg), "The Purist" (one dominant protein), "Adventurer" (diverse proteins), etc.
+- Recommendation scoring: weighted cosine similarity between user profile vector and site attribute vector
+
+---
+
+### D5. Similar Spots Recommendations
 **Feature**: In the spot card, show 2-3 "You might also like" recommendations based on shared attributes (same protein focus, same type, similar spice level).
 
 **Impact**: Increases time-on-site, drives discovery of lesser-known spots
@@ -515,20 +582,23 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 9. ✅ **Vercel deployment** - **COMPLETED**
 10. ✅ **Housekeeping (H1-H3)** - **COMPLETED** (all cleaned up in refactors)
 11. ✅ **Directions deep-link** - **COMPLETED** (DirectionsButton.svelte)
-12. **"Surprise Me" button (D1)** - Quick win, fun UX
-13. **Taco Tuesday Tracker (S2)** - Weekly engagement, low effort
-14. **Tucson Taco Census page (V1)** - Press-worthy, no new data needed
-15. **Community ratings & reviews (#4)** - Add social proof
-16. **Taco Passport + Check-ins (G1)** - Big engagement feature
-17. **Personal Taco Stats (G2)** - Builds on G1
-18. **Price Tier filter (V2)** - Practical, needs data entry
-19. **Similar Spots (D3)** - Discovery improvement
-20. **Neighborhood Mode (D2)** - Hyper-local differentiation
-21. **Share Card generator (S1)** - Organic growth
-22. **Heat map view (#5)** - Alternative visualization
-23. **Lazy load popup content (#8)** - Performance improvement
-24. **Taco trail builder (#9)** - Unique differentiator
-25. **Owner Portal (O1)** - Long-term data sustainability
+12. ✅ **Onboarding Tour** - **COMPLETED** (TourOverlay.svelte, tourStore.js)
+13. **Spot Comparison Mode (D3)** - Side-by-side spot comparison
+14. **Personal Taste Profile (D4)** - Personalized recommendations from favorites
+15. **"Surprise Me" button (D1)** - Quick win, fun UX
+16. **Taco Tuesday Tracker (S2)** - Weekly engagement, low effort
+17. **Tucson Taco Census page (V1)** - Press-worthy, no new data needed
+18. **Community ratings & reviews (#4)** - Add social proof
+19. **Taco Passport + Check-ins (G1)** - Big engagement feature
+20. **Personal Taco Stats (G2)** - Builds on G1
+21. **Price Tier filter (V2)** - Practical, needs data entry
+22. **Similar Spots (D5)** - Discovery improvement
+23. **Neighborhood Mode (D2)** - Hyper-local differentiation
+24. **Share Card generator (S1)** - Organic growth
+25. **Heat map view (#5)** - Alternative visualization
+26. **Lazy load popup content (#8)** - Performance improvement
+27. **Taco trail builder (#9)** - Unique differentiator
+28. **Owner Portal (O1)** - Long-term data sustainability
 
 ---
 
@@ -554,4 +624,4 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 
 ---
 
-**Last Updated**: 2026-02-25
+**Last Updated**: 2026-03-09
