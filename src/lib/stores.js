@@ -26,22 +26,17 @@ function createDataStore() {
 
 // Create stores with loading and error states
 export const tacoStore = createDataStore();
-export const summaryStore = createDataStore();
 
 // Derived store for overall loading state
 export const isLoading = derived(
-  [tacoStore, summaryStore],
-  ([$tacoStore, $summaryStore]) => {
-    return $tacoStore.loading || $summaryStore.loading;
-  }
+  tacoStore,
+  ($tacoStore) => $tacoStore.loading
 );
 
 // Derived store for overall error state
 export const hasError = derived(
-  [tacoStore, summaryStore],
-  ([$tacoStore, $summaryStore]) => {
-    return $tacoStore.error || $summaryStore.error;
-  }
+  tacoStore,
+  ($tacoStore) => $tacoStore.error
 );
 
 // Derived store for processed taco data with pre-computed values
@@ -146,11 +141,12 @@ export const processedTacoData = derived(
   }
 );
 
-// Derived store for summary statistics with proper fallbacks
+// Derived store for summary statistics, computed from processedTacoData
+// (replaces the old static summaries table)
 export const summaryStats = derived(
-  summaryStore,
-  ($summaryStore) => {
-    if (!$summaryStore.data || $summaryStore.data.length === 0) {
+  processedTacoData,
+  ($processedTacoData) => {
+    if (!$processedTacoData || $processedTacoData.length === 0) {
       return {
         maxSalsaNum: 0,
         avgSalsaNum: 0,
@@ -158,14 +154,15 @@ export const summaryStats = derived(
         avgHeatLevel: 0
       };
     }
-    
-    const summary = $summaryStore.data[0] || {};
-    
+
+    const salsaCounts = $processedTacoData.map(s => s.salsaCount || 0);
+    const heatLevels = $processedTacoData.map(s => s.heatOverall || 0);
+
     return {
-      maxSalsaNum: summary.max_salsa_num || 0,
-      avgSalsaNum: summary.avg_salsa_num || 0,
-      maxHeatLevel: summary.max_heat_level || 0,
-      avgHeatLevel: summary.avg_heat_level || 0
+      maxSalsaNum: Math.max(...salsaCounts),
+      avgSalsaNum: salsaCounts.reduce((a, b) => a + b, 0) / salsaCounts.length,
+      maxHeatLevel: Math.max(...heatLevels),
+      avgHeatLevel: heatLevels.reduce((a, b) => a + b, 0) / heatLevels.length
     };
   }
 );
@@ -227,16 +224,15 @@ export const filterConfig = writable({
 });
 
 // Helper function to check if a location is currently open
-export function isOpenNow(startHours, endHours) {
+// Accepts the raw hours object from the view (keys like mon_start, mon_end)
+export function isOpenNow(hours) {
+  if (!hours) return false;
   const now = new Date();
   const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
   const today = days[now.getDay()];
 
-  const startKey = `${today}_start`;
-  const endKey = `${today}_end`;
-
-  const startTime = startHours[startKey];
-  const endTime = endHours[endKey];
+  const startTime = hours[`${today}_start`];
+  const endTime = hours[`${today}_end`];
 
   if (!startTime || !endTime) return false;
 
@@ -343,7 +339,7 @@ export const filteredTacoData = derived(
 
       // Open now filter
       if ($filterConfig.openNow) {
-        if (!isOpenNow(site.startHours, site.endHours)) {
+        if (!isOpenNow(site.rawData.hours)) {
           return false;
         }
       }
@@ -385,39 +381,10 @@ export async function fetchSiteData() {
   }
 }
 
-export async function fetchSummaryData() {
-  // Guard against SSR or missing client
-  if (!supabaseBrowser) {
-    console.warn("Supabase client not available (SSR mode)");
-    return;
-  }
-
-  // Set loading state
-  summaryStore.setLoading(true);
-
-  try {
-    // Fetch summary data
-    let { data: summaryData, error: summaryError } = await supabaseBrowser
-      .from("summaries")
-      .select();
-    if (summaryError) {
-      console.error("Error fetching summaries:", summaryError);
-      summaryStore.setError(summaryError);
-      return;
-    }
-
-    summaryStore.setData(summaryData);
-  } catch (error) {
-    console.error("Error in fetchSummaryData:", error);
-    summaryStore.setError(error);
-  }
-}
-
 // Initialize data fetching
-// Note: These are now called from +layout.svelte onMount to prevent
-// SSR build errors when supabaseBrowser is null
+// Note: Called from +layout.svelte onMount to prevent
+// SSR build errors when supabaseBrowser is null.
+// Summary stats are now computed client-side from processedTacoData.
 export function initializeStores() {
   fetchSiteData();
-  fetchSummaryData();
-  // Specialty data is now lazy-loaded per site when the popup opens
 }
