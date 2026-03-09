@@ -14,7 +14,7 @@
 	}
 </script>
 
-<div class="theme-toggle">
+<div class="theme-toggle" data-tour="theme">
 	{#each themes as theme}
 		<button
 			class="theme-button"

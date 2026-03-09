@@ -177,7 +177,7 @@
 
 <!-- Map wrapper: keeps Mapbox container separate from Svelte-managed overlays -->
 <div class="map-wrapper">
-	<div bind:this={mapContainer} id="map"></div>
+	<div bind:this={mapContainer} id="map" data-tour="map"></div>
 
 	{#if $isLoading}
 		<div class="loading-container">

@@ -4,8 +4,12 @@
   import { SearchOutline, ChevronDownOutline, ChevronUpOutline, HeartSolid } from 'flowbite-svelte-icons';
   import { browser } from '$app/environment';
   import { trailModeActive, enterTrailMode, exitTrailMode } from '../lib/trailStore.js';
+  import { tourExpandFilters } from '$lib/tourStore.js';
 
   let expanded = false;
+
+  // Allow the tour to expand filters
+  $: if ($tourExpandFilters) expanded = true;
   let containerEl;
 
   // Count of filtered results
@@ -92,7 +96,7 @@
 <div class="filter-container" bind:this={containerEl}>
   <!-- Compact Search Bar (Always Visible) -->
   <div class="filter-header">
-    <div class="search-input-wrapper">
+    <div class="search-input-wrapper" data-tour="search">
       <SearchOutline class="search-icon" size="sm" />
       <input
         type="text"
@@ -103,6 +107,7 @@
     </div>
 
     <button
+      data-tour="trail"
       class="trail-button"
       class:active={$trailModeActive}
       on:click={$trailModeActive ? exitTrailMode : enterTrailMode}
@@ -119,6 +124,7 @@
     </button>
 
     <button
+      data-tour="filters"
       class="expand-button"
       on:click={toggleExpanded}
       aria-label={expanded ? 'Collapse filters' : 'Expand filters'}
