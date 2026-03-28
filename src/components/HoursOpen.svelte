@@ -3,42 +3,62 @@
   export let startHours;
   export let endHours;
 
-  const convertedHours = convertHoursData(startHours, endHours);
+  // Reactive — re-runs whenever props change so the display updates on site switch
+  $: convertedHours = convertHoursData(startHours, endHours);
 
-  // Determine the current day and time
-  let currentDay = new Date().getDay(); // Sunday - Saturday : 0 - 6
-  let currentTime = new Date().getHours(); // Current hour in 24-hour format
+  // Current day for the "today" highlight in the hours grid (stable for the session)
+  let currentDay = new Date().getDay(); // 0 = Sunday … 6 = Saturday
 
-  // Function to check if the business is open
-  function isOpen(currentDay, currentTime) {
-    let todayHours = convertedHours.find(
-      ({ day }) => dayToNumber(day) === currentDay
-    );
-    if (!todayHours || todayHours.closed) {
-      return false;
-    }
-    return (
-      currentTime >= parseInt(todayHours.open) &&
-      currentTime < parseInt(todayHours.close)
-    );
-  }
-
-  // Mapping day letter to number
   function dayToNumber(day) {
-    const dayMap = {
-      Su: 0,
-      Mo: 1,
-      Tu: 2,
-      We: 3,
-      Th: 4,
-      Fr: 5,
-      Sa: 6,
-    };
+    const dayMap = { Su: 0, Mo: 1, Tu: 2, We: 3, Th: 4, Fr: 5, Sa: 6 };
     return dayMap[day];
   }
 
-  // Determine if the business is open now
-  let openNow = isOpen(currentDay, currentTime);
+  /**
+   * Returns true if the establishment is open right now.
+   *
+   * Works directly from the raw startHours/endHours prop arrays so it has
+   * full minute precision (convertedHours truncates to hour-only for display).
+   * Mirrors the isOpenNow() logic in stores.js used by the Open Now filter.
+   */
+  function isOpen(startHours, endHours) {
+    const startObj = Object.fromEntries(startHours);
+    const endObj   = Object.fromEntries(endHours);
+    const now      = new Date();
+    const days     = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    const todayKey = days[now.getDay()];
+
+    const startStr = startObj[`${todayKey}_start`];
+    const endStr   = endObj[`${todayKey}_end`];
+
+    if (!startStr || !endStr || endStr === 'NA') return false;
+
+    const parseTime = (s) => {
+      const [time, period] = s.trim().split(' ');
+      let [h, m] = time.split(':').map(Number);
+      if (period) {
+        if (period.toUpperCase() === 'PM' && h !== 12) h += 12;
+        if (period.toUpperCase() === 'AM' && h === 12) h = 0;
+      }
+      return h * 60 + (m || 0);
+    };
+
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const startMinutes   = parseTime(startStr);
+    const endMinutes     = parseTime(endStr);
+
+    if (isNaN(startMinutes) || isNaN(endMinutes)) return false;
+
+    // Handle overnight hours (e.g. open until 1:00 AM next day)
+    if (endMinutes < startMinutes) {
+      return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+    }
+
+    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  }
+
+  // Reactive — re-evaluates whenever startHours or endHours props change
+  $: openNow = isOpen(startHours, endHours);
 </script>
 
 

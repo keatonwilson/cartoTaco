@@ -5,11 +5,10 @@
   import { browser } from '$app/environment';
   import { trailModeActive, enterTrailMode, exitTrailMode } from '../lib/trailStore.js';
   import { tourExpandFilters } from '$lib/tourStore.js';
-
-  let expanded = false;
+  import { filterPanelOpen } from '$lib/uiStore.js';
 
   // Allow the tour to expand filters
-  $: if ($tourExpandFilters) expanded = true;
+  $: if ($tourExpandFilters) filterPanelOpen.set(true);
   let containerEl;
 
   // Count of filtered results
@@ -42,18 +41,18 @@
   }
 
   function toggleExpanded() {
-    expanded = !expanded;
+    filterPanelOpen.update(v => !v);
   }
 
   function handleWindowClick(event) {
-    if (expanded && containerEl && !containerEl.contains(event.target)) {
-      expanded = false;
+    if ($filterPanelOpen && containerEl && !containerEl.contains(event.target)) {
+      filterPanelOpen.set(false);
     }
   }
 
   function handleKeydown(event) {
-    if (event.key === 'Escape' && expanded) {
-      expanded = false;
+    if (event.key === 'Escape' && $filterPanelOpen) {
+      filterPanelOpen.set(false);
     }
   }
 
@@ -127,22 +126,22 @@
       data-tour="filters"
       class="expand-button"
       on:click={toggleExpanded}
-      aria-label={expanded ? 'Collapse filters' : 'Expand filters'}
+      aria-label={$filterPanelOpen ? 'Collapse filters' : 'Expand filters'}
     >
-      {#if expanded}
+      {#if $filterPanelOpen}
         <ChevronUpOutline size="sm" />
       {:else}
         <ChevronDownOutline size="sm" />
       {/if}
       <span class="filter-text">Filters</span>
-      {#if hasActiveFilters && !expanded}
+      {#if hasActiveFilters && !$filterPanelOpen}
         <span class="active-indicator"></span>
       {/if}
     </button>
   </div>
 
   <!-- Expanded Filter Panel -->
-  {#if expanded}
+  {#if $filterPanelOpen}
     <div class="filter-panel">
       <!-- Favorites Filter (only show if authenticated) -->
       {#if $isAuthenticated}
@@ -281,7 +280,7 @@
     position: absolute;
     top: 86px; /* 66px header + 20px margin */
     right: 60px;
-    z-index: 10;
+    z-index: 200; /* above the bottom sheet (150) so the panel isn't hidden behind it */
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
@@ -699,6 +698,14 @@
       left: 10px;
       right: 60px; /* Leave space for map controls */
       max-width: none;
+    }
+
+    /* Cap the expanded panel height so it can't cover the entire map */
+    .filter-panel {
+      max-height: 55vh;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
     }
 
     .filter-text {

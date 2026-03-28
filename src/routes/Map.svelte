@@ -6,8 +6,12 @@
 		isLoading,
 		hasError,
 		processedTacoData,
-		filteredTacoData
+		filteredTacoData,
+		selectedSite
 	} from '../lib/stores';
+	import { isMobile, screenWidth } from '../lib/deviceDetection';
+	import Card from '../components/Card.svelte';
+	import { filterPanelOpen, mobileNavOpen } from '../lib/uiStore.js';
 	import 'mapbox-gl/dist/mapbox-gl.css';
 	import { updateMarkers, resetListeners, updateTrailLayers, updateTrailRoute, clearTrailLayers } from '../lib/mapping.js';
 	import { mapInstance } from '../lib/mapStore.js';
@@ -29,6 +33,51 @@
 	let lastDataLength = -1; // Track the last data length to avoid unnecessary updates
 	let currentTheme = null; // Track current theme to prevent duplicate style changes
 	let trailRestored = false; // Prevent re-running URL trail reconstruction
+
+	// Mobile bottom sheet state
+	let sheetEl;
+	let sheetContentEl;
+	let touchStartY = 0;
+	let isDragging = false;
+
+	function handleSheetTouchStart(e) {
+		touchStartY = e.touches[0].clientY;
+		isDragging = true;
+	}
+
+	function handleSheetTouchMove(e) {
+		if (!isDragging || !sheetEl) return;
+		e.preventDefault(); // Prevent pull-to-refresh while dragging handle
+		const deltaY = e.touches[0].clientY - touchStartY;
+		if (deltaY > 0) {
+			sheetEl.style.transform = `translateY(${deltaY}px)`;
+		}
+	}
+
+	function handleSheetTouchEnd(e) {
+		if (!isDragging) return;
+		isDragging = false;
+		const deltaY = e.changedTouches[0].clientY - touchStartY;
+		if (deltaY > 100) {
+			// Swiped down far enough — dismiss
+			selectedSite.set(null);
+		} else if (sheetEl) {
+			// Snap back
+			sheetEl.style.transition = 'transform 0.25s ease';
+			sheetEl.style.transform = '';
+			setTimeout(() => { if (sheetEl) sheetEl.style.transition = ''; }, 250);
+		}
+	}
+
+	function closeSheet() {
+		selectedSite.set(null);
+	}
+
+	// When the bottom sheet opens, collapse the filter panel and mobile nav
+	$: if ($isMobile && $selectedSite) {
+		filterPanelOpen.set(false);
+		mobileNavOpen.set(false);
+	}
 
 	mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_KEY;
 
@@ -146,8 +195,22 @@
 	// When trail mode exits, explicitly remove all trail layers and sources from the map
 	$: if (map && mapLoaded && !$trailModeActive) clearTrailLayers(map);
 
-	// Map padding: push content up when trail tray is open
-	$: if (map && mapLoaded) map.setPadding({ bottom: $trailModeActive ? 280 : 0 });
+	// Map padding: account for mobile sheet and trail tray.
+	// $screenWidth is referenced so this re-runs on resize/rotation, keeping
+	// the padding in sync with the landscape-aware sheet height.
+	$: if (map && mapLoaded) {
+		const landscape = $screenWidth > 0 && typeof window !== 'undefined'
+			&& window.innerWidth > window.innerHeight && window.innerHeight < 500;
+		let bottomPadding = 0;
+		if ($isMobile && $selectedSite) {
+			bottomPadding = typeof window !== 'undefined'
+				? Math.round(window.innerHeight * (landscape ? 0.45 : 0.65))
+				: 300;
+		} else if ($trailModeActive) {
+			bottomPadding = 280;
+		}
+		map.setPadding({ bottom: bottomPadding });
+	}
 
 	// Reconstruct trail from URL params once processedTacoData is available
 	$: if (!trailRestored && $processedTacoData && $processedTacoData.length > 0 && typeof window !== 'undefined') {
@@ -201,10 +264,39 @@
 	<TrailTray />
 {/if}
 
+<!-- Mobile Bottom Sheet: replaces Mapbox popup on small screens -->
+{#if $isMobile && $selectedSite}
+	<div class="mobile-sheet" bind:this={sheetEl}>
+		<!-- Drag handle bar — touch here to swipe-dismiss -->
+		<div
+			class="sheet-handle-bar"
+			role="button"
+			tabindex="0"
+			aria-label="Drag down to close"
+			on:touchstart={handleSheetTouchStart}
+			on:touchmove={handleSheetTouchMove}
+			on:touchend={handleSheetTouchEnd}
+		>
+			<!-- Spacer mirrors the close button width to keep the pill truly centered -->
+			<div class="sheet-handle-spacer"></div>
+			<div class="sheet-handle"></div>
+			<button class="sheet-close-btn" on:click={closeSheet} aria-label="Close panel">
+				×
+			</button>
+		</div>
+		<!-- Scrollable card content -->
+		<div class="sheet-content" bind:this={sheetContentEl}>
+			<Card />
+		</div>
+	</div>
+{/if}
+
 <style>
   .map-wrapper {
     width: 100%;
-    height: 100vh;
+    /* dvh = dynamic viewport height: excludes the iOS Safari address bar,
+       preventing the map from overflowing under it. Falls back to vh. */
+    height: 100dvh;
     position: relative;
   }
 
@@ -362,4 +454,116 @@
 	.retry-button:hover {
 		background-color: #45a049;
 	}
+
+  /* ===== Mobile Bottom Sheet ===== */
+  .mobile-sheet {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 65dvh; /* dvh excludes iOS Safari address bar */
+    background: white;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.18);
+    z-index: 150;
+    display: flex;
+    flex-direction: column;
+    /* Slide in from bottom */
+    animation: sheet-slide-up 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  /* In landscape on a phone the sheet is shallower so the map stays usable */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .mobile-sheet {
+      height: 45dvh;
+    }
+  }
+
+  :global(.dark) .mobile-sheet {
+    background: #1f2937;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5);
+  }
+
+  @keyframes sheet-slide-up {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+
+  /* Handle bar — the draggable zone at the top of the sheet.
+     3-column flex: [spacer] [pill] [close btn]
+     The spacer mirrors the button width so the pill stays truly centred. */
+  .sheet-handle-bar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 12px 10px;
+    touch-action: none;
+    cursor: grab;
+  }
+
+  /* Balances the close button so the handle pill sits in the exact centre */
+  .sheet-handle-spacer {
+    width: 30px;
+    flex-shrink: 0;
+  }
+
+  /* Visual pill handle */
+  .sheet-handle {
+    width: 40px;
+    height: 4px;
+    background: #d1d5db;
+    border-radius: 2px;
+    pointer-events: none;
+  }
+
+  :global(.dark) .sheet-handle {
+    background: #4b5563;
+  }
+
+  /* Close (×) button */
+  .sheet-close-btn {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    font-size: 20px;
+    line-height: 1;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0 0 1px 0;
+  }
+
+  .sheet-close-btn:hover {
+    background: #fff;
+    border-color: #FE795D;
+    color: #FE795D;
+  }
+
+  :global(.dark) .sheet-close-btn {
+    background: #374151;
+    border-color: #4b5563;
+    color: #9ca3af;
+  }
+
+  :global(.dark) .sheet-close-btn:hover {
+    border-color: #FE795D;
+    color: #FE795D;
+  }
+
+  /* Scrollable content inside the sheet */
+  .sheet-content {
+    flex: 1;
+    overflow-y: auto;
+    /* Prevent scroll from propagating to the map at top/bottom boundaries */
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    /* Bottom padding accounts for the home-indicator bar on iPhone X+ */
+    padding: 0 10px max(20px, env(safe-area-inset-bottom));
+  }
 </style>
