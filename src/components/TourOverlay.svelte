@@ -126,7 +126,7 @@
 <svelte:window on:resize={handleResize} on:keydown={handleKeydown} />
 
 {#if $tourActive}
-	<div class="tour-overlay" on:click={handleOverlayClick}>
+	<div class="tour-overlay" role="presentation" on:click={handleOverlayClick} on:keydown={handleKeydown}>
 		<!-- Spotlight cutout -->
 		{#if !isModal}
 			<div class="tour-spotlight" style={spotlightStyle}></div>
