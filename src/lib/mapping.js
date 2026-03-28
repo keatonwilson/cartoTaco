@@ -8,6 +8,17 @@ import { trailModeActive, trailStops, addStop, removeStop } from './trailStore';
 // Keep track of active popup
 let currentPopup = null;
 
+/**
+ * Returns the bottom padding (px) that the map should use to keep a tapped
+ * marker visible above the mobile bottom sheet.  Accounts for landscape mode
+ * where the sheet is shallower (45 % rather than 65 %).
+ */
+function getSheetPadding() {
+  if (typeof window === 'undefined') return 300;
+  const landscape = window.innerWidth > window.innerHeight && window.innerHeight < 500;
+  return Math.round(window.innerHeight * (landscape ? 0.45 : 0.65));
+}
+
 // Track whether event listeners have been attached
 let listenersAttached = false;
 
@@ -147,8 +158,8 @@ export const updateMarkers = (processedSites, map) => {
       'circle-radius': [
         'case',
         ['boolean', ['feature-state', 'hover'], false],
-        14, // Larger radius on hover
-        10  // Default radius
+        18, // Larger radius on hover
+        14  // Default — 28 px diameter meets minimum tap-target guidelines
       ],
       'circle-stroke-width': [
         'case',
@@ -240,11 +251,10 @@ export const updateMarkers = (processedSites, map) => {
 
       if (currentDeviceType === 'mobile') {
         // On mobile, Map.svelte renders a bottom sheet instead of a Mapbox popup.
-        // Center the tapped marker in the visible map area above the sheet (top ~35%).
-        const sheetHeight = typeof window !== 'undefined' ? Math.round(window.innerHeight * 0.65) : 300;
+        // Center the tapped marker in the visible map area above the sheet.
         map.easeTo({
           center: coordinates,
-          padding: { top: 0, bottom: sheetHeight, left: 0, right: 0 },
+          padding: { top: 0, bottom: getSheetPadding(), left: 0, right: 0 },
           duration: 350
         });
         return;
@@ -381,7 +391,6 @@ export function flyToSite(map, site) {
 
   if (currentDeviceType === 'mobile') {
     // On mobile, use the bottom sheet — center marker in visible area above it.
-    const sheetHeight = typeof window !== 'undefined' ? Math.round(window.innerHeight * 0.65) : 300;
     if (currentPopup) {
       currentPopup.remove();
       currentPopup = null;
@@ -390,7 +399,7 @@ export function flyToSite(map, site) {
     map.easeTo({
       center: [site.longitude, site.latitude],
       zoom: 15,
-      padding: { top: 0, bottom: sheetHeight, left: 0, right: 0 },
+      padding: { top: 0, bottom: getSheetPadding(), left: 0, right: 0 },
       duration: 600
     });
     return;

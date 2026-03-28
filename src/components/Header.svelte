@@ -6,15 +6,18 @@
 	import ThemeToggle from './ThemeToggle.svelte';
 	import NewSpotsBadge from './NewSpotsBadge.svelte';
 	import { startTour } from '$lib/tourStore.js';
-
-	let mobileMenuOpen = false;
+	import { mobileNavOpen } from '$lib/uiStore.js';
+	import { selectedSite } from '$lib/stores.js';
 
   function toggleMobileMenu() {
-    mobileMenuOpen = !mobileMenuOpen;
+    const opening = !$mobileNavOpen;
+    mobileNavOpen.update(v => !v);
+    // Close the bottom sheet when the nav menu opens
+    if (opening) selectedSite.set(null);
   }
 
   function closeMobileMenu() {
-    mobileMenuOpen = false;
+    mobileNavOpen.set(false);
   }
 
   async function handleSignOut() {
@@ -120,7 +123,7 @@
       aria-label="Toggle menu"
     >
       {#if browser}
-        {#if mobileMenuOpen}
+        {#if $mobileNavOpen}
           <CloseOutline size="lg" />
         {:else}
           <BarsOutline size="lg" />
@@ -130,7 +133,7 @@
   </div>
 
   <!-- Mobile Menu -->
-  {#if mobileMenuOpen}
+  {#if $mobileNavOpen}
     <div class="mobile-menu">
       {#if $isAuthenticated}
         <div class="mobile-user-info">

@@ -9,8 +9,9 @@
 		filteredTacoData,
 		selectedSite
 	} from '../lib/stores';
-	import { isMobile } from '../lib/deviceDetection';
+	import { isMobile, screenWidth } from '../lib/deviceDetection';
 	import Card from '../components/Card.svelte';
+	import { filterPanelOpen, mobileNavOpen } from '../lib/uiStore.js';
 	import 'mapbox-gl/dist/mapbox-gl.css';
 	import { updateMarkers, resetListeners, updateTrailLayers, updateTrailRoute, clearTrailLayers } from '../lib/mapping.js';
 	import { mapInstance } from '../lib/mapStore.js';
@@ -73,6 +74,12 @@
 
 	function closeSheet() {
 		selectedSite.set(null);
+	}
+
+	// When the bottom sheet opens, collapse the filter panel and mobile nav
+	$: if ($isMobile && $selectedSite) {
+		filterPanelOpen.set(false);
+		mobileNavOpen.set(false);
 	}
 
 	mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_KEY;
@@ -191,12 +198,17 @@
 	// When trail mode exits, explicitly remove all trail layers and sources from the map
 	$: if (map && mapLoaded && !$trailModeActive) clearTrailLayers(map);
 
-	// Map padding: account for mobile sheet, trail tray, or comparison tray
+	// Map padding: account for mobile sheet, trail tray, or comparison tray.
+	// $screenWidth is referenced so this re-runs on resize/rotation, keeping
+	// the padding in sync with the landscape-aware sheet height.
 	$: if (map && mapLoaded) {
+		const landscape = $screenWidth > 0 && typeof window !== 'undefined'
+			&& window.innerWidth > window.innerHeight && window.innerHeight < 500;
 		let bottomPadding = 0;
 		if ($isMobile && $selectedSite) {
-			// Leave room for the bottom sheet (65vh)
-			bottomPadding = typeof window !== 'undefined' ? Math.round(window.innerHeight * 0.65) : 300;
+			bottomPadding = typeof window !== 'undefined'
+				? Math.round(window.innerHeight * (landscape ? 0.45 : 0.65))
+				: 300;
 		} else if ($trailModeActive) {
 			bottomPadding = 280;
 		} else if ($comparisonActive) {
@@ -298,7 +310,9 @@
 <style>
   .map-wrapper {
     width: 100%;
-    height: 100vh;
+    /* dvh = dynamic viewport height: excludes the iOS Safari address bar,
+       preventing the map from overflowing under it. Falls back to vh. */
+    height: 100dvh;
     position: relative;
   }
 
@@ -463,7 +477,7 @@
     bottom: 0;
     left: 0;
     right: 0;
-    height: 65vh;
+    height: 65dvh; /* dvh excludes iOS Safari address bar */
     background: white;
     border-radius: 16px 16px 0 0;
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.18);
@@ -472,6 +486,13 @@
     flex-direction: column;
     /* Slide in from bottom */
     animation: sheet-slide-up 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  /* In landscape on a phone the sheet is shallower so the map stays usable */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .mobile-sheet {
+      height: 45dvh;
+    }
   }
 
   :global(.dark) .mobile-sheet {
@@ -554,6 +575,7 @@
     /* Prevent scroll from propagating to the map at top/bottom boundaries */
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    padding: 0 10px 20px;
+    /* Bottom padding accounts for the home-indicator bar on iPhone X+ */
+    padding: 0 10px max(20px, env(safe-area-inset-bottom));
   }
 </style>
