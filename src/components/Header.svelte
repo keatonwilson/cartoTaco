@@ -2,9 +2,10 @@
 	import { isAuthenticated, currentUser, signOut } from '$lib/authStore';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
-	import { BarsOutline, CloseOutline, UserCircleOutline } from 'flowbite-svelte-icons';
+	import { BarsOutline, CloseOutline, UserCircleOutline, QuestionCircleOutline } from 'flowbite-svelte-icons';
 	import ThemeToggle from './ThemeToggle.svelte';
 	import NewSpotsBadge from './NewSpotsBadge.svelte';
+	import { startTour } from '$lib/tourStore.js';
 
 	let mobileMenuOpen = false;
 
@@ -43,6 +44,9 @@
     <nav class="desktop-nav">
 			<ThemeToggle />
 			<NewSpotsBadge on:spotSelected={closeMobileMenu} on:panelOpened={closeMobileMenu} />
+			<button class="help-button" on:click={startTour} title="Take a tour" aria-label="Take a tour">
+				{#if browser}<QuestionCircleOutline size="sm" />{/if}
+			</button>
       {#if $isAuthenticated}
         <div class="user-info">
           {#if browser}
@@ -104,6 +108,9 @@
     <div class="mobile-header-controls">
       <ThemeToggle />
       <NewSpotsBadge on:spotSelected={closeMobileMenu} />
+      <button class="help-button" on:click={startTour} title="Take a tour" aria-label="Take a tour">
+        {#if browser}<QuestionCircleOutline size="sm" />{/if}
+      </button>
     </div>
 
     <!-- Mobile Menu Button -->
@@ -488,5 +495,31 @@
     .mobile-header-controls {
       display: none;
     }
+  }
+
+  .help-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.375rem;
+    background: transparent;
+    border: 1px solid #E5E7EB;
+    border-radius: 50%;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 32px;
+    height: 32px;
+  }
+
+  :global(.dark) .help-button {
+    border-color: #374151;
+    color: #9ca3af;
+  }
+
+  .help-button:hover {
+    border-color: #FE795D;
+    color: #FE795D;
+    background: rgba(254, 121, 93, 0.1);
   }
 </style>

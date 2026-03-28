@@ -7,6 +7,8 @@
 	import { initializeStores } from '$lib/stores.js';
 	import '../app.css';
 	import Header from '$lib/../components/Header.svelte';
+	import TourOverlay from '$lib/../components/TourOverlay.svelte';
+	import { shouldAutoStart, startTour } from '$lib/tourStore.js';
 
 	$: isMapPage = $page.url.pathname === '/';
 
@@ -20,6 +22,15 @@
 		// Load favorites if authenticated
 		if ($isAuthenticated) {
 			loadFavorites();
+		}
+
+		// Auto-start tour for first-time visitors (delay to let map render)
+		if (shouldAutoStart()) {
+			const tourTimeout = setTimeout(() => startTour(), 1500);
+			return () => {
+				if (cleanupTheme) cleanupTheme();
+				clearTimeout(tourTimeout);
+			};
 		}
 
 		// Cleanup on unmount
@@ -36,6 +47,7 @@
 
 <div class="app">
   <Header />
+  <TourOverlay />
   <main class:map-page={isMapPage}>
     <slot></slot>
   </main>
