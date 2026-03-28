@@ -295,6 +295,8 @@
 			on:touchmove={handleSheetTouchMove}
 			on:touchend={handleSheetTouchEnd}
 		>
+			<!-- Spacer mirrors the close button width to keep the pill truly centered -->
+			<div class="sheet-handle-spacer"></div>
 			<div class="sheet-handle"></div>
 			<button class="sheet-close-btn" on:click={closeSheet} aria-label="Close panel">
 				×
@@ -505,16 +507,23 @@
     to   { transform: translateY(0); }
   }
 
-  /* Handle bar — the draggable zone at the top of the sheet */
+  /* Handle bar — the draggable zone at the top of the sheet.
+     3-column flex: [spacer] [pill] [close btn]
+     The spacer mirrors the button width so the pill stays truly centred. */
   .sheet-handle-bar {
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 10px 48px 8px; /* horizontal padding reserves space for close btn */
-    position: relative;
-    touch-action: none; /* we handle all touch manually here */
+    justify-content: space-between;
+    padding: 12px 12px 10px;
+    touch-action: none;
     cursor: grab;
+  }
+
+  /* Balances the close button so the handle pill sits in the exact centre */
+  .sheet-handle-spacer {
+    width: 30px;
+    flex-shrink: 0;
   }
 
   /* Visual pill handle */
@@ -532,12 +541,9 @@
 
   /* Close (×) button */
   .sheet-close-btn {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
     width: 30px;
     height: 30px;
+    flex-shrink: 0;
     border-radius: 50%;
     background: #f3f4f6;
     border: 1px solid #e5e7eb;
