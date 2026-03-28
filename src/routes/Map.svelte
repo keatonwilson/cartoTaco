@@ -6,8 +6,11 @@
 		isLoading,
 		hasError,
 		processedTacoData,
-		filteredTacoData
+		filteredTacoData,
+		selectedSite
 	} from '../lib/stores';
+	import { isMobile } from '../lib/deviceDetection';
+	import Card from '../components/Card.svelte';
 	import 'mapbox-gl/dist/mapbox-gl.css';
 	import { updateMarkers, resetListeners, updateTrailLayers, updateTrailRoute, clearTrailLayers } from '../lib/mapping.js';
 	import { mapInstance } from '../lib/mapStore.js';
@@ -32,6 +35,45 @@
 	let currentTheme = null; // Track current theme to prevent duplicate style changes
 	let trailRestored = false; // Prevent re-running URL trail reconstruction
 	let comparisonRestored = false; // Prevent re-running URL comparison reconstruction
+
+	// Mobile bottom sheet state
+	let sheetEl;
+	let sheetContentEl;
+	let touchStartY = 0;
+	let isDragging = false;
+
+	function handleSheetTouchStart(e) {
+		touchStartY = e.touches[0].clientY;
+		isDragging = true;
+	}
+
+	function handleSheetTouchMove(e) {
+		if (!isDragging || !sheetEl) return;
+		e.preventDefault(); // Prevent pull-to-refresh while dragging handle
+		const deltaY = e.touches[0].clientY - touchStartY;
+		if (deltaY > 0) {
+			sheetEl.style.transform = `translateY(${deltaY}px)`;
+		}
+	}
+
+	function handleSheetTouchEnd(e) {
+		if (!isDragging) return;
+		isDragging = false;
+		const deltaY = e.changedTouches[0].clientY - touchStartY;
+		if (deltaY > 100) {
+			// Swiped down far enough — dismiss
+			selectedSite.set(null);
+		} else if (sheetEl) {
+			// Snap back
+			sheetEl.style.transition = 'transform 0.25s ease';
+			sheetEl.style.transform = '';
+			setTimeout(() => { if (sheetEl) sheetEl.style.transition = ''; }, 250);
+		}
+	}
+
+	function closeSheet() {
+		selectedSite.set(null);
+	}
 
 	mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_KEY;
 
@@ -149,9 +191,17 @@
 	// When trail mode exits, explicitly remove all trail layers and sources from the map
 	$: if (map && mapLoaded && !$trailModeActive) clearTrailLayers(map);
 
-	// Map padding: push content up when trail tray or comparison tray is open
+	// Map padding: account for mobile sheet, trail tray, or comparison tray
 	$: if (map && mapLoaded) {
-		const bottomPadding = $trailModeActive ? 280 : $comparisonActive ? 160 : 0;
+		let bottomPadding = 0;
+		if ($isMobile && $selectedSite) {
+			// Leave room for the bottom sheet (65vh)
+			bottomPadding = typeof window !== 'undefined' ? Math.round(window.innerHeight * 0.65) : 300;
+		} else if ($trailModeActive) {
+			bottomPadding = 280;
+		} else if ($comparisonActive) {
+			bottomPadding = 160;
+		}
 		map.setPadding({ bottom: bottomPadding });
 	}
 
@@ -218,6 +268,31 @@
 	<FilterBar />
 	<TrailTray />
 	<ComparisonTray />
+{/if}
+
+<!-- Mobile Bottom Sheet: replaces Mapbox popup on small screens -->
+{#if $isMobile && $selectedSite}
+	<div class="mobile-sheet" bind:this={sheetEl}>
+		<!-- Drag handle bar — touch here to swipe-dismiss -->
+		<div
+			class="sheet-handle-bar"
+			role="button"
+			tabindex="0"
+			aria-label="Drag down to close"
+			on:touchstart={handleSheetTouchStart}
+			on:touchmove={handleSheetTouchMove}
+			on:touchend={handleSheetTouchEnd}
+		>
+			<div class="sheet-handle"></div>
+			<button class="sheet-close-btn" on:click={closeSheet} aria-label="Close panel">
+				×
+			</button>
+		</div>
+		<!-- Scrollable card content -->
+		<div class="sheet-content" bind:this={sheetContentEl}>
+			<Card />
+		</div>
+	</div>
 {/if}
 
 <style>
@@ -381,4 +456,104 @@
 	.retry-button:hover {
 		background-color: #45a049;
 	}
+
+  /* ===== Mobile Bottom Sheet ===== */
+  .mobile-sheet {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 65vh;
+    background: white;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.18);
+    z-index: 150;
+    display: flex;
+    flex-direction: column;
+    /* Slide in from bottom */
+    animation: sheet-slide-up 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  :global(.dark) .mobile-sheet {
+    background: #1f2937;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5);
+  }
+
+  @keyframes sheet-slide-up {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+
+  /* Handle bar — the draggable zone at the top of the sheet */
+  .sheet-handle-bar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 48px 8px; /* horizontal padding reserves space for close btn */
+    position: relative;
+    touch-action: none; /* we handle all touch manually here */
+    cursor: grab;
+  }
+
+  /* Visual pill handle */
+  .sheet-handle {
+    width: 40px;
+    height: 4px;
+    background: #d1d5db;
+    border-radius: 2px;
+    pointer-events: none;
+  }
+
+  :global(.dark) .sheet-handle {
+    background: #4b5563;
+  }
+
+  /* Close (×) button */
+  .sheet-close-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    font-size: 20px;
+    line-height: 1;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0 0 1px 0;
+  }
+
+  .sheet-close-btn:hover {
+    background: #fff;
+    border-color: #FE795D;
+    color: #FE795D;
+  }
+
+  :global(.dark) .sheet-close-btn {
+    background: #374151;
+    border-color: #4b5563;
+    color: #9ca3af;
+  }
+
+  :global(.dark) .sheet-close-btn:hover {
+    border-color: #FE795D;
+    color: #FE795D;
+  }
+
+  /* Scrollable content inside the sheet */
+  .sheet-content {
+    flex: 1;
+    overflow-y: auto;
+    /* Prevent scroll from propagating to the map at top/bottom boundaries */
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 10px 20px;
+  }
 </style>

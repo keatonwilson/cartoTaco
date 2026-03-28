@@ -230,38 +230,45 @@ export const updateMarkers = (processedSites, map) => {
       // Close any existing popup
       if (currentPopup) {
         currentPopup.remove();
+        currentPopup = null;
       }
 
       // Set the selected site in the store
       selectedSite.set(siteData);
 
-      // Get current device type for responsive popup options
       const currentDeviceType = get(deviceType);
 
-      // Device-specific popup options
+      if (currentDeviceType === 'mobile') {
+        // On mobile, Map.svelte renders a bottom sheet instead of a Mapbox popup.
+        // Center the tapped marker in the visible map area above the sheet (top ~35%).
+        const sheetHeight = typeof window !== 'undefined' ? Math.round(window.innerHeight * 0.65) : 300;
+        map.easeTo({
+          center: coordinates,
+          padding: { top: 0, bottom: sheetHeight, left: 0, right: 0 },
+          duration: 350
+        });
+        return;
+      }
+
+      // Desktop/tablet: render card inside a Mapbox popup
       const popupOptions = {
         closeButton: true,
         closeOnClick: true,
-        maxWidth: currentDeviceType === 'mobile' ? 'calc(100vw - 20px)' :
-                  currentDeviceType === 'tablet' ? '580px' : '650px'
+        maxWidth: currentDeviceType === 'tablet' ? '580px' : '650px'
       };
 
-      // Mobile: top-anchored (popup extends downward) to avoid overlapping with search bar at top
-      // Desktop/Tablet: use default positioning (no anchor specified)
-      if (currentDeviceType === 'mobile') {
-        popupOptions.anchor = 'top';
-        popupOptions.offset = [0, 10]; // Add 10px offset below the marker
-      }
-
-      // Create popup
       currentPopup = new mapboxgl.Popup(popupOptions)
         .setLngLat(coordinates)
         .setDOMContent(createPopupContent(properties.est_id))
         .addTo(map);
 
-      // Adjust popup position
       currentPopup.on('open', () => {
         adjustPopupPosition(currentPopup, map);
+      });
+
+      currentPopup.on('close', () => {
+        selectedSite.set(null);
+        currentPopup = null;
       });
     };
     map.on('click', 'unclustered-point', handlers['click::unclustered-point']);
@@ -366,53 +373,61 @@ function adjustPopupPosition(popup, map) {
   }
 }
 
-// Fly to a site and open its popup
+// Fly to a site and open its popup (or bottom sheet on mobile)
 export function flyToSite(map, site) {
   if (!map || !site) return;
 
-  // Fly to the location
+  const currentDeviceType = get(deviceType);
+
+  if (currentDeviceType === 'mobile') {
+    // On mobile, use the bottom sheet — center marker in visible area above it.
+    const sheetHeight = typeof window !== 'undefined' ? Math.round(window.innerHeight * 0.65) : 300;
+    if (currentPopup) {
+      currentPopup.remove();
+      currentPopup = null;
+    }
+    selectedSite.set(site);
+    map.easeTo({
+      center: [site.longitude, site.latitude],
+      zoom: 15,
+      padding: { top: 0, bottom: sheetHeight, left: 0, right: 0 },
+      duration: 600
+    });
+    return;
+  }
+
+  // Desktop/tablet: fly to location then show popup
   map.flyTo({
     center: [site.longitude, site.latitude],
     zoom: 15,
     duration: 1000
   });
 
-  // Open popup when map finishes moving
   map.once('moveend', () => {
-    // Set the selected site in the store
     selectedSite.set(site);
 
-    // Get current device type for responsive popup options
-    const currentDeviceType = get(deviceType);
-
-    // Device-specific popup options
     const popupOptions = {
       closeButton: true,
       closeOnClick: true,
-      maxWidth: currentDeviceType === 'mobile' ? 'calc(100vw - 20px)' :
-                currentDeviceType === 'tablet' ? '580px' : '650px'
+      maxWidth: currentDeviceType === 'tablet' ? '580px' : '650px'
     };
 
-    // Mobile: top-anchored to avoid overlapping with header
-    if (currentDeviceType === 'mobile') {
-      popupOptions.anchor = 'top';
-      popupOptions.offset = [0, 10];
-    }
-
-    // Close existing popup if any
     if (currentPopup) {
       currentPopup.remove();
     }
 
-    // Create new popup
     currentPopup = new mapboxgl.Popup(popupOptions)
       .setLngLat([site.longitude, site.latitude])
       .setDOMContent(createPopupContent(site.est_id))
       .addTo(map);
 
-    // Adjust popup position
     currentPopup.on('open', () => {
       adjustPopupPosition(currentPopup, map);
+    });
+
+    currentPopup.on('close', () => {
+      selectedSite.set(null);
+      currentPopup = null;
     });
   });
 }
