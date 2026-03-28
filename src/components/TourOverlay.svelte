@@ -281,6 +281,7 @@
 		font-size: 0.75rem;
 		color: #9ca3af;
 		font-weight: 500;
+		white-space: nowrap;
 	}
 
 	.tour-buttons {
