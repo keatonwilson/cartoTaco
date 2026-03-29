@@ -17,6 +17,8 @@
 	import { mapInstance } from '../lib/mapStore.js';
 	import FilterBar from '../components/FilterBar.svelte';
 	import TrailTray from '../components/TrailTray.svelte';
+	import ComparisonTray from '../components/ComparisonTray.svelte';
+	import { comparisonActive, addToComparison } from '../lib/comparisonStore.js';
 	import { effectiveTheme, getMapboxStyle } from '$lib/theme.js';
 	import {
 		trailModeActive,
@@ -33,6 +35,7 @@
 	let lastDataLength = -1; // Track the last data length to avoid unnecessary updates
 	let currentTheme = null; // Track current theme to prevent duplicate style changes
 	let trailRestored = false; // Prevent re-running URL trail reconstruction
+	let comparisonRestored = false; // Prevent re-running URL comparison reconstruction
 
 	// Mobile bottom sheet state
 	let sheetEl;
@@ -208,6 +211,8 @@
 				: 300;
 		} else if ($trailModeActive) {
 			bottomPadding = 280;
+		} else if ($comparisonActive) {
+			bottomPadding = 160;
 		}
 		map.setPadding({ bottom: bottomPadding });
 	}
@@ -228,6 +233,18 @@
 				sites.forEach((site) => addStop(site));
 				enterTrailMode();
 			}
+		}
+	}
+
+	// Reconstruct comparison from URL params once processedTacoData is available
+	$: if (!comparisonRestored && $processedTacoData && $processedTacoData.length > 0 && typeof window !== 'undefined') {
+		const params = new URLSearchParams(window.location.search);
+		const compareParam = params.get('compare');
+		comparisonRestored = true;
+		if (compareParam) {
+			const ids = compareParam.split(',').map(Number);
+			const sites = ids.map((id) => $processedTacoData.find((s) => s.est_id === id)).filter(Boolean);
+			sites.forEach((site) => addToComparison(site));
 		}
 	}
 
@@ -258,10 +275,11 @@
 	{/if}
 </div>
 
-<!-- Filter Bar + Trail Tray -->
+<!-- Filter Bar + Trail Tray + Comparison Tray -->
 {#if !$isLoading && !$hasError}
 	<FilterBar />
 	<TrailTray />
+	<ComparisonTray />
 {/if}
 
 <!-- Mobile Bottom Sheet: replaces Mapbox popup on small screens -->
