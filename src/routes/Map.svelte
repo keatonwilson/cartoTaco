@@ -126,6 +126,7 @@
 		return () => {
 			resetListeners(map); // Remove event listeners before destroying map
 			if (map) map.remove();
+			mapInstance.set(null); // Clear so other components know the map is gone
 		};
 	});
 
