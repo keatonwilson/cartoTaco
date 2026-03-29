@@ -195,7 +195,18 @@
         <span class="archetype-label">Your Taco Personality</span>
         <h2 class="archetype-name">{$tasteProfile.archetype.label}</h2>
         <p class="archetype-desc">{$tasteProfile.archetype.desc}</p>
+        <div class="archetype-score-bar">
+          <div class="archetype-score-fill" style="width: {$tasteProfile.archetype.finalScore}%"></div>
+        </div>
+        <span class="archetype-score-label">{$tasteProfile.archetype.finalScore}% match</span>
       </div>
+      {#if $tasteProfile.runnerUp}
+        <div class="runner-up">
+          <span class="runner-up-label">Close second:</span>
+          <span class="runner-up-name">{$tasteProfile.runnerUp.label}</span>
+          <span class="runner-up-score">{$tasteProfile.runnerUp.finalScore}%</span>
+        </div>
+      {/if}
       <span class="favorites-stat">Based on {$tasteProfile.favoritesCount} favorite{$tasteProfile.favoritesCount !== 1 ? 's' : ''}</span>
     </div>
 
@@ -382,9 +393,67 @@
     color: #9ca3af;
   }
 
+  .archetype-score-bar {
+    height: 4px;
+    background: rgba(254, 121, 93, 0.2);
+    border-radius: 2px;
+    margin: 0.5rem auto 0.25rem;
+    width: 80%;
+    overflow: hidden;
+  }
+
+  .archetype-score-fill {
+    height: 100%;
+    background: #FE795D;
+    border-radius: 2px;
+    transition: width 0.6s ease;
+  }
+
+  .archetype-score-label {
+    font-size: 11px;
+    color: #FE795D;
+    font-weight: 600;
+  }
+
+  .runner-up {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 0.5rem;
+    font-size: 12px;
+  }
+
+  .runner-up-label {
+    color: #9ca3af;
+  }
+
+  .runner-up-name {
+    font-weight: 600;
+    color: #6b7280;
+  }
+
+  :global(.dark) .runner-up-name {
+    color: #d1d5db;
+  }
+
+  .runner-up-score {
+    font-size: 11px;
+    color: #9ca3af;
+    background: #f3f4f6;
+    padding: 1px 6px;
+    border-radius: 999px;
+  }
+
+  :global(.dark) .runner-up-score {
+    background: #374151;
+  }
+
   .favorites-stat {
     font-size: 12px;
     color: #9ca3af;
+    display: block;
+    margin-top: 0.5rem;
   }
 
   /* Sections */
