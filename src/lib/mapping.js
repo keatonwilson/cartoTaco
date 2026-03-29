@@ -5,8 +5,9 @@ import { deviceType } from './deviceDetection';
 import { get } from 'svelte/store';
 import { trailModeActive, trailStops, addStop, removeStop } from './trailStore';
 
-// Keep track of active popup
+// Keep track of active popup and its associated Svelte component
 let currentPopup = null;
+let currentPopupComponent = null;
 
 /**
  * Returns the bottom padding (px) that the map should use to keep a tapped
@@ -19,8 +20,8 @@ function getSheetPadding() {
   return Math.round(window.innerHeight * (landscape ? 0.45 : 0.65));
 }
 
-// Track whether event listeners have been attached
-let listenersAttached = false;
+// Track which map instance currently has listeners attached (null = none)
+let listenersMap = null;
 
 // Track hovered feature for hover effects
 let hoveredFeatureId = null;
@@ -28,16 +29,27 @@ let hoveredFeatureId = null;
 // Store handler references for cleanup
 let handlers = {};
 
+function destroyCurrentPopup() {
+  if (currentPopup) {
+    currentPopup.remove();
+    currentPopup = null;
+  }
+  if (currentPopupComponent) {
+    try { currentPopupComponent.$destroy(); } catch {}
+    currentPopupComponent = null;
+  }
+}
+
 // Remove existing event listeners from the map and reset state
 export const resetListeners = (map) => {
-  if (map && listenersAttached) {
+  if (listenersMap && Object.keys(handlers).length > 0) {
     for (const [key, handler] of Object.entries(handlers)) {
       const [event, layer] = key.split('::');
-      map.off(event, layer, handler);
+      try { listenersMap.off(event, layer, handler); } catch {}
     }
   }
   handlers = {};
-  listenersAttached = false;
+  listenersMap = null;
   hoveredFeatureId = null;
   clearTrailLayers(map);
 };
@@ -198,9 +210,9 @@ export const updateMarkers = (processedSites, map) => {
     }
   });
 
-  // Attach event listeners only once
-  if (!listenersAttached) {
-    listenersAttached = true;
+  // Attach event listeners whenever we have a new map instance
+  if (listenersMap !== map) {
+    listenersMap = map;
 
     // Click handler for clusters - zoom in
     handlers['click::clusters'] = (e) => {
@@ -238,11 +250,8 @@ export const updateMarkers = (processedSites, map) => {
         return;
       }
 
-      // Close any existing popup
-      if (currentPopup) {
-        currentPopup.remove();
-        currentPopup = null;
-      }
+      // Close any existing popup (and destroy its Svelte component)
+      destroyCurrentPopup();
 
       // Set the selected site in the store
       selectedSite.set(siteData);
@@ -279,6 +288,10 @@ export const updateMarkers = (processedSites, map) => {
       currentPopup.on('close', () => {
         selectedSite.set(null);
         currentPopup = null;
+        if (currentPopupComponent) {
+          try { currentPopupComponent.$destroy(); } catch {}
+          currentPopupComponent = null;
+        }
       });
     };
     map.on('click', 'unclustered-point', handlers['click::unclustered-point']);
@@ -337,13 +350,14 @@ export const updateMarkers = (processedSites, map) => {
 function createPopupContent(siteId) {
   try {
     const popupElement = document.createElement('div');
-    new PopupContent({
+    currentPopupComponent = new PopupContent({
       target: popupElement,
       props: { siteId }
     });
     return popupElement;
   } catch (error) {
     console.error('Error creating popup content:', error);
+    currentPopupComponent = null;
     const errorElement = document.createElement('div');
     errorElement.textContent = 'Error loading content';
     return errorElement;
@@ -391,10 +405,7 @@ export function flyToSite(map, site) {
 
   if (currentDeviceType === 'mobile') {
     // On mobile, use the bottom sheet — center marker in visible area above it.
-    if (currentPopup) {
-      currentPopup.remove();
-      currentPopup = null;
-    }
+    destroyCurrentPopup();
     selectedSite.set(site);
     map.easeTo({
       center: [site.longitude, site.latitude],
@@ -421,9 +432,7 @@ export function flyToSite(map, site) {
       maxWidth: currentDeviceType === 'tablet' ? '580px' : '650px'
     };
 
-    if (currentPopup) {
-      currentPopup.remove();
-    }
+    destroyCurrentPopup();
 
     currentPopup = new mapboxgl.Popup(popupOptions)
       .setLngLat([site.longitude, site.latitude])
@@ -437,6 +446,10 @@ export function flyToSite(map, site) {
     currentPopup.on('close', () => {
       selectedSite.set(null);
       currentPopup = null;
+      if (currentPopupComponent) {
+        try { currentPopupComponent.$destroy(); } catch {}
+        currentPopupComponent = null;
+      }
     });
   });
 }

@@ -13,7 +13,7 @@
 	import Card from '../components/Card.svelte';
 	import { filterPanelOpen, mobileNavOpen } from '../lib/uiStore.js';
 	import 'mapbox-gl/dist/mapbox-gl.css';
-	import { updateMarkers, resetListeners, updateTrailLayers, updateTrailRoute, clearTrailLayers } from '../lib/mapping.js';
+	import { updateMarkers, resetListeners, updateTrailLayers, updateTrailRoute, clearTrailLayers, flyToSite } from '../lib/mapping.js';
 	import { mapInstance } from '../lib/mapStore.js';
 	import FilterBar from '../components/FilterBar.svelte';
 	import TrailTray from '../components/TrailTray.svelte';
