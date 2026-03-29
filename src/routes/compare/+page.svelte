@@ -1,6 +1,7 @@
 <script>
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
+  import { browser } from '$app/environment';
   import { processedTacoData, isLoading, summaryStats } from '$lib/stores';
   import { isMobile } from '$lib/deviceDetection';
   import RadarChart from '../../components/RadarChart.svelte';
@@ -56,7 +57,7 @@
     </button>
   </div>
 
-  {#if $isLoading}
+  {#if $isLoading || !browser}
     <div class="status-message">Loading data...</div>
   {:else if sites.length < 2}
     <div class="status-message">
@@ -69,7 +70,7 @@
       {#each sites as site, i}
         <button
           class="mobile-tab"
-          class:active={activeCardIndex === i}
+          class:tab-active={activeCardIndex === i}
           on:click={() => { activeCardIndex = i; }}
         >
           {site.name}
@@ -237,6 +238,27 @@
     padding: 1rem;
     padding-top: 80px;
     min-height: 100vh;
+  }
+
+  @media (max-width: 640px) {
+    .comparison-page {
+      padding: 0.75rem;
+      padding-top: 72px;
+    }
+
+    .page-header {
+      gap: 0.5rem;
+    }
+
+    .page-title {
+      font-size: 1.1rem;
+    }
+
+    .back-btn,
+    .share-btn {
+      padding: 6px 10px;
+      font-size: 13px;
+    }
   }
 
   /* Page-level dark background */
@@ -573,12 +595,13 @@
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
     white-space: nowrap;
     text-align: center;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+    -webkit-tap-highlight-color: transparent;
   }
 
   :global(.dark) .mobile-tab {
@@ -587,7 +610,7 @@
     color: #d1d5db;
   }
 
-  .mobile-tab.active {
+  .mobile-tab.tab-active {
     background: #FE795D;
     color: white;
     border-color: #FE795D;

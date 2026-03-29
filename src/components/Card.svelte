@@ -64,7 +64,7 @@
             <FavoriteButton estId={$selectedSite.est_id} size="sm" />
             <button
               class="compare-btn"
-              class:active={isInComparison}
+              class:compare-active={isInComparison}
               disabled={!isInComparison && comparisonFull}
               on:click={toggleComparison}
               title={isInComparison ? 'Remove from comparison' : comparisonFull ? 'Max 3 spots' : 'Add to comparison'}
@@ -179,7 +179,7 @@
           <FavoriteButton estId={$selectedSite.est_id} size="sm" />
           <button
             class="compare-btn"
-            class:active={isInComparison}
+            class:compare-active={isInComparison}
             disabled={!isInComparison && comparisonFull}
             on:click={toggleComparison}
             title={isInComparison ? 'Remove from comparison' : comparisonFull ? 'Max 3 spots' : 'Add to comparison'}
@@ -649,6 +649,10 @@
 
   /* Compare button */
   .compare-btn {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    flex-shrink: 0;
     padding: 4px 10px;
     border: 1px solid #e5e7eb;
     border-radius: 6px;
@@ -657,8 +661,9 @@
     font-size: 12px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
     white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .compare-btn:hover:not(:disabled) {
@@ -666,7 +671,7 @@
     color: #FE795D;
   }
 
-  .compare-btn.active {
+  .compare-btn.compare-active {
     background: #FE795D;
     color: white;
     border-color: #FE795D;
@@ -683,7 +688,7 @@
     color: #d1d5db;
   }
 
-  :global(.dark) .compare-btn.active {
+  :global(.dark) .compare-btn.compare-active {
     background: #FE795D;
     color: white;
     border-color: #FE795D;
