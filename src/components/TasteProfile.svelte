@@ -7,19 +7,9 @@
   import { Chart } from 'chart.js/auto';
   import RadarChart from './RadarChart.svelte';
   import SpiceGauge from './SpiceGauge.svelte';
-  import { mapInstance } from '$lib/mapStore';
-  import { flyToSite } from '$lib/mapping';
-  import { selectedSite } from '$lib/stores';
 
   function goToSpot(site) {
-    goto('/');
-    setTimeout(() => {
-      const map = $mapInstance;
-      if (map) {
-        selectedSite.set(site);
-        flyToSite(map, site);
-      }
-    }, 300);
+    goto(`/?location=${site.est_id}`);
   }
 
   // Protein radar data

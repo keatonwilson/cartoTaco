@@ -193,6 +193,7 @@
     cursor: pointer;
     transition: all 0.2s;
     border: 1px solid transparent;
+    width: 100%;
   }
 
   .info-item.clickable:hover {

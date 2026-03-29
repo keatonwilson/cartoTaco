@@ -236,6 +236,26 @@
 		}
 	}
 
+	// Navigate to a specific location from URL ?location= param (used by favorites + taste profile)
+	let locationRestored = false;
+	$: if (!locationRestored && mapLoaded && $processedTacoData && $processedTacoData.length > 0 && typeof window !== 'undefined') {
+		const params = new URLSearchParams(window.location.search);
+		const locationParam = params.get('location');
+		locationRestored = true;
+		if (locationParam) {
+			const site = $processedTacoData.find((s) => s.est_id === Number(locationParam));
+			if (site && map) {
+				selectedSite.set(site);
+				flyToSite(map, site);
+				// Clean up the URL param without navigating
+				const newParams = new URLSearchParams(window.location.search);
+				newParams.delete('location');
+				const newUrl = newParams.toString() ? `?${newParams}` : window.location.pathname;
+				history.replaceState({}, '', newUrl);
+			}
+		}
+	}
+
 	// Reconstruct comparison from URL params once processedTacoData is available
 	$: if (!comparisonRestored && $processedTacoData && $processedTacoData.length > 0 && typeof window !== 'undefined') {
 		const params = new URLSearchParams(window.location.search);
