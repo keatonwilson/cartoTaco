@@ -238,6 +238,7 @@
     padding: 1rem;
     padding-top: 80px;
     min-height: 100vh;
+    overflow-x: hidden;
   }
 
   @media (max-width: 640px) {
@@ -581,8 +582,7 @@
     display: flex;
     gap: 4px;
     margin-bottom: 1rem;
-    overflow-x: auto;
-    padding-bottom: 4px;
+    width: 100%;
   }
 
   .mobile-tab {
@@ -617,6 +617,7 @@
   }
 
   .mobile-card {
+    width: 100%;
     background: white;
     border: 1px solid #e5e7eb;
     border-radius: 12px;
@@ -631,6 +632,7 @@
   .card-section {
     padding: 16px;
     border-bottom: 1px solid #e5e7eb;
+    overflow: hidden;
   }
 
   :global(.dark) .card-section {
@@ -664,6 +666,9 @@
   }
 
   .chart-container {
+    width: 100%;
     height: 200px;
+    /* Prevent chart labels from forcing the container wider than the screen */
+    overflow: hidden;
   }
 </style>

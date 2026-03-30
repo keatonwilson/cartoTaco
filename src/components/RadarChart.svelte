@@ -76,7 +76,12 @@
             }
           },
           layout: {
-            padding: 2
+            padding: {
+              top: 18,
+              right: 22,
+              bottom: 18,
+              left: 22
+            }
           },
           scales: {
             r: {
