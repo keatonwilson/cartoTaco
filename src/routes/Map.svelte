@@ -506,6 +506,12 @@
     z-index: 150;
     display: flex;
     flex-direction: column;
+    /* Keep sheet on its own GPU compositing layer at all times.
+       Without this, iOS Safari uses a CPU paint path after the slide-in
+       animation ends, which fails to repaint text-color changes (e.g. the
+       compare button going white-on-orange) until a scroll/transform event
+       forces a GPU flush. translateZ(0) keeps the GPU layer active. */
+    transform: translateZ(0);
     /* Slide in from bottom */
     animation: sheet-slide-up 0.28s cubic-bezier(0.32, 0.72, 0, 1);
   }
@@ -524,7 +530,7 @@
 
   @keyframes sheet-slide-up {
     from { transform: translateY(100%); }
-    to   { transform: translateY(0); }
+    to   { transform: translateZ(0); } /* matches resting CSS — no jump on animation end */
   }
 
   /* Handle bar — the draggable zone at the top of the sheet.

@@ -661,20 +661,14 @@
     font-size: 12px;
     font-weight: 500;
     cursor: pointer;
-    /* Only transition background/border — transitioning color on iOS can
-       cause the text to be painted on the wrong compositing layer */
-    transition: background 0.15s ease, border-color 0.15s ease;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
     white-space: nowrap;
     -webkit-tap-highlight-color: transparent;
     outline: none;
     -webkit-touch-callout: none;
     user-select: none;
-    /* Remove iOS native button appearance so Safari uses pure CSS rendering */
     -webkit-appearance: none;
     appearance: none;
-    /* Create local stacking context so text renders within this element's layer */
-    position: relative;
-    z-index: 0;
   }
 
   .compare-btn:hover:not(:disabled) {
@@ -684,13 +678,8 @@
 
   .compare-btn.compare-active {
     background: #FE795D;
-    color: #ffffff;
+    color: white;
     border-color: #FE795D;
-    /* Force own GPU compositing layer — fixes iOS Safari text invisible bug */
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
-    /* Ensure text is painted inside this element's own layer */
-    isolation: isolate;
   }
 
   .compare-btn:disabled {
