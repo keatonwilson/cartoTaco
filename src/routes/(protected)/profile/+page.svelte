@@ -113,6 +113,8 @@
   }
 
   .profile-content {
+    width: 100%;
+    box-sizing: border-box;
     max-width: 800px;
     margin: 0 auto;
   }
