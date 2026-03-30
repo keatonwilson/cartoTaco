@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import RadarChart from "./RadarChart.svelte";
   import HoursOpen from "./HoursOpen.svelte";
   import SpiceGauge from "./SpiceGauge.svelte";
@@ -26,12 +26,25 @@
   $: isInComparison = $comparisonSites.some(s => s.est_id === $selectedSite?.est_id);
   $: comparisonFull = $comparisonCount >= 3 && !isInComparison;
 
-  function toggleComparison() {
+  async function toggleComparison() {
     if (!$selectedSite) return;
     if (isInComparison) {
       removeFromComparison($selectedSite.est_id);
     } else {
       addToComparison($selectedSite);
+    }
+    // iOS Safari caches the scroll container's GPU texture and won't repaint
+    // a text-color change until a scroll event forces a flush. Nudging
+    // scrollTop by 1px and back directly mimics what the user manually does
+    // to make the white text appear, guaranteeing a repaint.
+    await tick();
+    if (typeof document !== 'undefined') {
+      const el = document.querySelector('.sheet-content');
+      if (el) {
+        const prev = el.scrollTop;
+        el.scrollTop = prev + 1;
+        requestAnimationFrame(() => { el.scrollTop = prev; });
+      }
     }
   }
   let errorState = false;

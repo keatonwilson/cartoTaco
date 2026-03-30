@@ -53,7 +53,8 @@
 		e.preventDefault(); // Prevent pull-to-refresh while dragging handle
 		const deltaY = e.touches[0].clientY - touchStartY;
 		if (deltaY > 0) {
-			sheetEl.style.transform = `translateY(${deltaY}px)`;
+			// Preserve Z so the outer sheet keeps its GPU compositing layer during drag
+			sheetEl.style.transform = `translateY(${deltaY}px) translateZ(0)`;
 		}
 	}
 
@@ -65,10 +66,15 @@
 			// Swiped down far enough — dismiss
 			selectedSite.set(null);
 		} else if (sheetEl) {
-			// Snap back
+			// Snap back — animate to resting Z position, then clear inline style
 			sheetEl.style.transition = 'transform 0.25s ease';
-			sheetEl.style.transform = '';
-			setTimeout(() => { if (sheetEl) sheetEl.style.transition = ''; }, 250);
+			sheetEl.style.transform = 'translateZ(0)';
+			setTimeout(() => {
+				if (sheetEl) {
+					sheetEl.style.transition = '';
+					sheetEl.style.transform = ''; // falls back to CSS class translateZ(0)
+				}
+			}, 250);
 		}
 	}
 
@@ -608,5 +614,10 @@
     overscroll-behavior: contain;
     /* Bottom padding accounts for the home-indicator bar on iPhone X+ */
     padding: 0 10px max(20px, env(safe-area-inset-bottom));
+    /* iOS Safari: force this scroll container onto its own persistent GPU
+       compositing layer. Without this, iOS caches the scroll layer as a
+       stale texture and won't repaint text-color changes (e.g. compare
+       button white text on orange) until a scroll event forces a flush. */
+    transform: translateZ(0);
   }
 </style>
