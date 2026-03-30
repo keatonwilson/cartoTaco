@@ -233,6 +233,8 @@
 
 <style>
   .comparison-page {
+    width: 100%;
+    box-sizing: border-box;
     max-width: 1200px;
     margin: 0 auto;
     padding: 1rem;
