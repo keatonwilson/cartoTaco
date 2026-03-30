@@ -600,7 +600,6 @@
     overflow-y: auto;
     /* Prevent scroll from propagating to the map at top/bottom boundaries */
     overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
     /* Bottom padding accounts for the home-indicator bar on iPhone X+ */
     padding: 0 10px max(20px, env(safe-area-inset-bottom));
   }

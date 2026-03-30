@@ -679,6 +679,10 @@
     background: #FE795D;
     color: white;
     border-color: #FE795D;
+    /* Force own compositing layer on iOS Safari — prevents text from vanishing
+       in -webkit-overflow-scrolling:touch containers after state change */
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
   }
 
   .compare-btn:disabled {
