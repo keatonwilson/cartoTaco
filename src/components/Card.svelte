@@ -664,6 +664,10 @@
     transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
     white-space: nowrap;
     -webkit-tap-highlight-color: transparent;
+    outline: none;
+    /* Prevent iOS from expanding tap target beyond button bounds */
+    -webkit-touch-callout: none;
+    user-select: none;
   }
 
   .compare-btn:hover:not(:disabled) {

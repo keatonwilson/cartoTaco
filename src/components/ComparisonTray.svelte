@@ -73,7 +73,7 @@
 
   <div class="tray-actions">
     <button
-      class="action-btn compare-btn"
+      class="action-btn tray-compare-btn"
       disabled={!canAct}
       on:click={compareNow}
       title={canAct ? 'Compare selected spots' : 'Add at least 2 spots'}
@@ -303,12 +303,12 @@
     cursor: not-allowed;
   }
 
-  .compare-btn {
+  .tray-compare-btn {
     background: #FE795D;
     color: white;
   }
 
-  .compare-btn:hover:not(:disabled) {
+  .tray-compare-btn:hover:not(:disabled) {
     background: #e55a3c;
   }
 
