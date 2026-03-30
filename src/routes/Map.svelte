@@ -299,7 +299,7 @@
 {#if !$isLoading && !$hasError}
 	<FilterBar />
 	<TrailTray />
-	<ComparisonTray />
+	<ComparisonTray cardOpen={$isMobile && !!$selectedSite} />
 {/if}
 
 <!-- Mobile Bottom Sheet: replaces Mapbox popup on small screens -->

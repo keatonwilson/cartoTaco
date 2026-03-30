@@ -9,8 +9,8 @@
     closeComparison
   } from '$lib/comparisonStore.js';
   import { trailModeActive } from '$lib/trailStore.js';
-  import { selectedSite } from '$lib/stores.js';
-  import { isMobile } from '$lib/deviceDetection.js';
+
+  export let cardOpen = false;
 
   // Update URL when comparison changes
   $: if ($comparisonActive && typeof window !== 'undefined') {
@@ -40,9 +40,7 @@
   }
 
   $: canAct = $comparisonCount >= 2;
-  // Hide when trail mode is active, or on mobile when the bottom-sheet card is open
-  // (the tray would slide up over the card otherwise)
-  $: visible = $comparisonActive && !$trailModeActive && !($isMobile && $selectedSite);
+  $: visible = $comparisonActive && !$trailModeActive && !cardOpen;
 </script>
 
 <div class="comparison-tray" class:visible aria-hidden={!visible}>
