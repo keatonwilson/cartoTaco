@@ -426,6 +426,10 @@
     animation: slideDown 0.2s ease-out;
   }
 
+  :global(.dark) .filter-panel {
+    border-top-color: #374151;
+  }
+
   @keyframes slideDown {
     from {
       opacity: 0;
@@ -508,6 +512,10 @@
     letter-spacing: 0.5px;
   }
 
+  :global(.dark) .filter-title {
+    color: #d1d5db;
+  }
+
   .checkbox-group {
     display: flex;
     flex-wrap: wrap;
@@ -528,8 +536,19 @@
     user-select: none;
   }
 
+  :global(.dark) .checkbox-label {
+    background: #374151;
+    border-color: #4b5563;
+    color: #d1d5db;
+  }
+
   .checkbox-label:hover {
     background: #f0f0f0;
+    border-color: #FE795D;
+  }
+
+  :global(.dark) .checkbox-label:hover {
+    background: #4b5563;
     border-color: #FE795D;
   }
 
@@ -616,6 +635,10 @@
     margin-bottom: 4px;
   }
 
+  :global(.dark) .range-input-group label {
+    color: #9ca3af;
+  }
+
   .range-slider {
     width: 100%;
     height: 6px;
@@ -623,6 +646,10 @@
     background: #e0e0e0;
     outline: none;
     cursor: pointer;
+  }
+
+  :global(.dark) .range-slider {
+    background: #4b5563;
   }
 
   .range-slider::-webkit-slider-thumb {
@@ -650,7 +677,16 @@
     justify-content: center;
   }
 
+  :global(.dark) .open-now-label {
+    background: #374151;
+    border-color: #4b5563;
+  }
+
   .open-now-label:hover {
+    border-color: #FE795D;
+  }
+
+  :global(.dark) .open-now-label:hover {
     border-color: #FE795D;
   }
 
@@ -667,6 +703,11 @@
     text-align: center;
     font-size: 13px;
     color: #666;
+  }
+
+  :global(.dark) .results-counter {
+    background: #374151;
+    color: #9ca3af;
   }
 
   .results-counter strong {
