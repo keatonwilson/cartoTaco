@@ -112,6 +112,38 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 - `unseenNewSpotsCount` (derived) - Count of spots added since last view
 - Functions: `markNewSpotsAsSeen()`
 
+### Comparison Store (src/lib/comparisonStore.js)
+- `comparisonSites` - Array of up to 3 sites selected for comparison
+- `comparisonActive` - Whether the comparison tray is visible
+- `comparisonCount` (derived) - Number of sites in comparison
+- `MAX_COMPARE = 3` constant
+- Functions: `addToComparison(site)`, `removeFromComparison(estId)`, `clearComparison()`, `closeComparison()`, `openComparison()`
+
+### Taste Profile Store (src/lib/tasteProfileStore.js)
+- `tasteProfile` (derived from `favoriteIds`, `processedTacoData`, `summaryStats`) - Full taste profile computed from user's favorites
+  - k-NN recommendations (K=5) using 7-dimensional feature vectors (5 protein ratios, heat, salsa)
+  - Protein affinities: chicken/beef/pork/fish/veg percentages, dominant protein, diversity score
+  - Average spice level and salsa count from favorites centroid
+  - Type preferences: restaurant/stand/truck fractions
+  - Archetype scoring across 13 archetypes: `heat_seeker`, `salsa_explorer`, `the_purist`, `adventurer`, `street_food_fan`, `street_fire`, `connoisseur`, `spicy_purist`, `minimalist`, `mild_explorer`, `salsa_purist`, `loyalist`, `taco_enthusiast`
+  - Scatter plot data points for visualization (heat vs salsa, favorites in blue, recommendations in orange)
+  - Runner-up archetype (if score > 20)
+- Returns `null` if no favorites or no data available
+- Data-driven thresholds (p25/p50/p75 percentiles) for scoring
+
+### Tour Store (src/lib/tourStore.js)
+- `tourActive` - Whether the tour overlay is showing
+- `tourStep` - Current step index (0-based)
+- `tourExpandFilters` - Whether to expand filters during the filters tour step
+- `TOUR_STEPS` - Array of 7 step definitions: `welcome`, `search`, `filters`, `trail`, `map`, `theme`, `done`
+  - Each step has `id`, `target` (CSS selector or null for centered modal), `title`, `description`, optional `onEnter` action
+- Functions: `startTour()`, `endTour()`, `nextStep()`, `prevStep()`, `shouldAutoStart()`
+- Persistence: localStorage key `cartoTaco_tourCompleted`
+
+### UI Store (src/lib/uiStore.js)
+- `filterPanelOpen` - Whether the FilterBar filter panel is expanded
+- `mobileNavOpen` - Whether the mobile navigation menu is open
+
 ### Key Pattern
 Data flows: Raw DB → Store → Derived/Processed → Components. Components rarely transform data; they consume pre-processed values from derived stores.
 
@@ -172,6 +204,7 @@ Located in src/lib/dataWrangling.js:
 - `src/lib/validation.js` - Form validation functions for submissions/auth forms
 - `src/lib/theme.js` - Dark/light mode management
 - `src/lib/deviceDetection.js` - Responsive device type detection (mobile/tablet/desktop)
+- `src/lib/supabaseBrowser.js` - Browser-side Supabase client using `@supabase/ssr` `createBrowserClient` with cookie support; exports `supabaseBrowser` client and `getAuthenticatedUser()` helper
 
 ## Component Organization
 
@@ -195,6 +228,9 @@ Located in src/lib/dataWrangling.js:
 - `SpiceGauge.svelte` - Heat level visualization
 - `ThemeToggle.svelte` - Dark/light mode toggle button
 - `TrailTray.svelte` - Taco trail builder interface (stop list, reordering, transport mode, route display)
+- `ComparisonTray.svelte` - Floating tray for selecting up to 3 spots for side-by-side comparison
+- `TasteProfile.svelte` - Personal taste profile visualization with archetype display, protein affinities, and scatter plot (heat vs salsa)
+- `TourOverlay.svelte` - Multi-step onboarding tour with targeted tooltips, step highlighting, and next/prev/skip navigation
 
 ### Routes
 - `src/routes/+layout.svelte` - Root layout (Header, theme initialization)
@@ -202,6 +238,10 @@ Located in src/lib/dataWrangling.js:
 - `src/routes/+page.svelte` - Main page (renders Map component)
 - `src/routes/+page.js` - Route config (prerendering disabled; app requires Supabase at runtime)
 - `src/routes/Map.svelte` - Map component with filter integration and trail mode support
+
+#### Public Routes
+- `src/routes/compare/+page.svelte` - Side-by-side comparison of up to 3 spots (shareable via `?ids=1,2,3` query params)
+- `src/routes/compare/+page.js` - Route config for comparison page
 
 #### Authentication Routes (`src/routes/(auth)/`)
 - `login/+page.svelte` - Login form

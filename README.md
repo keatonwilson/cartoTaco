@@ -7,10 +7,19 @@ An interactive map-based application for exploring taco establishments in Tucson
 ## 🚀 Features
 
 - **Interactive Map with Clustering**: Visualize all taco establishments with automatic marker clustering
-- **Search & Filter**: Find spots by name, protein type, spice level, open status, and more
-- **Mobile-First Responsive Design**: Optimized layouts for all screen sizes with touch-friendly controls
-- **Detailed Information Cards**: Explore each location's offerings with rich data visualizations
-- **Enhanced Charts**: Interactive radar charts with tooltips explaining menu distributions
+- **Search & Filter**: Find spots by name, protein type, establishment type, spice level, open status, and favorites
+- **Mobile-First Responsive Design**: Bottom sheet cards, swipe gestures, and optimized layouts for all screen sizes
+- **Detailed Information Cards**: Rich data visualizations including radar charts, spice gauges, and specialty carousels
+- **User Authentication**: Email/password auth via Supabase with protected routes
+- **Favorites System**: Save spots with a heart icon, filter by favorites, dedicated favorites page
+- **Taco Trail Route Builder**: Plan multi-stop taco crawls with walking/driving directions via Mapbox Directions API
+- **Spot Comparison Mode**: Compare up to 3 establishments side-by-side with shareable URLs at `/compare`
+- **Taste Profile & Personalization**: k-NN based recommendations from your favorites, 13 taste archetypes
+- **Onboarding Tour**: 7-step guided tour for first-time users
+- **Dark Mode**: Light/dark/auto themes with time-based automatic switching
+- **Directions Deep-Link**: Smart links to Apple Maps (iOS), Google Maps (Android), or Google Maps web
+- **New Spots Badge**: Notification badge for recently added establishments
+- **Community Location Submissions**: Geocoded submission form with moderation queue
 - **Contact Information**: Direct links to phone, website, Instagram, and Facebook
 - **Specialty Highlights**: Discover unique specialty items at each location
 - **Salsa & Spice Analysis**: Compare salsa varieties and heat levels with context
@@ -18,11 +27,13 @@ An interactive map-based application for exploring taco establishments in Tucson
 
 ## 🔧 Tech Stack
 
-- **Frontend**: [SvelteKit](https://kit.svelte.dev/) with [Vite](https://vitejs.dev/)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
-- **Backend**: [Supabase](https://supabase.com/) for database and authentication
-- **Mapping**: [Mapbox GL](https://docs.mapbox.com/mapbox-gl-js/api/)
-- **Data Visualization**: [Chart.js](https://www.chartjs.org/) and [ECharts](https://echarts.apache.org/)
+- **Frontend**: [SvelteKit](https://kit.svelte.dev/) v2 with [Vite](https://vitejs.dev/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/) with [Flowbite Svelte](https://flowbite-svelte.com/) UI components
+- **Backend**: [Supabase](https://supabase.com/) for database, authentication, and SSR (`@supabase/ssr`)
+- **Mapping**: [Mapbox GL](https://docs.mapbox.com/mapbox-gl-js/api/) with geocoding and directions
+- **Data Visualization**: [ECharts](https://echarts.apache.org/), [Chart.js](https://www.chartjs.org/), and [svg-gauge](https://github.com/nicollash/svg-gauge)
+- **Testing**: [Vitest](https://vitest.dev/)
+- **Deployment**: [Vercel](https://vercel.com/) with adapter-vercel
 
 ## 📋 Prerequisites
 
@@ -61,14 +72,17 @@ VITE_MAPBOX_KEY=your_mapbox_api_key
    pnpm dev
    ```
 
-4. Open your browser and navigate to `http://localhost:5173`
+4. Open your browser and navigate to `http://localhost:5175`
 
 ## 🧪 Development Commands
 
 - `pnpm dev` - Start development server
 - `pnpm build` - Build for production
 - `pnpm preview` - Preview production build
-- `pnpm check` - Run type checking
+- `pnpm check` - Run Svelte type checking
+- `pnpm check:watch` - Run type checking in watch mode
+- `pnpm test` - Run unit tests (vitest)
+- `pnpm test:watch` - Run tests in watch mode
 
 ## 📚 Documentation
 
@@ -79,69 +93,99 @@ Detailed documentation for all features:
 - **[Search & Filter](docs/SEARCH_FILTER.md)** - Filter system documentation
 - **[Marker Clustering](docs/MARKER_CLUSTERING.md)** - Clustering implementation
 - **[Visualization Improvements](docs/VISUALIZATION_IMPROVEMENTS.md)** - Chart and UI enhancements
+- **[User Submissions](docs/USER_SUBMISSIONS.md)** - Location submission feature design
 
-## 📚 Project Structure
+## 📁 Project Structure
 
 ```
 src/
-├── components/      # Reusable UI components
-│   ├── Card.svelte  # Popup card for establishment details
-│   ├── FilterBar.svelte  # Search and filter UI
-│   ├── ContactInfo.svelte  # Contact information display
-│   ├── RadarChart.svelte  # Chart for menu and protein data
-│   └── ...
-├── lib/             # Utilities, stores, and data handling
-│   ├── dataWrangling.js  # Data transformation utilities
-│   ├── mapping.js   # Map rendering with clustering
-│   ├── stores.js    # Svelte stores for state management
-│   └── supabase.js  # Supabase client configuration
-├── routes/          # SvelteKit routes and pages
-│   ├── +page.svelte # Main page
-│   ├── Map.svelte   # Map component
-│   └── ...
-├── app.css         # Global styles
-docs/                # Feature documentation
-migrations/          # Database migrations
+├── components/              # UI components
+│   ├── Card.svelte          # Popup/bottom-sheet card for establishment details
+│   ├── ComparisonTray.svelte # Floating tray for spot comparison selection
+│   ├── FilterBar.svelte     # Search and filter controls
+│   ├── TasteProfile.svelte  # Personal taste profile visualization
+│   ├── TourOverlay.svelte   # Onboarding tour overlay
+│   ├── TrailTray.svelte     # Taco trail route builder interface
+│   ├── RadarChart.svelte    # Menu/protein distribution chart (ECharts)
+│   ├── SpiceGauge.svelte    # Heat level gauge (svg-gauge)
+│   ├── NewSpotsBadge.svelte # Recently added spots notification
+│   ├── DirectionsButton.svelte # Native maps deep-link
+│   ├── FavoriteButton.svelte   # Heart toggle for favorites
+│   ├── Header.svelte        # App header with auth, theme, navigation
+│   ├── ThemeToggle.svelte   # Dark/light/auto mode toggle
+│   └── ...                  # ContactInfo, HoursOpen, SpecCarousel, etc.
+├── lib/                     # Stores, utilities, and data handling
+│   ├── stores.js            # Core data stores (tacoStore, processedTacoData, filteredTacoData)
+│   ├── authStore.js         # Authentication state
+│   ├── favoritesStore.js    # Favorites state
+│   ├── trailStore.js        # Trail builder state
+│   ├── comparisonStore.js   # Spot comparison state
+│   ├── tasteProfileStore.js # k-NN taste profile derivation
+│   ├── tourStore.js         # Onboarding tour state
+│   ├── uiStore.js           # UI state (filter panel, mobile nav)
+│   ├── newSpotsStore.js     # New spots notification state
+│   ├── mapping.js           # Mapbox GL rendering with clustering
+│   ├── mapStore.js          # Mapbox map instance holder
+│   ├── dataWrangling.js     # Data transformation utilities
+│   ├── supabase.js          # Supabase server client
+│   ├── supabaseBrowser.js   # Supabase browser client (SSR cookie support)
+│   └── ...                  # geocoding, validation, theme, deviceDetection
+├── routes/                  # SvelteKit routes
+│   ├── +page.svelte         # Main map page
+│   ├── Map.svelte           # Map component
+│   ├── compare/             # Spot comparison page (shareable via ?ids=)
+│   ├── (auth)/              # Login, signup, email confirmation
+│   └── (protected)/         # Favorites, profile, submit (requires auth)
+├── app.css                  # Global styles
+docs/                        # Feature documentation
+migrations/                  # Database migrations (001-020)
+schema/                      # Canonical view definitions
 ```
 
 ## 🗃️ Database Setup
 
 The application uses Supabase with the following main tables:
 
-- `sites` - Basic information about taco establishments (includes contact fields)
+- `sites` - Basic information about taco establishments
 - `descriptions` - Short and long descriptions for each location
 - `menu` - Menu item data and ratings
 - `hours` - Operating hours information
 - `salsa` - Salsa varieties and heat levels
 - `protein` - Protein options and ratings
-- `summaries` - Aggregated statistics across establishments
 - `item_spec`, `protein_spec`, `salsa_spec` - Specialty item information
 - `sites_complete` - Optimized view joining all site-related tables
 
 ### Running Migrations
 
-After setting up your Supabase project, run the migrations in order:
-
-1. `migrations/002_add_contact_and_social_fields.sql` - Adds contact/social fields
-2. `migrations/001_create_sites_view.sql` - Creates optimized view
-
-See [migrations/README.md](migrations/README.md) for detailed instructions.
+After setting up your Supabase project, run the 20 migrations in order. See [CLAUDE.md](CLAUDE.md) for the full migration list and [migrations/README.md](migrations/README.md) for detailed instructions.
 
 ## 🌟 Roadmap
 
 See [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md) for the complete feature roadmap.
 
-**Recently Completed:**
+**Completed:**
 - ✅ Query optimization (60-70% faster load times)
 - ✅ Search and filter system
 - ✅ Marker clustering
 - ✅ Mobile-first responsive design
+- ✅ User authentication & favorites
+- ✅ Community location submissions
+- ✅ Dark mode with auto switching
+- ✅ Taco trail route builder
+- ✅ Spot comparison mode
+- ✅ Taste profile & personalization
+- ✅ Onboarding tour
+- ✅ Directions deep-link
+- ✅ New spots badge
+- ✅ Vercel deployment
 
 **Next Up:**
-- User-submitted location mechanism
-- User authentication for saving favorite locations
-- Ratings and review system
-- Taco trail route builder
+- "Surprise Me" random spot picker
+- Taco Tuesday Tracker
+- Tucson Taco Census stats page
+- Community ratings & reviews
+- PWA support
+- Accessibility audit
 
 ## 🤝 Contributing
 
