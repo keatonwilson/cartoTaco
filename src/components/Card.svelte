@@ -682,6 +682,9 @@
     user-select: none;
     -webkit-appearance: none;
     appearance: none;
+    /* Always keep button on its own GPU compositing layer so iOS Safari
+       repaints it independently of the parent scroll container's cached texture */
+    transform: translateZ(0);
   }
 
   .compare-btn:hover:not(:disabled) {
@@ -689,10 +692,16 @@
     color: #FE795D;
   }
 
+  /* Active state uses orange text on light-orange tint instead of white-on-orange.
+     This sidesteps an iOS Safari GPU texture cache bug where white text on a
+     newly-painted dark background is invisible until a scroll event forces a
+     repaint flush. Orange text on a light background remains visible regardless
+     of whether iOS repaints the cached scroll layer. */
   .compare-btn.compare-active {
-    background: #FE795D;
-    color: white;
+    background: rgba(254, 121, 93, 0.12);
+    color: #FE795D;
     border-color: #FE795D;
+    font-weight: 600;
   }
 
   .compare-btn:disabled {
@@ -707,8 +716,9 @@
   }
 
   :global(.dark) .compare-btn.compare-active {
-    background: #FE795D;
-    color: white;
+    background: rgba(254, 121, 93, 0.18);
+    color: #FE795D;
     border-color: #FE795D;
+    font-weight: 600;
   }
 </style>
