@@ -687,9 +687,13 @@
     transform: translateZ(0);
   }
 
-  .compare-btn:hover:not(:disabled) {
-    border-color: #FE795D;
-    color: #FE795D;
+  /* Hover only on real pointer devices — touch screens leave :hover sticky
+     after a tap, making a just-deselected button look still-active */
+  @media (hover: hover) {
+    .compare-btn:hover:not(:disabled) {
+      border-color: #FE795D;
+      color: #FE795D;
+    }
   }
 
   /* Active state uses orange text on light-orange tint instead of white-on-orange.
@@ -701,7 +705,6 @@
     background: rgba(254, 121, 93, 0.12);
     color: #FE795D;
     border-color: #FE795D;
-    font-weight: 600;
   }
 
   .compare-btn:disabled {
@@ -719,6 +722,5 @@
     background: rgba(254, 121, 93, 0.18);
     color: #FE795D;
     border-color: #FE795D;
-    font-weight: 600;
   }
 </style>
