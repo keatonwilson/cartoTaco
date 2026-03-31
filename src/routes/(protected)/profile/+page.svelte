@@ -3,8 +3,9 @@
   import { signOut } from '$lib/authStore';
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
-  import { UserCircleOutline, EnvelopeOutline, CalendarMonthOutline, HeartSolid, PaperPlaneOutline, StarOutline } from 'flowbite-svelte-icons';
+  import { UserCircleOutline, EnvelopeOutline, CalendarMonthOutline, HeartSolid } from 'flowbite-svelte-icons';
   import { favoritesCount, loadFavorites } from '$lib/favoritesStore';
+  import TasteProfile from '../../../components/TasteProfile.svelte';
 
   export let data;
 
@@ -78,24 +79,10 @@
 
       <div class="divider"></div>
 
-      <!-- Coming Soon Features -->
+      <!-- Taste Profile -->
       <div class="info-section">
-        <h2 class="section-title">Coming Soon</h2>
-        <p class="coming-soon-text">
-          We're working on exciting new features to enhance your CartoTaco experience!
-        </p>
-
-        <div class="feature-grid">
-          <div class="feature-item">
-            {#if browser}
-              <StarOutline class="feature-icon" />
-            {/if}
-            <div class="feature-content">
-              <h3 class="feature-title">Ratings & Reviews</h3>
-              <p class="feature-description">Share your experiences and rate establishments</p>
-            </div>
-          </div>
-        </div>
+        <h2 class="section-title">Taste Profile</h2>
+        <TasteProfile />
       </div>
 
       <div class="divider"></div>
@@ -126,6 +113,8 @@
   }
 
   .profile-content {
+    width: 100%;
+    box-sizing: border-box;
     max-width: 800px;
     margin: 0 auto;
   }
@@ -206,6 +195,7 @@
     cursor: pointer;
     transition: all 0.2s;
     border: 1px solid transparent;
+    width: 100%;
   }
 
   .info-item.clickable:hover {

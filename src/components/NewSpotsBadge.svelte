@@ -1,5 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import { BellOutline } from 'flowbite-svelte-icons';
   import { recentlyAddedSites } from '$lib/stores';
   import { unseenNewSpotsCount, markNewSpotsAsSeen } from '$lib/newSpotsStore';
@@ -44,11 +46,15 @@
   }
 
   function handleSpotClick(site) {
-    if ($mapInstance) {
-      flyToSite($mapInstance, site);
-    }
     closeDropdown();
     dispatch('spotSelected');
+    if ($page.url.pathname === '/' && $mapInstance) {
+      // Map is already mounted (we're on the main page) — fly directly
+      flyToSite($mapInstance, site);
+    } else {
+      // Navigate to the map page; Map.svelte will pick up the ?location= param
+      goto(`/?location=${site.est_id}`);
+    }
   }
 
   function handleMarkAsSeen() {

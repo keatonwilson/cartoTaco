@@ -13,10 +13,12 @@
 	import Card from '../components/Card.svelte';
 	import { filterPanelOpen, mobileNavOpen } from '../lib/uiStore.js';
 	import 'mapbox-gl/dist/mapbox-gl.css';
-	import { updateMarkers, resetListeners, updateTrailLayers, updateTrailRoute, clearTrailLayers } from '../lib/mapping.js';
+	import { updateMarkers, resetListeners, updateTrailLayers, updateTrailRoute, clearTrailLayers, flyToSite } from '../lib/mapping.js';
 	import { mapInstance } from '../lib/mapStore.js';
 	import FilterBar from '../components/FilterBar.svelte';
 	import TrailTray from '../components/TrailTray.svelte';
+	import ComparisonTray from '../components/ComparisonTray.svelte';
+	import { comparisonActive, addToComparison } from '../lib/comparisonStore.js';
 	import { effectiveTheme, getMapboxStyle } from '$lib/theme.js';
 	import {
 		trailModeActive,
@@ -33,6 +35,7 @@
 	let lastDataLength = -1; // Track the last data length to avoid unnecessary updates
 	let currentTheme = null; // Track current theme to prevent duplicate style changes
 	let trailRestored = false; // Prevent re-running URL trail reconstruction
+	let comparisonRestored = false; // Prevent re-running URL comparison reconstruction
 
 	// Mobile bottom sheet state
 	let sheetEl;
@@ -50,7 +53,8 @@
 		e.preventDefault(); // Prevent pull-to-refresh while dragging handle
 		const deltaY = e.touches[0].clientY - touchStartY;
 		if (deltaY > 0) {
-			sheetEl.style.transform = `translateY(${deltaY}px)`;
+			// Preserve Z so the outer sheet keeps its GPU compositing layer during drag
+			sheetEl.style.transform = `translateY(${deltaY}px) translateZ(0)`;
 		}
 	}
 
@@ -62,10 +66,15 @@
 			// Swiped down far enough — dismiss
 			selectedSite.set(null);
 		} else if (sheetEl) {
-			// Snap back
+			// Snap back — animate to resting Z position, then clear inline style
 			sheetEl.style.transition = 'transform 0.25s ease';
-			sheetEl.style.transform = '';
-			setTimeout(() => { if (sheetEl) sheetEl.style.transition = ''; }, 250);
+			sheetEl.style.transform = 'translateZ(0)';
+			setTimeout(() => {
+				if (sheetEl) {
+					sheetEl.style.transition = '';
+					sheetEl.style.transform = ''; // falls back to CSS class translateZ(0)
+				}
+			}, 250);
 		}
 	}
 
@@ -208,6 +217,8 @@
 				: 300;
 		} else if ($trailModeActive) {
 			bottomPadding = 280;
+		} else if ($comparisonActive) {
+			bottomPadding = 160;
 		}
 		map.setPadding({ bottom: bottomPadding });
 	}
@@ -228,6 +239,38 @@
 				sites.forEach((site) => addStop(site));
 				enterTrailMode();
 			}
+		}
+	}
+
+	// Navigate to a specific location from URL ?location= param (used by favorites + taste profile)
+	let locationRestored = false;
+	$: if (!locationRestored && mapLoaded && $processedTacoData && $processedTacoData.length > 0 && typeof window !== 'undefined') {
+		const params = new URLSearchParams(window.location.search);
+		const locationParam = params.get('location');
+		locationRestored = true;
+		if (locationParam) {
+			const site = $processedTacoData.find((s) => s.est_id === Number(locationParam));
+			if (site && map) {
+				selectedSite.set(site);
+				flyToSite(map, site);
+				// Clean up the URL param without navigating
+				const newParams = new URLSearchParams(window.location.search);
+				newParams.delete('location');
+				const newUrl = newParams.toString() ? `?${newParams}` : window.location.pathname;
+				history.replaceState({}, '', newUrl);
+			}
+		}
+	}
+
+	// Reconstruct comparison from URL params once processedTacoData is available
+	$: if (!comparisonRestored && $processedTacoData && $processedTacoData.length > 0 && typeof window !== 'undefined') {
+		const params = new URLSearchParams(window.location.search);
+		const compareParam = params.get('compare');
+		comparisonRestored = true;
+		if (compareParam) {
+			const ids = compareParam.split(',').map(Number);
+			const sites = ids.map((id) => $processedTacoData.find((s) => s.est_id === id)).filter(Boolean);
+			sites.forEach((site) => addToComparison(site));
 		}
 	}
 
@@ -258,10 +301,11 @@
 	{/if}
 </div>
 
-<!-- Filter Bar + Trail Tray -->
+<!-- Filter Bar + Trail Tray + Comparison Tray -->
 {#if !$isLoading && !$hasError}
 	<FilterBar />
 	<TrailTray />
+	<ComparisonTray cardOpen={$isMobile && !!$selectedSite} />
 {/if}
 
 <!-- Mobile Bottom Sheet: replaces Mapbox popup on small screens -->
@@ -468,6 +512,12 @@
     z-index: 150;
     display: flex;
     flex-direction: column;
+    /* Keep sheet on its own GPU compositing layer at all times.
+       Without this, iOS Safari uses a CPU paint path after the slide-in
+       animation ends, which fails to repaint text-color changes (e.g. the
+       compare button going white-on-orange) until a scroll/transform event
+       forces a GPU flush. translateZ(0) keeps the GPU layer active. */
+    transform: translateZ(0);
     /* Slide in from bottom */
     animation: sheet-slide-up 0.28s cubic-bezier(0.32, 0.72, 0, 1);
   }
@@ -486,7 +536,7 @@
 
   @keyframes sheet-slide-up {
     from { transform: translateY(100%); }
-    to   { transform: translateY(0); }
+    to   { transform: translateZ(0); } /* matches resting CSS — no jump on animation end */
   }
 
   /* Handle bar — the draggable zone at the top of the sheet.
@@ -562,8 +612,12 @@
     overflow-y: auto;
     /* Prevent scroll from propagating to the map at top/bottom boundaries */
     overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
     /* Bottom padding accounts for the home-indicator bar on iPhone X+ */
     padding: 0 10px max(20px, env(safe-area-inset-bottom));
+    /* iOS Safari: force this scroll container onto its own persistent GPU
+       compositing layer. Without this, iOS caches the scroll layer as a
+       stale texture and won't repaint text-color changes (e.g. compare
+       button white text on orange) until a scroll event forces a flush. */
+    transform: translateZ(0);
   }
 </style>

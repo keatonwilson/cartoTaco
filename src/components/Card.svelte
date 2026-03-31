@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import RadarChart from "./RadarChart.svelte";
   import HoursOpen from "./HoursOpen.svelte";
   import SpiceGauge from "./SpiceGauge.svelte";
@@ -12,9 +12,41 @@
   import FavoriteButton from "./FavoriteButton.svelte";
   import { selectedSite, summaryStats } from "$lib/stores";
   import { isMobile } from "$lib/deviceDetection";
+  import {
+    comparisonSites,
+    comparisonCount,
+    addToComparison,
+    removeFromComparison
+  } from "$lib/comparisonStore.js";
 
   // Local state
   let showLongDescription = false;
+
+  // Comparison state for this card
+  $: isInComparison = $comparisonSites.some(s => s.est_id === $selectedSite?.est_id);
+  $: comparisonFull = $comparisonCount >= 3 && !isInComparison;
+
+  async function toggleComparison() {
+    if (!$selectedSite) return;
+    if (isInComparison) {
+      removeFromComparison($selectedSite.est_id);
+    } else {
+      addToComparison($selectedSite);
+    }
+    // iOS Safari caches the scroll container's GPU texture and won't repaint
+    // a text-color change until a scroll event forces a flush. Nudging
+    // scrollTop by 1px and back directly mimics what the user manually does
+    // to make the white text appear, guaranteeing a repaint.
+    await tick();
+    if (typeof document !== 'undefined') {
+      const el = document.querySelector('.sheet-content');
+      if (el) {
+        const prev = el.scrollTop;
+        el.scrollTop = prev + 1;
+        requestAnimationFrame(() => { el.scrollTop = prev; });
+      }
+    }
+  }
   let errorState = false;
   let errorMessage = "Unable to display data";
 
@@ -41,7 +73,18 @@
           <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">
             {$selectedSite.name || 'Unknown Location'}
           </h2>
-          <FavoriteButton estId={$selectedSite.est_id} size="sm" />
+          <div class="header-actions">
+            <FavoriteButton estId={$selectedSite.est_id} size="sm" />
+            <button
+              class="compare-btn"
+              class:compare-active={isInComparison}
+              disabled={!isInComparison && comparisonFull}
+              on:click={toggleComparison}
+              title={isInComparison ? 'Remove from comparison' : comparisonFull ? 'Max 3 spots' : 'Add to comparison'}
+            >
+              {isInComparison ? '− Compare' : '+ Compare'}
+            </button>
+          </div>
         </div>
         <HoursOpen
           startHours={$selectedSite.startHours || {}}
@@ -145,7 +188,18 @@
           </h2>
           <IconHighlight type="siteType" data={$selectedSite.type || 'unknown'} />
         </div>
-        <FavoriteButton estId={$selectedSite.est_id} size="sm" />
+        <div class="desktop-header-actions">
+          <FavoriteButton estId={$selectedSite.est_id} size="sm" />
+          <button
+            class="compare-btn"
+            class:compare-active={isInComparison}
+            disabled={!isInComparison && comparisonFull}
+            on:click={toggleComparison}
+            title={isInComparison ? 'Remove from comparison' : comparisonFull ? 'Max 3 spots' : 'Add to comparison'}
+          >
+            {isInComparison ? '− Compare' : '+ Compare'}
+          </button>
+        </div>
       </div>
 
       <!-- Row 2: Description (short, with expand) + Hours/Contact collapsible -->
@@ -595,5 +649,78 @@
 
   :global(.dark) .desktop-specialties {
     border-top-color: #374151;
+  }
+
+  /* Header action groups */
+  .header-actions,
+  .desktop-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  /* Compare button */
+  .compare-btn {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    flex-shrink: 0;
+    padding: 4px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background: #f9fafb;
+    color: #374151;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+    -webkit-touch-callout: none;
+    user-select: none;
+    -webkit-appearance: none;
+    appearance: none;
+    /* Always keep button on its own GPU compositing layer so iOS Safari
+       repaints it independently of the parent scroll container's cached texture */
+    transform: translateZ(0);
+  }
+
+  /* Hover only on real pointer devices — touch screens leave :hover sticky
+     after a tap, making a just-deselected button look still-active */
+  @media (hover: hover) {
+    .compare-btn:hover:not(:disabled) {
+      border-color: #FE795D;
+      color: #FE795D;
+    }
+  }
+
+  /* Active state uses orange text on light-orange tint instead of white-on-orange.
+     This sidesteps an iOS Safari GPU texture cache bug where white text on a
+     newly-painted dark background is invisible until a scroll event forces a
+     repaint flush. Orange text on a light background remains visible regardless
+     of whether iOS repaints the cached scroll layer. */
+  .compare-btn.compare-active {
+    background: rgba(254, 121, 93, 0.12);
+    color: #FE795D;
+    border-color: #FE795D;
+  }
+
+  .compare-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  :global(.dark) .compare-btn {
+    background: #374151;
+    border-color: #4b5563;
+    color: #d1d5db;
+  }
+
+  :global(.dark) .compare-btn.compare-active {
+    background: rgba(254, 121, 93, 0.18);
+    color: #FE795D;
+    border-color: #FE795D;
   }
 </style>
