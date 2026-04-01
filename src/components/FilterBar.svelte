@@ -304,7 +304,8 @@
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    max-width: 400px;
+    width: 560px;
+    max-width: 560px;
   }
 
   :global(.dark) .filter-container {
@@ -320,7 +321,8 @@
 
   .search-input-wrapper {
     position: relative;
-    flex: 1;
+    flex: 1 1 0;
+    min-width: 150px;
     display: flex;
     align-items: center;
   }
@@ -796,6 +798,7 @@
       top: 76px; /* 66px header + 10px margin */
       left: 10px;
       right: 60px; /* Leave space for map controls */
+      width: auto;
       max-width: none;
     }
 
