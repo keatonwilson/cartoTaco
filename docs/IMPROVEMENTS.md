@@ -56,17 +56,16 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 
 ## 🎯 Quick Wins (High Impact, Low Effort)
 
-### D1. "Surprise Me" Button
-**Feature**: One-tap random spot selection that respects active filters. Prominent button in the filter bar or map overlay. Flies the map to the selected spot and opens its card.
+### D1. "Surprise Me" Button ✅
+**Status**: Completed (2026-04-01)
 
-**Impact**: Low-effort engagement feature, great for indecisive users
-
-**Effort**: Low (half a day)
+**Feature**: One-tap random spot selection that respects active filters. Button in the filter bar flies the map to the selected spot and opens its card.
 
 **Technical Details**:
-- Pick random item from `filteredTacoData`
-- Set `selectedSite` and fly map camera to coordinates
-- Button lives in `FilterBar.svelte` or as a floating map control
+- Picks random item from `$filteredTacoData` (respects all active filters)
+- Calls `flyToSite(map, site)` from `mapping.js` — handles mobile/desktop behavior automatically
+- Button disabled when no filtered results are available
+- Label hidden on small screens (emoji only)
 
 ---
 
@@ -541,7 +540,7 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 14. ✅ **Onboarding tour** — COMPLETED
 15. ✅ **New spots badge** — COMPLETED
 16. ✅ **Bottom sheet mobile UX** — COMPLETED
-17. **"Surprise Me" button (D1)** — Quick win, fun UX
+17. ✅ **"Surprise Me" button (D1)** — Quick win, fun UX
 18. **Taco Tuesday Tracker (S2)** — Weekly engagement, low effort
 19. **Tucson Taco Census page (V1)** — Press-worthy, no new data needed
 20. **Accessibility audit (P1)** — Important for inclusivity
