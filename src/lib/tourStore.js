@@ -21,6 +21,12 @@ export const TOUR_STEPS = [
 		description: 'Search by name, menu item, protein, or type to find exactly what you\'re craving.'
 	},
 	{
+		id: 'surprise',
+		target: '[data-tour="surprise"]',
+		title: 'Feeling Indecisive? 🌮',
+		description: 'Hit Surprise Me and we\'ll pick a random spot from your current results — filters included. Perfect for when you just can\'t choose.'
+	},
+	{
 		id: 'filters',
 		target: '[data-tour="filters"]',
 		title: 'Filter Your Results',
@@ -44,6 +50,13 @@ export const TOUR_STEPS = [
 		target: '[data-tour="theme"]',
 		title: 'Switch Themes',
 		description: 'Toggle between light, dark, and auto modes to suit your preference.'
+	},
+	{
+		id: 'signup',
+		target: null,
+		title: 'Get More with a Free Account',
+		description: 'Sign up to save your favorite spots with ❤️, unlock a personalized Taste Profile (we\'ll figure out your taco archetype), and filter the map to your saved picks. It\'s free and takes 30 seconds.',
+		cta: { label: 'Create Free Account', href: '/signup' }
 	},
 	{
 		id: 'done',

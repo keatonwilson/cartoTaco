@@ -1,11 +1,12 @@
 <script>
-  import { filterConfig, filteredTacoData, processedTacoData } from '../lib/stores';
+  import { filterConfig, filteredTacoData, processedTacoData, flyToTarget } from '../lib/stores';
   import { isAuthenticated } from '$lib/authStore';
   import { SearchOutline, ChevronDownOutline, ChevronUpOutline, HeartSolid } from 'flowbite-svelte-icons';
   import { browser } from '$app/environment';
   import { trailModeActive, enterTrailMode, exitTrailMode } from '../lib/trailStore.js';
   import { tourExpandFilters } from '$lib/tourStore.js';
   import { filterPanelOpen } from '$lib/uiStore.js';
+  import { get } from 'svelte/store';
 
   // Allow the tour to expand filters
   $: if ($tourExpandFilters) filterPanelOpen.set(true);
@@ -78,6 +79,13 @@
     });
   }
 
+  function surpriseMe() {
+    const sites = get(filteredTacoData);
+    if (!sites.length) return;
+    const site = sites[Math.floor(Math.random() * sites.length)];
+    flyToTarget.set(site);
+  }
+
   // Check if any filters are active
   $: hasActiveFilters =
     $filterConfig.searchText !== '' ||
@@ -104,6 +112,18 @@
         class="search-input"
       />
     </div>
+
+    <button
+      data-tour="surprise"
+      class="surprise-button"
+      on:click={surpriseMe}
+      title="Surprise Me"
+      aria-label="Surprise Me — pick a random spot"
+      disabled={$filteredTacoData.length === 0}
+    >
+      🌮
+      <span class="surprise-text">Surprise Me</span>
+    </button>
 
     <button
       data-tour="trail"
@@ -336,6 +356,44 @@
 
   .search-input:focus {
     border-color: #FE795D;
+  }
+
+  /* Surprise Me button */
+  .surprise-button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #fff3ee;
+    border: 1.5px solid #FE795D;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #FE795D;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  :global(.dark) .surprise-button {
+    background: #2d1f1a;
+    border-color: #FE795D;
+    color: #FE795D;
+  }
+
+  .surprise-button:hover:not(:disabled) {
+    background: #FE795D;
+    color: white;
+  }
+
+  :global(.dark) .surprise-button:hover:not(:disabled) {
+    background: #FE795D;
+    color: white;
+  }
+
+  .surprise-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
   /* Trail mode button */
@@ -757,7 +815,15 @@
       display: none;
     }
 
+    .surprise-text {
+      display: none;
+    }
+
     .trail-button {
+      padding: 8px 10px;
+    }
+
+    .surprise-button {
       padding: 8px 10px;
     }
   }

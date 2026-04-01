@@ -196,6 +196,10 @@ export const recentlyAddedSites = derived(
 // Selected site store for popup details
 export const selectedSite = writable(null);
 
+// Signal store for programmatic fly-to requests (e.g. Surprise Me button).
+// Map.svelte watches this and calls flyToSite() with its local map instance.
+export const flyToTarget = writable(null);
+
 // Filter configuration store
 export const filterConfig = writable({
   searchText: '',

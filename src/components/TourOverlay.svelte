@@ -137,6 +137,12 @@
 			<h3 class="tour-title">{TOUR_STEPS[$tourStep].title}</h3>
 			<p class="tour-description">{TOUR_STEPS[$tourStep].description}</p>
 
+			{#if TOUR_STEPS[$tourStep].cta}
+				<a class="tour-cta" href={TOUR_STEPS[$tourStep].cta.href} on:click={endTour}>
+					{TOUR_STEPS[$tourStep].cta.label}
+				</a>
+			{/if}
+
 			<div class="tour-footer">
 				<span class="tour-counter">{$tourStep + 1} / {TOUR_STEPS.length}</span>
 				<div class="tour-buttons">
@@ -269,6 +275,25 @@
 
 	:global(.dark) .tour-description {
 		color: #d1d5db;
+	}
+
+	.tour-cta {
+		display: block;
+		width: 100%;
+		padding: 0.5rem 1rem;
+		margin-bottom: 0.75rem;
+		background: #FE795D;
+		color: white;
+		text-align: center;
+		border-radius: 6px;
+		font-size: 0.875rem;
+		font-weight: 600;
+		text-decoration: none;
+		transition: background 0.2s;
+	}
+
+	.tour-cta:hover {
+		background: #EF562F;
 	}
 
 	.tour-footer {
