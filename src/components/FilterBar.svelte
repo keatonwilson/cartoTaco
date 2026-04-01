@@ -1,5 +1,5 @@
 <script>
-  import { filterConfig, filteredTacoData, processedTacoData } from '../lib/stores';
+  import { filterConfig, filteredTacoData, processedTacoData, flyToTarget } from '../lib/stores';
   import { isAuthenticated } from '$lib/authStore';
   import { SearchOutline, ChevronDownOutline, ChevronUpOutline, HeartSolid } from 'flowbite-svelte-icons';
   import { browser } from '$app/environment';
@@ -7,8 +7,6 @@
   import { tourExpandFilters } from '$lib/tourStore.js';
   import { filterPanelOpen } from '$lib/uiStore.js';
   import { get } from 'svelte/store';
-  import { mapInstance } from '../lib/mapStore.js';
-  import { flyToSite } from '../lib/mapping.js';
 
   // Allow the tour to expand filters
   $: if ($tourExpandFilters) filterPanelOpen.set(true);
@@ -84,10 +82,8 @@
   function surpriseMe() {
     const sites = get(filteredTacoData);
     if (!sites.length) return;
-    const map = get(mapInstance);
-    if (!map) return;
     const site = sites[Math.floor(Math.random() * sites.length)];
-    flyToSite(map, site);
+    flyToTarget.set(site);
   }
 
   // Check if any filters are active

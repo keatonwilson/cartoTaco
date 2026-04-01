@@ -7,7 +7,8 @@
 		hasError,
 		processedTacoData,
 		filteredTacoData,
-		selectedSite
+		selectedSite,
+		flyToTarget
 	} from '../lib/stores';
 	import { isMobile, screenWidth } from '../lib/deviceDetection';
 	import Card from '../components/Card.svelte';
@@ -260,6 +261,12 @@
 				history.replaceState({}, '', newUrl);
 			}
 		}
+	}
+
+	// Handle Surprise Me fly-to requests from FilterBar
+	$: if (map && mapLoaded && $flyToTarget) {
+		flyToSite(map, $flyToTarget);
+		flyToTarget.set(null);
 	}
 
 	// Reconstruct comparison from URL params once processedTacoData is available
