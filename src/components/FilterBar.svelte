@@ -798,6 +798,7 @@
       top: 76px; /* 66px header + 10px margin */
       left: 10px;
       right: 60px; /* Leave space for map controls */
+      width: auto;
       max-width: none;
     }
 
