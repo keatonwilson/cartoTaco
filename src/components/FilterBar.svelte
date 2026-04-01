@@ -114,6 +114,7 @@
     </div>
 
     <button
+      data-tour="surprise"
       class="surprise-button"
       on:click={surpriseMe}
       title="Surprise Me"
