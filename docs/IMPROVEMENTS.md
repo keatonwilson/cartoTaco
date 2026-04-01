@@ -425,6 +425,104 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 
 ---
 
+## 💡 Community & Discovery (New Ideas)
+
+### C1. Tucson Taco Index
+**Feature**: Track the average price of a taco in Tucson over time — a local economic indicator. Published on a public `/index` page with a historical price chart.
+
+**Impact**: Press-worthy and shareable. Positions CartoTaco as the authority on Tucson taco culture beyond just a directory. Zero new map data needed.
+
+**Effort**: Moderate (2-3 days + ongoing data collection)
+
+**Technical Details**:
+- Add `price_avg` field to `sites` table (admin-maintained)
+- New `taco_index_snapshots` table: `snapshot_date`, `avg_price`, `sample_size`
+- Monthly snapshot job (cron or manual admin action)
+- Line chart via ECharts (already a dependency)
+- "The average Tucson street taco costs $X today" headline stat
+
+---
+
+### C2. Neighborhood Origin Stories
+**Feature**: Tap a neighborhood area on the map to surface a short editorial card about that neighborhood's taco culture — history, notable spots, what makes it distinct.
+
+**Impact**: Hyper-local storytelling that no algorithm can replicate. Differentiates CartoTaco from generic map apps and rewards exploration.
+
+**Effort**: Moderate (2-3 days dev + editorial writing time)
+
+**Technical Details**:
+- New `neighborhoods` table: `name`, `slug`, `story_html`, `boundary_geojson`
+- Mapbox fill layer rendering neighborhood boundaries
+- Click boundary → slide-in editorial panel
+- Admin CMS or direct DB editing for story content
+- Tag each `site` with a `neighborhood_id` foreign key
+
+---
+
+### C3. Group Decision Mode
+**Feature**: Generate a shareable voting link for a group. Each recipient votes thumbs up/down on spots. The map highlights the consensus winner in real time as votes come in.
+
+**Impact**: Solves the universal "where should we go?" group chat problem. High virality — every group outing is a potential new user acquisition.
+
+**Effort**: Moderate-High (3-5 days)
+
+**Technical Details**:
+- New `group_sessions` table: `id`, `created_by`, `expires_at`, `filter_snapshot`
+- New `group_votes` table: `session_id`, `voter_token`, `est_id`, `vote` (up/down)
+- Shareable URL: `/vote/[session_id]`
+- Real-time vote aggregation via Supabase Realtime
+- Result page highlights winning spot with fly-to on map
+
+---
+
+### C4. Community Busyness Reports
+**Feature**: One-tap report from inside a spot: "Packed / Moderate / Dead." Reports are anonymous, timestamped, and fade after 2 hours. Aggregate into a live busyness indicator shown on the card.
+
+**Impact**: Real-time crowd signal without needing Google's data. Useful for deciding whether to head somewhere right now.
+
+**Effort**: Moderate (2-3 days)
+
+**Technical Details**:
+- New `busyness_reports` table: `est_id`, `level` (1/2/3), `reported_at`
+- Weighted average of reports in last 2 hours
+- Busyness indicator dot (green/yellow/red) in `Card.svelte`
+- Rate-limit by IP or session to prevent spam
+- Optional: require auth to report (reduces abuse)
+
+---
+
+### C5. The Midnight Map
+**Feature**: A dedicated late-night mode that surfaces only spots open past midnight or 24 hours, with a distinct UI — dark starfield background, glowing orange markers, reduced clutter.
+
+**Impact**: Serves a real underserved use case (post-concert, post-bar hunger). Visually striking and very shareable as a screenshot.
+
+**Effort**: Low-Moderate (1-2 days)
+
+**Technical Details**:
+- Filter derived from existing hours data in `filteredTacoData`
+- Toggle button in header or map overlay
+- Custom Mapbox style or CSS overlay for starfield aesthetic
+- Distinct marker glow effect via Mapbox paint properties
+- Activates automatically between 10pm–4am (with manual override)
+
+---
+
+### C6. The Anti-Review
+**Feature**: Instead of 1–5 star ratings, each visit earns one vote across four emoji dimensions: 🔥 Heat Legit / 🌮 Authentic / 💸 Value / 🎭 Vibe. Aggregated counts display as a vibe fingerprint on each card.
+
+**Impact**: Faster to submit than a written review, more expressive than stars, highly visual. Encourages repeat engagement and generates richer per-spot character data.
+
+**Effort**: Moderate (2-3 days)
+
+**Technical Details**:
+- Requires auth (already implemented)
+- New `vibe_votes` table: `user_id`, `est_id`, `dimension` (heat/authentic/value/vibe), `voted_at`
+- One vote per dimension per user per spot (upsertable)
+- Aggregate counts displayed as icon + number in `Card.svelte`
+- No moderation burden (no text content)
+
+---
+
 ## 📊 Recommended Priority Order
 
 1. ✅ **Query optimization** — COMPLETED
@@ -466,6 +564,12 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 37. **Tour improvements (P10)** — Better onboarding
 38. **Owner Portal (O1)** — Long-term data sustainability
 39. **AI menu extraction (#11)** — Advanced automation
+40. **Tucson Taco Index (C1)** — Economic indicator, press-worthy
+41. **Neighborhood Origin Stories (C2)** — Hyper-local storytelling
+42. **Group Decision Mode (C3)** — Viral group UX, solves real problem
+43. **Community Busyness Reports (C4)** — Real-time crowd signal
+44. **The Midnight Map (C5)** — Late-night discovery, visually striking
+45. **The Anti-Review (C6)** — Richer engagement than star ratings
 
 ---
 
@@ -491,4 +595,4 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 
 ---
 
-**Last Updated**: 2026-03-31
+**Last Updated**: 2026-04-01
