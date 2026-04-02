@@ -40,6 +40,13 @@ export const TOUR_STEPS = [
 		description: 'Plan a multi-stop taco crawl! Click spots on the map to add them to your route.'
 	},
 	{
+		id: 'summit',
+		target: '[data-tour="summit"]',
+		title: 'Settle It with a Taco Summit 🌮',
+		description: "Can't agree on where to eat? Start a Summit — share a link, everyone ranks their picks, and the app tallies the votes. Anonymous, instant, and actually fun.",
+		cta: { label: 'Start a Summit', href: '/vote/new' }
+	},
+	{
 		id: 'map',
 		target: null,
 		title: 'Explore the Map',

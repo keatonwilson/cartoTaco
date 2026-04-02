@@ -52,6 +52,7 @@
 			</button>
       <button
         class="nav-link summit-link"
+        data-tour="summit"
         on:click={() => handleNavigation('/vote/new')}
         title="Start a group vote on where to eat"
       >
