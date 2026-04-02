@@ -236,7 +236,7 @@
     padding: 0.625rem 0.875rem;
     border: 1px solid #d1d5db;
     border-radius: 0.5rem;
-    font-size: 0.9rem;
+    font-size: 1rem; /* 16px min prevents iOS Safari auto-zoom on focus */
     background: white;
     color: #111827;
     box-sizing: border-box;
