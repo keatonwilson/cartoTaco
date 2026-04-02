@@ -12,6 +12,11 @@
     fetchRoute,
     addLocationStop
   } from '../lib/trailStore.js';
+  import PersonSimpleWalk from 'phosphor-svelte/lib/PersonSimpleWalk';
+  import CarProfile from 'phosphor-svelte/lib/CarProfile';
+  import MapPin from 'phosphor-svelte/lib/MapPin';
+  import SpinnerGap from 'phosphor-svelte/lib/SpinnerGap';
+  import ShareNetwork from 'phosphor-svelte/lib/ShareNetwork';
 
   // --- My Location ---
   let locatingStart = false;
@@ -148,7 +153,7 @@
         aria-label="Walking mode"
         title="Walking"
       >
-        🚶 Walk
+        <PersonSimpleWalk size={15} weight="bold" /> Walk
       </button>
       <button
         class="mode-btn"
@@ -157,7 +162,7 @@
         aria-label="Driving mode"
         title="Driving"
       >
-        🚗 Drive
+        <CarProfile size={15} weight="bold" /> Drive
       </button>
     </div>
 
@@ -174,7 +179,7 @@
       disabled={locatingStart || locatingEnd}
       title="Use current location as first stop"
     >
-      {locatingStart ? '⏳ Locating…' : '📍 Start Here'}
+      {#if locatingStart}<SpinnerGap size={14} class="spin" /> Locating…{:else}<MapPin size={14} weight="fill" /> Start Here{/if}
     </button>
     <button
       class="loc-btn"
@@ -182,7 +187,7 @@
       disabled={locatingStart || locatingEnd}
       title="Use current location as last stop"
     >
-      {locatingEnd ? '⏳ Locating…' : '📍 End Here'}
+      {#if locatingEnd}<SpinnerGap size={14} class="spin" /> Locating…{:else}<MapPin size={14} weight="fill" /> End Here{/if}
     </button>
   </div>
   {#if locationError}
@@ -248,7 +253,7 @@
       on:click={shareTrail}
       title={canAct ? 'Copy shareable link' : 'Add at least 2 stops'}
     >
-      {copied ? '✓ Copied!' : 'Share Trail 🔗'}
+      <ShareNetwork size={15} weight="bold" /> {copied ? 'Copied!' : 'Share Trail'}
     </button>
   </div>
 </div>

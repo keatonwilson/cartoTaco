@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { HeartSolid, MapPinAltSolid } from 'flowbite-svelte-icons';
+	import HeartBreak from 'phosphor-svelte/lib/HeartBreak';
 	import { favoriteIds, loadFavorites } from '$lib/favoritesStore';
 	import { processedTacoData } from '$lib/stores';
 	import FavoriteButton from '../../../components/FavoriteButton.svelte';
@@ -59,7 +60,7 @@
 		{:else if favoriteLocations.length === 0}
 			<!-- Empty State -->
 			<div class="empty-state">
-				<div class="empty-icon">💔</div>
+				<div class="empty-icon"><HeartBreak size={64} weight="duotone" /></div>
 				<h2>No favorites yet</h2>
 				<p>Start exploring the map and save your favorite taco spots!</p>
 				<button class="explore-button" on:click={() => goto('/')}>
@@ -232,8 +233,8 @@
 	}
 
 	.empty-icon {
-		font-size: 4rem;
 		margin-bottom: 1rem;
+		color: #fe795d;
 	}
 
 	.empty-state h2 {

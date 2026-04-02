@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { BarsOutline, CloseOutline, UserCircleOutline, QuestionCircleOutline } from 'flowbite-svelte-icons';
+	import Ranking from 'phosphor-svelte/lib/Ranking';
 	import ThemeToggle from './ThemeToggle.svelte';
 	import NewSpotsBadge from './NewSpotsBadge.svelte';
 	import { startTour } from '$lib/tourStore.js';
@@ -50,6 +51,16 @@
 			<button class="help-button" on:click={startTour} title="Take a tour" aria-label="Take a tour">
 				{#if browser}<QuestionCircleOutline size="sm" />{/if}
 			</button>
+      <button
+        class="nav-link summit-link"
+        data-tour="summit"
+        on:click={() => handleNavigation('/vote/new')}
+        title="Start a group vote on where to eat"
+      >
+        <Ranking size={16} weight="duotone" />
+        Summit
+      </button>
+
       {#if $isAuthenticated}
         <div class="user-info">
           {#if browser}
@@ -135,6 +146,13 @@
   <!-- Mobile Menu -->
   {#if $mobileNavOpen}
     <div class="mobile-menu">
+      <button
+        class="mobile-nav-link summit-link"
+        on:click={() => handleNavigation('/vote/new')}
+      >
+        <Ranking size={16} weight="duotone" />
+        Summit — group vote
+      </button>
       {#if $isAuthenticated}
         <div class="mobile-user-info">
           {#if browser}
@@ -390,6 +408,23 @@
   .nav-link.sign-out:hover {
     background: #DC2626;
     color: white;
+  }
+
+  .nav-link.summit-link {
+    border-color: rgba(254, 121, 93, 0.4);
+    background: rgba(254, 121, 93, 0.06);
+    font-weight: 600;
+  }
+
+  .nav-link.summit-link:hover {
+    background: rgba(254, 121, 93, 0.14);
+    border-color: #FE795D;
+    color: #FE795D;
+  }
+
+  :global(.dark) .nav-link.summit-link {
+    border-color: rgba(254, 121, 93, 0.3);
+    background: rgba(254, 121, 93, 0.08);
   }
 
   /* Mobile Menu Button */

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CartoTaco is an interactive map-based application for exploring taco establishments in Tucson, AZ. Built with SvelteKit, it features an optimized architecture that fetches all site data in a single database query using a Supabase view. The app supports user authentication, favorites, trail building (multi-stop route planning), location submissions, and theme switching.
+CartoTaco is an interactive map-based application for exploring taco establishments in Tucson, AZ. Built with SvelteKit, it features an optimized architecture that fetches all site data in a single database query using a Supabase view. The app supports user authentication, favorites, trail building (multi-stop route planning), location submissions, theme switching, and group decision voting (Taco Summit).
 
 ## Development Commands
 
@@ -60,6 +60,9 @@ Migrations must be run in this order:
 18. `migrations/018_rename_spec_fk_columns.sql` - Renames spec FK columns to consistent spec_id_N pattern, rebuilds view
 19. `migrations/019_drop_summaries_table.sql` - Drops the unused summaries table (stats now computed client-side)
 20. `migrations/020_drop_unused_sites_columns.sql` - Drops unused columns from sites table (contact, lat_2, lon_2, days_loc_2)
+21. `migrations/021_create_group_sessions.sql` - Creates `group_sessions` table for Taco Summit feature (id, creator_token, site_ids, title, closed_at) with open RLS policies
+22. `migrations/022_create_group_votes.sql` - Creates `group_votes` table for ranked-choice ballots (session_id, voter_token, est_id, rank) with unique constraint and index
+23. `migrations/023_add_snacks_menu_type.sql` - Adds snacks as a menu type
 
 ### Schema Management
 - **`schema/sites_complete_view.sql`** is the single source of truth for the `sites_complete` view definition
@@ -135,7 +138,7 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 - `tourActive` - Whether the tour overlay is showing
 - `tourStep` - Current step index (0-based)
 - `tourExpandFilters` - Whether to expand filters during the filters tour step
-- `TOUR_STEPS` - Array of 7 step definitions: `welcome`, `search`, `filters`, `trail`, `map`, `theme`, `done`
+- `TOUR_STEPS` - Array of 10 step definitions: `welcome`, `search`, `surprise`, `filters`, `trail`, `summit`, `map`, `theme`, `signup`, `done`
   - Each step has `id`, `target` (CSS selector or null for centered modal), `title`, `description`, optional `onEnter` action
 - Functions: `startTour()`, `endTour()`, `nextStep()`, `prevStep()`, `shouldAutoStart()`
 - Persistence: localStorage key `cartoTaco_tourCompleted`
@@ -231,6 +234,7 @@ Located in src/lib/dataWrangling.js:
 - `ComparisonTray.svelte` - Floating tray for selecting up to 3 spots for side-by-side comparison
 - `TasteProfile.svelte` - Personal taste profile visualization with archetype display, protein affinities, and scatter plot (heat vs salsa)
 - `TourOverlay.svelte` - Multi-step onboarding tour with targeted tooltips, step highlighting, and next/prev/skip navigation
+- `SummitResults.svelte` - Taco Summit results view: ECharts stacked horizontal bar showing rank distribution per spot (orange gradient), winner callout, dark-mode reactive, optional PNG card download
 
 ### Routes
 - `src/routes/+layout.svelte` - Root layout (Header, theme initialization)
@@ -242,6 +246,8 @@ Located in src/lib/dataWrangling.js:
 #### Public Routes
 - `src/routes/compare/+page.svelte` - Side-by-side comparison of up to 3 spots (shareable via `?ids=1,2,3` query params)
 - `src/routes/compare/+page.js` - Route config for comparison page
+- `src/routes/vote/new/+page.svelte` - Taco Summit creation: pick 2–6 spots, set a title, creates a `group_sessions` row and redirects to the voting page
+- `src/routes/vote/[session_id]/+page.svelte` - Taco Summit voting/results page; states: ranked-choice ballot entry, post-vote waiting with live preview, locked results with `SummitResults`; uses Supabase Realtime for live vote counts and session lock detection; anonymous via `voter_token` UUID in localStorage; creator identified by `creator_token` in localStorage
 
 #### Authentication Routes (`src/routes/(auth)/`)
 - `login/+page.svelte` - Login form
