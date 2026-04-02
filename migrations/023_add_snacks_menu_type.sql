@@ -1,8 +1,27 @@
--- Canonical definition of the sites_complete view.
--- This file is the SINGLE SOURCE OF TRUTH for the view schema.
--- Any migration that rebuilds the view should copy from this file.
+-- Migration 023: Add snacks menu type
+-- Adds snacks_yes and snacks_perc columns to the menu table,
+-- then rebuilds the sites_complete view to expose them.
 --
--- Last updated: Migration 023 (added snacks_yes/snacks_perc)
+-- All existing establishments default to false/0 (no snacks offered).
+-- The frontend picks up snacks automatically via the dynamic _perc extraction
+-- in stores.js and the _yes guard — no frontend changes needed.
+--
+-- IMPORTANT: This migration rebuilds the sites_complete view using the
+-- spec_id_N column names introduced in migration 018. Run migrations
+-- 018 through 022 before running this migration. If you only need to
+-- add the columns (and will rebuild the view later), run only Step 1.
+
+-- ── Step 1: Add columns ──────────────────────────────────────────────────────
+-- Safe to run at any time. NOT NULL DEFAULT ensures all existing rows
+-- get false/0 with no separate UPDATE statement needed.
+
+ALTER TABLE public.menu
+  ADD COLUMN snacks_yes BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN snacks_perc NUMERIC NOT NULL DEFAULT 0;
+
+-- ── Step 2: Rebuild view ─────────────────────────────────────────────────────
+-- Requires migration 018 to have been applied (spec_id_N columns must exist).
+-- If migration 018 has not been run yet, stop here and run it first.
 
 DROP VIEW IF EXISTS public.sites_complete;
 
