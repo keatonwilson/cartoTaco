@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import * as echarts from 'echarts';
   import { effectiveTheme } from '$lib/theme.js';
+  import Trophy from 'phosphor-svelte/lib/Trophy.svelte';
+  import ChartBar from 'phosphor-svelte/lib/ChartBar.svelte';
 
   /** @type {{ voter_token: string, est_id: number, rank: number }[]} */
   export let votes = [];
@@ -297,7 +299,7 @@
 {#if chartData}
   <!-- Winner callout -->
   <div class="winner-card" class:locked>
-    <span class="trophy" aria-hidden="true">{locked ? '🌮' : '📊'}</span>
+    <span class="trophy" aria-hidden="true">{#if locked}<Trophy size={28} weight="duotone" />{:else}<ChartBar size={28} weight="duotone" />{/if}</span>
     <div class="winner-body">
       <div class="winner-label">{locked ? 'Summit Winner!' : 'Current Leader'}</div>
       <div class="winner-name">{chartData.winner.name}</div>

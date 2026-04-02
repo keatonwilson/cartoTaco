@@ -3,6 +3,7 @@
 	import { browser } from '$app/environment';
 	import { getAvailableStyles, getMapStyle } from '$lib/mapStyles.js';
 	import { MapPinAltOutline } from 'flowbite-svelte-icons';
+	import MapTrifold from 'phosphor-svelte/lib/MapTrifold.svelte';
 
 	// Props
 	export let onStyleChange = null;
@@ -50,7 +51,7 @@
 
 <div class="map-style-picker">
 	<button class="picker-button" on:click={togglePicker} title="Change map style">
-		<span class="map-icon">🗺️</span>
+		<MapTrifold size={18} weight="duotone" />
 		<span class="button-text">{currentStyle.name}</span>
 	</button>
 
@@ -114,11 +115,7 @@
 		color: #fe795d;
 	}
 
-	.map-icon {
-		font-size: 1rem;
-	}
-
-	.button-text {
+.button-text {
 		display: none;
 	}
 

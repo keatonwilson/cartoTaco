@@ -2,6 +2,7 @@
   import { filterConfig, filteredTacoData, processedTacoData, flyToTarget } from '../lib/stores';
   import { isAuthenticated } from '$lib/authStore';
   import { SearchOutline, ChevronDownOutline, ChevronUpOutline, HeartSolid } from 'flowbite-svelte-icons';
+  import MagicWand from 'phosphor-svelte/lib/MagicWand.svelte';
   import { browser } from '$app/environment';
   import { trailModeActive, enterTrailMode, exitTrailMode } from '../lib/trailStore.js';
   import { tourExpandFilters } from '$lib/tourStore.js';
@@ -121,7 +122,7 @@
       aria-label="Surprise Me — pick a random spot"
       disabled={$filteredTacoData.length === 0}
     >
-      🌮
+      <MagicWand size={16} weight="duotone" />
       <span class="surprise-text">Surprise Me</span>
     </button>
 

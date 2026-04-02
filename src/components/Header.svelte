@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { BarsOutline, CloseOutline, UserCircleOutline, QuestionCircleOutline } from 'flowbite-svelte-icons';
+	import Ranking from 'phosphor-svelte/lib/Ranking.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
 	import NewSpotsBadge from './NewSpotsBadge.svelte';
 	import { startTour } from '$lib/tourStore.js';
@@ -56,7 +57,8 @@
         on:click={() => handleNavigation('/vote/new')}
         title="Start a group vote on where to eat"
       >
-        🌮 Summit
+        <Ranking size={16} weight="duotone" />
+        Summit
       </button>
 
       {#if $isAuthenticated}
@@ -148,7 +150,8 @@
         class="mobile-nav-link summit-link"
         on:click={() => handleNavigation('/vote/new')}
       >
-        🌮 Summit — group vote
+        <Ranking size={16} weight="duotone" />
+        Summit — group vote
       </button>
       {#if $isAuthenticated}
         <div class="mobile-user-info">
