@@ -458,19 +458,19 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 
 ---
 
-### C3. Group Decision Mode
-**Feature**: Generate a shareable voting link for a group. Each recipient votes thumbs up/down on spots. The map highlights the consensus winner in real time as votes come in.
+### C3. Group Decision Mode ✅
+**Status**: Completed (2026-04-02)
 
-**Impact**: Solves the universal "where should we go?" group chat problem. High virality — every group outing is a potential new user acquisition.
-
-**Effort**: Moderate-High (3-5 days)
+**Feature**: Shareable ranked-choice voting link for a group ("Taco Summit"). Each participant drags spots into their preferred order. Borda count tallies the ballots and reveals the winner with an ECharts rank-distribution visualisation.
 
 **Technical Details**:
-- New `group_sessions` table: `id`, `created_by`, `expires_at`, `filter_snapshot`
-- New `group_votes` table: `session_id`, `voter_token`, `est_id`, `vote` (up/down)
-- Shareable URL: `/vote/[session_id]`
-- Real-time vote aggregation via Supabase Realtime
-- Result page highlights winning spot with fly-to on map
+- Migrations 021/022: `group_sessions` and `group_votes` tables with RLS
+- `/vote/new` — creation page: pick 2–6 spots, name the summit, get a shareable link
+- `/vote/[session_id]` — voting/results page with Supabase Realtime subscriptions
+- `SummitResults.svelte` — ECharts stacked horizontal bar (rank distribution per spot) + winner callout; dark-mode reactive
+- Anonymous participation via `voter_token` UUID stored in localStorage
+- Creator identified by `creator_token` stored in localStorage; can lock results
+- "🌮 Summit" button in Header (desktop + mobile) for quick access
 
 ---
 
@@ -565,7 +565,7 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 39. **AI menu extraction (#11)** — Advanced automation
 40. **Tucson Taco Index (C1)** — Economic indicator, press-worthy
 41. **Neighborhood Origin Stories (C2)** — Hyper-local storytelling
-42. **Group Decision Mode (C3)** — Viral group UX, solves real problem
+42. ✅ **Group Decision Mode (C3)** — Completed (2026-04-02)
 43. **Community Busyness Reports (C4)** — Real-time crowd signal
 44. **The Midnight Map (C5)** — Late-night discovery, visually striking
 45. **The Anti-Review (C6)** — Richer engagement than star ratings
