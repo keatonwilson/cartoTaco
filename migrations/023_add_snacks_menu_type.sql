@@ -5,13 +5,24 @@
 -- All existing establishments default to false/0 (no snacks offered).
 -- The frontend picks up snacks automatically via the dynamic _perc extraction
 -- in stores.js and the _yes guard — no frontend changes needed.
+--
+-- IMPORTANT: This migration rebuilds the sites_complete view using the
+-- spec_id_N column names introduced in migration 018. Run migrations
+-- 018 through 022 before running this migration. If you only need to
+-- add the columns (and will rebuild the view later), run only Step 1.
 
--- Step 1: Add columns with explicit defaults so existing rows get false/0
+-- ── Step 1: Add columns ──────────────────────────────────────────────────────
+-- Safe to run at any time. NOT NULL DEFAULT ensures all existing rows
+-- get false/0 with no separate UPDATE statement needed.
+
 ALTER TABLE public.menu
   ADD COLUMN snacks_yes BOOLEAN NOT NULL DEFAULT false,
   ADD COLUMN snacks_perc NUMERIC NOT NULL DEFAULT 0;
 
--- Step 2: Rebuild sites_complete view to include the new columns
+-- ── Step 2: Rebuild view ─────────────────────────────────────────────────────
+-- Requires migration 018 to have been applied (spec_id_N columns must exist).
+-- If migration 018 has not been run yet, stop here and run it first.
+
 DROP VIEW IF EXISTS public.sites_complete;
 
 CREATE VIEW public.sites_complete AS
