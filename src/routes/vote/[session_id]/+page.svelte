@@ -313,7 +313,7 @@
             on:consider={handleDndConsider}
             on:finalize={handleDndFinalize}
           >
-            {#each rankedSpots as spot, i (spot.est_id)}
+            {#each rankedSpots as spot, i (spot.id)}
               <li class="ballot-item">
                 <span class="drag-handle" aria-hidden="true">⠿</span>
                 <span class="rank-num">{i + 1}</span>
