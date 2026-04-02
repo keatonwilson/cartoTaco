@@ -48,7 +48,8 @@
   let ballotReady = false;
 
   $: if (!ballotReady && sessionSites.length > 0) {
-    rankedSpots = [...sessionSites];
+    // svelte-dnd-action requires items to have an `id` field (no keyField option)
+    rankedSpots = sessionSites.map(s => ({ ...s, id: s.est_id }));
     ballotReady = true;
   }
 
@@ -308,7 +309,7 @@
 
           <ol
             class="ballot-list"
-            use:dndzone={{ items: rankedSpots, keyField: 'est_id' }}
+            use:dndzone={{ items: rankedSpots }}
             on:consider={handleDndConsider}
             on:finalize={handleDndFinalize}
           >
