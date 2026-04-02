@@ -71,6 +71,18 @@ export const processedTacoData = derived(
 
         // Pre-compute top five menu items and proteins
         const menuArray = getTopFive(activeMenuPercs, 7);
+
+        // Pad with inactive items (value=0) so there are always at least 4 radar axes
+        const MIN_RADAR_ITEMS = 4;
+        if (menuArray.length < MIN_RADAR_ITEMS) {
+          const activeKeys = new Set(activeMenuPercs.map(([k]) => k));
+          const inactiveMenuItems = menuPercs
+            .filter(([key]) => !activeKeys.has(key))
+            .slice(0, MIN_RADAR_ITEMS - menuArray.length)
+            .map(([key]) => [key.replace('_perc', ''), 0]);
+          menuArray.push(...inactiveMenuItems);
+        }
+
         const topFiveMenuItems = menuArray.map(subArray => subArray[0]);
         // Convert to numbers and multiply by 100 to get percentages
         const topFiveMenuValues = menuArray.map(subArray => {
