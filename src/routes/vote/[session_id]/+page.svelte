@@ -6,6 +6,7 @@
   import { processedTacoData, isLoading } from '$lib/stores.js';
   import { supabaseBrowser } from '$lib/supabaseBrowser.js';
   import SummitResults from '../../../components/SummitResults.svelte';
+  import { dndzone, SHADOW_ITEM_MARKER_PROPERTY_NAME } from 'svelte-dnd-action';
 
   $: sessionId = $page.params.session_id;
 
@@ -49,6 +50,17 @@
   $: if (!ballotReady && sessionSites.length > 0) {
     rankedSpots = [...sessionSites];
     ballotReady = true;
+  }
+
+  // dndzone requires items with an `id` field; we use est_id as the key
+  $: dndItems = rankedSpots.map(s => ({ ...s, id: s.est_id }));
+
+  function handleDndConsider(e) {
+    rankedSpots = e.detail.items;
+  }
+
+  function handleDndFinalize(e) {
+    rankedSpots = e.detail.items;
   }
 
   function moveUp(index) {
@@ -271,7 +283,7 @@
 
       <!-- ── RESULTS (locked) ── -->
       {#if isLocked}
-        <SummitResults {votes} sites={sessionSites} locked={true} />
+        <SummitResults {votes} sites={sessionSites} locked={true} title={session.title} showDownload={true} />
 
       <!-- ── VOTED ALREADY (open) ── -->
       {:else if hasVoted}
@@ -284,18 +296,24 @@
         </div>
         <!-- Live preview while waiting -->
         {#if votes.length > 0}
-          <SummitResults {votes} sites={sessionSites} locked={false} />
+          <SummitResults {votes} sites={sessionSites} locked={false} title={session.title} />
         {/if}
 
       <!-- ── BALLOT (open, not yet voted) ── -->
       {:else}
         <div class="ballot-section">
           <h2 class="ballot-heading">Rank the spots</h2>
-          <p class="ballot-sub">Drag them into your preferred order using the arrows. #1 is your top pick.</p>
+          <p class="ballot-sub">Drag to reorder, or use the arrows. #1 is your top pick.</p>
 
-          <ol class="ballot-list">
-            {#each rankedSpots as spot, i (spot.est_id)}
+          <ol
+            class="ballot-list"
+            use:dndzone={{ items: dndItems, keyField: 'id' }}
+            on:consider={handleDndConsider}
+            on:finalize={handleDndFinalize}
+          >
+            {#each dndItems as spot, i (spot.id)}
               <li class="ballot-item">
+                <span class="drag-handle" aria-hidden="true">⠿</span>
                 <span class="rank-num">{i + 1}</span>
                 <div class="ballot-arrows">
                   <button
@@ -622,6 +640,17 @@
     border-bottom-color: #374151;
   }
   .ballot-item:last-child { border-bottom: none; }
+
+  .drag-handle {
+    color: #9ca3af;
+    font-size: 1.1rem;
+    cursor: grab;
+    flex-shrink: 0;
+    user-select: none;
+    padding: 0 2px;
+  }
+  .drag-handle:active { cursor: grabbing; }
+  :global(.dark) .drag-handle { color: #6b7280; }
 
   .rank-num {
     font-size: 1rem;

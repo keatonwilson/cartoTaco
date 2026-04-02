@@ -12,8 +12,15 @@
   /** Whether the session is closed (finalised results vs live preview) */
   export let locked = false;
 
+  /** Summit title shown on the download card */
+  export let title = 'Taco Summit';
+
+  /** Show the "Download card" button */
+  export let showDownload = false;
+
   let chartContainer;
   let chart;
+  let downloading = false;
 
   // ─── Data computation ─────────────────────────────────────────────────────
 
@@ -151,6 +158,116 @@
     };
   }
 
+  // ─── Download card ────────────────────────────────────────────────────────
+
+  async function downloadCard() {
+    if (!chart || !chartData || downloading) return;
+    downloading = true;
+
+    const isDark = $effectiveTheme === 'dark';
+    const bg = isDark ? '#0a0e1a' : '#ffffff';
+    const textPrimary = isDark ? '#f9fafb' : '#111827';
+    const textMuted = '#9ca3af';
+    const accent = '#FE795D';
+
+    // Render chart to a high-res image with a solid background
+    const chartDataUrl = chart.getDataURL({
+      type: 'png',
+      pixelRatio: 2,
+      backgroundColor: bg,
+    });
+
+    const chartImg = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = chartDataUrl;
+    });
+
+    // Card dimensions (logical pixels; canvas is 2× for retina)
+    const scale = 2;
+    const cardW = 600;
+    const headerH = 148;
+    const chartH = Math.max(180, chartData.sorted.length * 52 + 60);
+    const footerH = 36;
+    const totalH = headerH + chartH + footerH;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = cardW * scale;
+    canvas.height = totalH * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+
+    // Background
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, cardW, totalH);
+
+    // Orange left accent bar
+    ctx.fillStyle = accent;
+    ctx.fillRect(0, 0, 4, totalH);
+
+    // ── Header ──
+    const lx = 20; // left x
+
+    // "TACO SUMMIT RESULTS"
+    ctx.font = 'bold 10px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = accent;
+    ctx.letterSpacing = '0.08em';
+    ctx.fillText('TACO SUMMIT RESULTS', lx, 26);
+    ctx.letterSpacing = '0';
+
+    // Session title
+    ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = textPrimary;
+    ctx.fillText(title, lx, 54);
+
+    // "WINNER" label
+    ctx.font = 'bold 10px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = textMuted;
+    ctx.letterSpacing = '0.06em';
+    ctx.fillText('WINNER', lx, 80);
+    ctx.letterSpacing = '0';
+
+    // Winner name
+    ctx.font = 'bold 18px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = textPrimary;
+    ctx.fillText(chartData.winner.name, lx, 104);
+
+    // Winner sub-text
+    ctx.font = '12px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = textMuted;
+    const voterWord = chartData.voterCount === 1 ? 'voter' : 'voters';
+    ctx.fillText(
+      `${chartData.firstChoiceForWinner} of ${chartData.voterCount} ${voterWord} ranked this first`,
+      lx, 124
+    );
+
+    // Divider
+    ctx.fillStyle = isDark ? '#374151' : '#e5e7eb';
+    ctx.fillRect(lx, 138, cardW - lx * 2, 1);
+
+    // ── Chart image ──
+    ctx.drawImage(chartImg, 0, headerH, cardW, chartH);
+
+    // ── Footer ──
+    const fy = totalH - 12;
+    ctx.font = '10px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = textMuted;
+    const ballotWord = chartData.voterCount === 1 ? 'ballot' : 'ballots';
+    ctx.fillText(
+      `Based on ${chartData.voterCount} ${ballotWord}  ·  cartotaco.com`,
+      lx, fy
+    );
+
+    // Download
+    const link = document.createElement('a');
+    link.download = `taco-summit-${title.toLowerCase().replace(/\s+/g, '-')}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+
+    downloading = false;
+  }
+
   // ─── Chart lifecycle ──────────────────────────────────────────────────────
 
   onMount(() => {
@@ -201,10 +318,18 @@
     ></div>
   </div>
 
-  <div class="ballot-footer">
-    Based on {chartData.voterCount} {chartData.voterCount === 1 ? 'ballot' : 'ballots'}
-    {#if !locked}
-      &middot; <span class="live-hint">updating live</span>
+  <div class="results-footer">
+    <span class="ballot-count">
+      Based on {chartData.voterCount} {chartData.voterCount === 1 ? 'ballot' : 'ballots'}
+      {#if !locked}
+        &middot; <span class="live-hint">updating live</span>
+      {/if}
+    </span>
+
+    {#if showDownload && locked}
+      <button class="download-btn" on:click={downloadCard} disabled={downloading}>
+        {downloading ? 'Saving…' : '↓ Download card'}
+      </button>
     {/if}
   </div>
 {:else}
@@ -297,11 +422,49 @@
     width: 100%;
   }
 
-  .ballot-footer {
+  .results-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .ballot-count {
     font-size: 0.75rem;
     color: #9ca3af;
-    margin-top: 0.5rem;
-    text-align: right;
+  }
+
+  .download-btn {
+    padding: 0.4rem 0.875rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: transparent;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .download-btn:hover:not(:disabled) {
+    border-color: #FE795D;
+    color: #FE795D;
+    background: rgba(254, 121, 93, 0.06);
+  }
+
+  .download-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  :global(.dark) .download-btn {
+    border-color: #4b5563;
+    color: #d1d5db;
+  }
+
+  :global(.dark) .download-btn:hover:not(:disabled) {
+    border-color: #FE795D;
+    color: #FE795D;
   }
 
   .live-hint {
