@@ -6,7 +6,7 @@
   import { processedTacoData, isLoading } from '$lib/stores.js';
   import { supabaseBrowser } from '$lib/supabaseBrowser.js';
   import SummitResults from '../../../components/SummitResults.svelte';
-  import { dndzone, SHADOW_ITEM_MARKER_PROPERTY_NAME } from 'svelte-dnd-action';
+  import { dndzone } from 'svelte-dnd-action';
 
   $: sessionId = $page.params.session_id;
 
@@ -52,9 +52,10 @@
     ballotReady = true;
   }
 
-  // dndzone requires items with an `id` field; we use est_id as the key
-  $: dndItems = rankedSpots.map(s => ({ ...s, id: s.est_id }));
-
+  // svelte-dnd-action: use rankedSpots directly with keyField so there is no
+  // derived array between the zone and the source of truth. A derived array
+  // causes a reactive recompute on every consider event, which resets the
+  // drag state mid-drag and makes items disappear.
   function handleDndConsider(e) {
     rankedSpots = e.detail.items;
   }
@@ -307,11 +308,11 @@
 
           <ol
             class="ballot-list"
-            use:dndzone={{ items: dndItems, keyField: 'id' }}
+            use:dndzone={{ items: rankedSpots, keyField: 'est_id' }}
             on:consider={handleDndConsider}
             on:finalize={handleDndFinalize}
           >
-            {#each dndItems as spot, i (spot.id)}
+            {#each rankedSpots as spot, i (spot.est_id)}
               <li class="ballot-item">
                 <span class="drag-handle" aria-hidden="true">⠿</span>
                 <span class="rank-num">{i + 1}</span>
