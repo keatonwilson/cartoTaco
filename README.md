@@ -15,7 +15,9 @@ An interactive map-based application for exploring taco establishments in Tucson
 - **Taco Trail Route Builder**: Plan multi-stop taco crawls with walking/driving directions via Mapbox Directions API
 - **Spot Comparison Mode**: Compare up to 3 establishments side-by-side with shareable URLs at `/compare`
 - **Taste Profile & Personalization**: k-NN based recommendations from your favorites, 13 taste archetypes
-- **Onboarding Tour**: 7-step guided tour for first-time users
+- **Taco Summit**: Shareable ranked-choice group vote — share a link, everyone ranks their picks, Borda count reveals the winner with a live rank-distribution chart at `/vote/[id]`
+- **Surprise Me**: One-tap random spot selection that respects active filters
+- **Onboarding Tour**: 10-step guided tour for first-time users
 - **Dark Mode**: Light/dark/auto themes with time-based automatic switching
 - **Directions Deep-Link**: Smart links to Apple Maps (iOS), Google Maps (Android), or Google Maps web
 - **New Spots Badge**: Notification badge for recently added establishments
