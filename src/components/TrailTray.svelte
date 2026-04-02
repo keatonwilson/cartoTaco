@@ -12,11 +12,11 @@
     fetchRoute,
     addLocationStop
   } from '../lib/trailStore.js';
-  import PersonSimpleWalk from 'phosphor-svelte/lib/PersonSimpleWalk.svelte';
-  import CarProfile from 'phosphor-svelte/lib/CarProfile.svelte';
-  import MapPin from 'phosphor-svelte/lib/MapPin.svelte';
-  import SpinnerGap from 'phosphor-svelte/lib/SpinnerGap.svelte';
-  import ShareNetwork from 'phosphor-svelte/lib/ShareNetwork.svelte';
+  import PersonSimpleWalk from 'phosphor-svelte/lib/PersonSimpleWalk';
+  import CarProfile from 'phosphor-svelte/lib/CarProfile';
+  import MapPin from 'phosphor-svelte/lib/MapPin';
+  import SpinnerGap from 'phosphor-svelte/lib/SpinnerGap';
+  import ShareNetwork from 'phosphor-svelte/lib/ShareNetwork';
 
   // --- My Location ---
   let locatingStart = false;

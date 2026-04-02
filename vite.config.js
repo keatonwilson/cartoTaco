@@ -10,5 +10,8 @@ export default defineConfig({
     host: true, // Expose to local network (same as '0.0.0.0')
     port: 5175,
     strictPort: false // Try next port if 5175 is taken
+  },
+  ssr: {
+    noExternal: ['phosphor-svelte']
   }
 });

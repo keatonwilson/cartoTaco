@@ -2,7 +2,7 @@
   import { filterConfig, filteredTacoData, processedTacoData, flyToTarget } from '../lib/stores';
   import { isAuthenticated } from '$lib/authStore';
   import { SearchOutline, ChevronDownOutline, ChevronUpOutline, HeartSolid } from 'flowbite-svelte-icons';
-  import MagicWand from 'phosphor-svelte/lib/MagicWand.svelte';
+  import MagicWand from 'phosphor-svelte/lib/MagicWand';
   import { browser } from '$app/environment';
   import { trailModeActive, enterTrailMode, exitTrailMode } from '../lib/trailStore.js';
   import { tourExpandFilters } from '$lib/tourStore.js';

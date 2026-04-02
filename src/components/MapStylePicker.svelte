@@ -3,7 +3,7 @@
 	import { browser } from '$app/environment';
 	import { getAvailableStyles, getMapStyle } from '$lib/mapStyles.js';
 	import { MapPinAltOutline } from 'flowbite-svelte-icons';
-	import MapTrifold from 'phosphor-svelte/lib/MapTrifold.svelte';
+	import MapTrifold from 'phosphor-svelte/lib/MapTrifold';
 
 	// Props
 	export let onStyleChange = null;

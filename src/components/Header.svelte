@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { BarsOutline, CloseOutline, UserCircleOutline, QuestionCircleOutline } from 'flowbite-svelte-icons';
-	import Ranking from 'phosphor-svelte/lib/Ranking.svelte';
+	import Ranking from 'phosphor-svelte/lib/Ranking';
 	import ThemeToggle from './ThemeToggle.svelte';
 	import NewSpotsBadge from './NewSpotsBadge.svelte';
 	import { startTour } from '$lib/tourStore.js';

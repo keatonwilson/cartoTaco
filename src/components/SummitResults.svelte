@@ -2,8 +2,8 @@
   import { onMount } from 'svelte';
   import * as echarts from 'echarts';
   import { effectiveTheme } from '$lib/theme.js';
-  import Trophy from 'phosphor-svelte/lib/Trophy.svelte';
-  import ChartBar from 'phosphor-svelte/lib/ChartBar.svelte';
+  import Trophy from 'phosphor-svelte/lib/Trophy';
+  import ChartBar from 'phosphor-svelte/lib/ChartBar';
 
   /** @type {{ voter_token: string, est_id: number, rank: number }[]} */
   export let votes = [];

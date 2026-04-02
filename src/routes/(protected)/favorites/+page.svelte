@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { HeartSolid, MapPinAltSolid } from 'flowbite-svelte-icons';
-	import HeartBreak from 'phosphor-svelte/lib/HeartBreak.svelte';
+	import HeartBreak from 'phosphor-svelte/lib/HeartBreak';
 	import { favoriteIds, loadFavorites } from '$lib/favoritesStore';
 	import { processedTacoData } from '$lib/stores';
 	import FavoriteButton from '../../../components/FavoriteButton.svelte';
