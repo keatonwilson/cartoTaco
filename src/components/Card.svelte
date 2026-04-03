@@ -490,6 +490,8 @@
     justify-content: space-between;
     gap: 10px;
     padding: 4px 40px 4px 0;
+    position: relative;
+    z-index: 10;
   }
 
   .desktop-header-left {
@@ -522,6 +524,11 @@
   .desktop-header-left :global(.tooltip) {
     bottom: auto;
     top: calc(100% + 5px);
+    transform: translateX(-50%) translateY(-3px);
+  }
+
+  .desktop-header-left :global(.icon-wrapper:hover .tooltip) {
+    transform: translateX(-50%) translateY(0);
   }
 
   /* Row 2: Description + Hours/Contact collapsible */
