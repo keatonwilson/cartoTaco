@@ -518,10 +518,22 @@
     height: 26px;
   }
 
-  /* Show type tooltips below icons (not above) so they aren't clipped by popup overflow */
-  .desktop-header-left :global(.tooltip) {
+  /* Show type tooltips below icons; styled to match the card surface */
+  .desktop-header .desktop-header-left :global(.tooltip) {
     bottom: auto;
     top: calc(100% + 5px);
+    background: white;
+    color: #374151;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    z-index: 10;
+  }
+
+  :global(.dark) .desktop-header .desktop-header-left :global(.tooltip) {
+    background: #374151;
+    color: #e5e7eb;
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   }
 
   /* Row 2: Description + Hours/Contact collapsible */

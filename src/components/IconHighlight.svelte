@@ -96,7 +96,7 @@
     bottom: calc(100% + 5px);
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(30, 30, 30, 0.85);
+    background: rgba(30, 30, 30, 0.88);
     color: #fff;
     font-size: 10px;
     font-weight: 500;
@@ -109,7 +109,7 @@
   }
 
   :global(.dark) .tooltip {
-    background: rgba(250, 250, 250, 0.9);
+    background: rgba(250, 250, 250, 0.92);
     color: #111;
   }
 
