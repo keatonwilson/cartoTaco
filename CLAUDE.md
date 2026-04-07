@@ -63,6 +63,8 @@ Migrations must be run in this order:
 21. `migrations/021_create_group_sessions.sql` - Creates `group_sessions` table for Taco Summit feature (id, creator_token, site_ids, title, closed_at) with open RLS policies
 22. `migrations/022_create_group_votes.sql` - Creates `group_votes` table for ranked-choice ballots (session_id, voter_token, est_id, rank) with unique constraint and index
 23. `migrations/023_add_snacks_menu_type.sql` - Adds snacks as a menu type
+24. `migrations/024_enable_rls_staging_extractions.sql` - Enables RLS on staging_extractions table (admin data-entry helper app); authenticated users get SELECT/INSERT/UPDATE, anonymous blocked
+25. `migrations/025_fix_sites_complete_security_invoker.sql` - Fixes SECURITY DEFINER warning on sites_complete view by setting security_invoker = true (PostgreSQL 15+)
 
 ### Schema Management
 - **`schema/sites_complete_view.sql`** is the single source of truth for the `sites_complete` view definition

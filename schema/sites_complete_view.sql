@@ -2,11 +2,11 @@
 -- This file is the SINGLE SOURCE OF TRUTH for the view schema.
 -- Any migration that rebuilds the view should copy from this file.
 --
--- Last updated: Migration 023 (added snacks_yes/snacks_perc)
+-- Last updated: Migration 025 (added security_invoker = true)
 
 DROP VIEW IF EXISTS public.sites_complete;
 
-CREATE VIEW public.sites_complete AS
+CREATE VIEW public.sites_complete WITH (security_invoker = true) AS
 SELECT
   s.est_id,
 
