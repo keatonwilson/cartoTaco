@@ -186,9 +186,7 @@
           <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">
             {$selectedSite.name || 'Unknown Location'}
           </h2>
-          <span class="type-chip">
-            {$selectedSite.type === 'Brick and Mortar' ? 'Restaurant' : $selectedSite.type === 'Truck' ? 'Food Truck' : $selectedSite.type || 'Unknown'}
-          </span>
+          <IconHighlight type="siteType" data={$selectedSite.type || 'unknown'} />
         </div>
         <div class="desktop-header-actions">
           <FavoriteButton estId={$selectedSite.est_id} size="sm" />
@@ -509,24 +507,33 @@
     text-overflow: ellipsis;
   }
 
-  .type-chip {
-    display: inline-flex;
-    align-items: center;
-    font-size: 11px;
-    font-weight: 500;
-    padding: 2px 9px;
-    border-radius: 10px;
-    background: rgba(249, 115, 22, 0.1);
-    color: #c2410c;
-    border: 1px solid rgba(249, 115, 22, 0.25);
-    white-space: nowrap;
-    flex-shrink: 0;
+  /* Make type icons smaller inline in desktop header */
+  .desktop-header-left :global(.icons) {
+    margin: 0;
+    gap: 6px;
   }
 
-  :global(.dark) .type-chip {
-    background: rgba(249, 115, 22, 0.15);
-    color: #fb923c;
-    border-color: rgba(249, 115, 22, 0.3);
+  .desktop-header-left :global(.site-icon) {
+    width: 26px;
+    height: 26px;
+  }
+
+  /* Show type tooltips below icons; styled to match the card surface */
+  .desktop-header .desktop-header-left :global(.tooltip) {
+    bottom: auto;
+    top: calc(100% + 5px);
+    background: white;
+    color: #374151;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    z-index: 10;
+  }
+
+  :global(.dark) .desktop-header .desktop-header-left :global(.tooltip) {
+    background: #374151;
+    color: #e5e7eb;
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   }
 
   /* Row 2: Description + Hours/Contact collapsible */
