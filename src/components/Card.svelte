@@ -186,7 +186,9 @@
           <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">
             {$selectedSite.name || 'Unknown Location'}
           </h2>
-          <IconHighlight type="siteType" data={$selectedSite.type || 'unknown'} />
+          <span class="type-chip">
+            {$selectedSite.type === 'Brick and Mortar' ? 'Restaurant' : $selectedSite.type === 'Truck' ? 'Food Truck' : $selectedSite.type || 'Unknown'}
+          </span>
         </div>
         <div class="desktop-header-actions">
           <FavoriteButton estId={$selectedSite.est_id} size="sm" />
@@ -490,8 +492,6 @@
     justify-content: space-between;
     gap: 10px;
     padding: 4px 40px 4px 0;
-    position: relative;
-    z-index: 10;
   }
 
   .desktop-header-left {
@@ -509,26 +509,24 @@
     text-overflow: ellipsis;
   }
 
-  /* Make type icons smaller inline in desktop header */
-  .desktop-header-left :global(.icons) {
-    margin: 0;
-    gap: 6px;
+  .type-chip {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 9px;
+    border-radius: 10px;
+    background: rgba(249, 115, 22, 0.1);
+    color: #c2410c;
+    border: 1px solid rgba(249, 115, 22, 0.25);
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
-  .desktop-header-left :global(.site-icon) {
-    width: 26px;
-    height: 26px;
-  }
-
-  /* Show type tooltips below icons (not above) so they aren't clipped by popup overflow */
-  .desktop-header-left :global(.tooltip) {
-    bottom: auto;
-    top: calc(100% + 5px);
-    transform: translateX(-50%) translateY(-3px);
-  }
-
-  .desktop-header-left :global(.icon-wrapper:hover .tooltip) {
-    transform: translateX(-50%) translateY(0);
+  :global(.dark) .type-chip {
+    background: rgba(249, 115, 22, 0.15);
+    color: #fb923c;
+    border-color: rgba(249, 115, 22, 0.3);
   }
 
   /* Row 2: Description + Hours/Contact collapsible */
