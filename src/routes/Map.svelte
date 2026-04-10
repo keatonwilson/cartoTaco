@@ -33,7 +33,7 @@
 	let map;
 	let mapContainer;
 	let mapLoaded = false; // Track if map has completed initial load
-	let lastDataLength = -1; // Track the last data length to avoid unnecessary updates
+	let lastDataKey = ''; // Track the last set of site IDs to detect filter swaps (same length, different sites)
 	let currentTheme = null; // Track current theme to prevent duplicate style changes
 	let trailRestored = false; // Prevent re-running URL trail reconstruction
 	let comparisonRestored = false; // Prevent re-running URL comparison reconstruction
@@ -139,8 +139,9 @@
 	// Update markers when filtered data changes
 	// Note: With clustering, we don't need a markers array - Mapbox manages it internally
 	$: if (map && map.loaded() && $filteredTacoData && !$isLoading) {
-		if ($filteredTacoData.length !== lastDataLength) {
-			lastDataLength = $filteredTacoData.length;
+		const dataKey = $filteredTacoData.map(s => s.est_id).join(',');
+		if (dataKey !== lastDataKey) {
+			lastDataKey = dataKey;
 			updateMarkers($filteredTacoData, map);
 		}
 	}

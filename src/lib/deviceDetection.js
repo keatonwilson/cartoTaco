@@ -15,7 +15,11 @@ function createScreenWidthStore() {
   const { subscribe, set } = writable(browser ? window.innerWidth : 1024);
 
   if (browser) {
-    window.addEventListener('resize', () => set(window.innerWidth));
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => set(window.innerWidth), 150);
+    });
   }
 
   return { subscribe };
