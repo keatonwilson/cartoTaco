@@ -65,6 +65,7 @@ Migrations must be run in this order:
 23. `migrations/023_add_snacks_menu_type.sql` - Adds snacks as a menu type
 24. `migrations/024_enable_rls_staging_extractions.sql` - Enables RLS on staging_extractions table (admin data-entry helper app); authenticated users get SELECT/INSERT/UPDATE, anonymous blocked
 25. `migrations/025_fix_sites_complete_security_invoker.sql` - Fixes SECURITY DEFINER warning on sites_complete view by setting security_invoker = true (PostgreSQL 15+)
+26. `migrations/026_add_quesadilla_to_view.sql` - Adds quesadilla_yes/quesadilla_perc to sites_complete view (columns already exist in menu table)
 
 ### Schema Management
 - **`schema/sites_complete_view.sql`** is the single source of truth for the `sites_complete` view definition
