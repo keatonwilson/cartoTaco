@@ -1,8 +1,11 @@
--- Canonical definition of the sites_complete view.
--- This file is the SINGLE SOURCE OF TRUTH for the view schema.
--- Any migration that rebuilds the view should copy from this file.
+-- Migration 026: Add quesadilla menu type to sites_complete view
+-- The quesadilla_yes and quesadilla_perc columns already exist in the menu table.
+-- This migration only rebuilds the view to expose them.
 --
--- Last updated: Migration 026 (added quesadilla_yes/quesadilla_perc)
+-- The frontend picks up quesadilla automatically via the dynamic _perc extraction
+-- in stores.js and the _yes guard — no frontend changes needed.
+--
+-- IMPORTANT: Run migrations 001–025 before this one.
 
 DROP VIEW IF EXISTS public.sites_complete;
 
