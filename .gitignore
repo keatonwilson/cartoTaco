@@ -10,6 +10,10 @@ node_modules
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
+# R history
+.Rhistory
+**/.Rhistory
+
 # Database backups
 restore_database.sql
 supabase_restore.sql
