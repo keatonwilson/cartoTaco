@@ -10,6 +10,7 @@
   import ContactInfo from "./ContactInfo.svelte";
   import CollapsibleSection from "./CollapsibleSection.svelte";
   import FavoriteButton from "./FavoriteButton.svelte";
+  import HandmadeBadge from "./HandmadeBadge.svelte";
   import { selectedSite, summaryStats } from "$lib/stores";
   import { isMobile } from "$lib/deviceDetection";
   import {
@@ -156,6 +157,9 @@
             <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
             <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Tortilla Type</h2>
             <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
+            {#if $selectedSite.handmadeTortilla}
+              <HandmadeBadge />
+            {/if}
           </div>
           <div class='salsa-container'>
             <SalsaCount
@@ -282,6 +286,9 @@
         <div class="desktop-stat-item desktop-tortilla-item">
           <h2 class="text-xs font-semibold text-gray-800 dark:text-gray-100 mb-1">Tortilla</h2>
           <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
+          {#if $selectedSite.handmadeTortilla}
+            <HandmadeBadge />
+          {/if}
         </div>
         <div class="desktop-stat-item desktop-salsa-item">
           <SalsaCount
