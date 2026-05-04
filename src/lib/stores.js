@@ -134,6 +134,7 @@ export const processedTacoData = derived(
 
           // Other details
           tortillaType: site.menu.flour_corn,
+          handmadeTortilla: site.menu.handmade_tortilla ?? false,
 
           // Specialty items — embedded in the view, no separate fetch needed
           specialties: [
