@@ -121,6 +121,7 @@
         </div>
         <div class="vibe-section">
           <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Vibe Check</h2>
+          <p class="vibe-subtitle">Tap any chip to vote on what this spot does well. Your vote, plus everyone else's, builds a vibe fingerprint — no stars, no essays.</p>
           <VibeVotes estId={$selectedSite.est_id} />
         </div>
         <CollapsibleSection title="Menu Summary" defaultOpen={false}>
@@ -249,6 +250,7 @@
 
       <!-- Row 2.5: Vibe votes (anti-review) -->
       <div class="desktop-vibe-row">
+        <span class="desktop-vibe-label">Vibe Check:</span>
         <VibeVotes estId={$selectedSite.est_id} compact={true} />
       </div>
 
@@ -498,8 +500,34 @@
     margin-top: 6px;
   }
 
+  .vibe-subtitle {
+    font-size: 11px;
+    line-height: 1.35;
+    color: #6b7280;
+    margin: 0 0 6px 0;
+  }
+
+  :global(.dark) .vibe-subtitle {
+    color: #9ca3af;
+  }
+
   .desktop-vibe-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     padding: 2px 0;
+    flex-wrap: wrap;
+  }
+
+  .desktop-vibe-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    flex-shrink: 0;
+  }
+
+  :global(.dark) .desktop-vibe-label {
+    color: #9ca3af;
   }
 
   /* ========== DESKTOP LAYOUT STYLES ========== */

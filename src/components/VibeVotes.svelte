@@ -1,23 +1,25 @@
 <script>
-	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import Flame from 'phosphor-svelte/lib/Flame';
+	import SealCheck from 'phosphor-svelte/lib/SealCheck';
+	import HandCoins from 'phosphor-svelte/lib/HandCoins';
+	import Sparkle from 'phosphor-svelte/lib/Sparkle';
 	import { isAuthenticated } from '$lib/authStore';
 	import {
 		userVibeVoteKeys,
 		vibeCountsByEst,
 		loadVibeCounts,
-		toggleVibeVote,
-		VIBE_DIMENSIONS
+		toggleVibeVote
 	} from '$lib/vibeVotesStore';
 
 	export let estId;
 	export let compact = false;
 
 	const DIMENSIONS = [
-		{ key: 'heat_legit', emoji: '🔥', label: 'Heat Legit' },
-		{ key: 'authentic',  emoji: '🌮', label: 'Authentic' },
-		{ key: 'value',      emoji: '💸', label: 'Value' },
-		{ key: 'vibe',       emoji: '🎭', label: 'Vibe' }
+		{ key: 'heat_legit', icon: Flame,     label: 'Heat Legit', tooltip: 'The spice level is for real' },
+		{ key: 'authentic',  icon: SealCheck, label: 'Authentic',  tooltip: 'Tastes traditional / legit' },
+		{ key: 'value',      icon: HandCoins, label: 'Value',      tooltip: 'Worth what you pay' },
+		{ key: 'vibe',       icon: Sparkle,   label: 'Vibe',       tooltip: 'Great atmosphere & feel' }
 	];
 
 	let toggling = new Set();
@@ -44,8 +46,8 @@
 	}
 </script>
 
-<div class="vibe-votes" class:compact>
-	{#each DIMENSIONS as { key, emoji, label } (key)}
+<div class="vibe-votes" class:compact data-tour="vibe">
+	{#each DIMENSIONS as { key, icon: Icon, label, tooltip } (key)}
 		{@const active = isActive(key)}
 		{@const count = counts[key] || 0}
 		<button
@@ -55,12 +57,12 @@
 			disabled={toggling.has(key)}
 			on:click={() => handleClick(key)}
 			title={$isAuthenticated
-				? (active ? `Remove your ${label} vote` : `Vote ${label}`)
-				: `Sign in to vote ${label}`}
-			aria-label={`${label}: ${count} vote${count === 1 ? '' : 's'}`}
+				? `${label} — ${tooltip}${active ? ' (tap to remove your vote)' : ''}`
+				: `${label} — ${tooltip} (sign in to vote)`}
+			aria-label={`${label}: ${tooltip}. ${count} vote${count === 1 ? '' : 's'}.${active ? ' You voted.' : ''}`}
 			aria-pressed={active}
 		>
-			<span class="emoji" aria-hidden="true">{emoji}</span>
+			<Icon size={compact ? 14 : 16} weight={active ? 'fill' : 'regular'} class="vibe-icon" />
 			<span class="label">{label}</span>
 			<span class="count">{count}</span>
 		</button>
@@ -92,9 +94,9 @@
 		user-select: none;
 	}
 
-	.vibe-chip .emoji {
-		font-size: 14px;
-		line-height: 1;
+	.vibe-chip :global(.vibe-icon) {
+		flex-shrink: 0;
+		color: currentColor;
 	}
 
 	.vibe-chip .count {
@@ -147,7 +149,7 @@
 		color: #FE795D;
 	}
 
-	/* Compact: hide label text on small popups, keep emoji + count */
+	/* Compact: hide label text on tight desktop strips, keep icon + count */
 	.vibe-votes.compact .vibe-chip {
 		padding: 3px 7px;
 		font-size: 11px;
@@ -157,12 +159,13 @@
 		display: none;
 	}
 
+	/* Mobile: keep labels visible — they're how users learn what each chip means.
+	   Tighten padding so all four still fit comfortably. */
 	@media (max-width: 480px) {
-		.vibe-chip .label {
-			display: none;
-		}
 		.vibe-chip {
-			padding: 3px 8px;
+			padding: 4px 8px;
+			font-size: 11px;
+			gap: 4px;
 		}
 	}
 </style>

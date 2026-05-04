@@ -149,7 +149,7 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 - `tourActive` - Whether the tour overlay is showing
 - `tourStep` - Current step index (0-based)
 - `tourExpandFilters` - Whether to expand filters during the filters tour step
-- `TOUR_STEPS` - Array of 10 step definitions: `welcome`, `search`, `surprise`, `filters`, `trail`, `summit`, `map`, `theme`, `signup`, `done`
+- `TOUR_STEPS` - Array of 11 step definitions: `welcome`, `search`, `surprise`, `filters`, `trail`, `summit`, `map`, `vibe`, `theme`, `signup`, `done`
   - Each step has `id`, `target` (CSS selector or null for centered modal), `title`, `description`, optional `onEnter` action
 - Functions: `startTour()`, `endTour()`, `nextStep()`, `prevStep()`, `shouldAutoStart()`
 - Persistence: localStorage key `cartoTaco_tourCompleted`
