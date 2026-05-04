@@ -506,19 +506,17 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 
 ---
 
-### C6. The Anti-Review
+### C6. The Anti-Review ✅ COMPLETED (2026-05-04)
 **Feature**: Instead of 1–5 star ratings, each visit earns one vote across four emoji dimensions: 🔥 Heat Legit / 🌮 Authentic / 💸 Value / 🎭 Vibe. Aggregated counts display as a vibe fingerprint on each card.
 
 **Impact**: Faster to submit than a written review, more expressive than stars, highly visual. Encourages repeat engagement and generates richer per-spot character data.
 
-**Effort**: Moderate (2-3 days)
-
-**Technical Details**:
-- Requires auth (already implemented)
-- New `vibe_votes` table: `user_id`, `est_id`, `dimension` (heat/authentic/value/vibe), `voted_at`
-- One vote per dimension per user per spot (upsertable)
-- Aggregate counts displayed as icon + number in `Card.svelte`
-- No moderation burden (no text content)
+**Implementation**:
+- `migrations/027_create_vibe_votes.sql` — `vibe_votes(user_id, est_id, dimension, created_at)` with `UNIQUE(user_id, est_id, dimension)`. Public SELECT for aggregates; INSERT/DELETE gated on `auth.uid() = user_id`.
+- `src/lib/vibeVotes.js` — CRUD: `addVibeVote`, `removeVibeVote`, `getUserVibeVoteKeys`, `getVibeCountsForEst`.
+- `src/lib/vibeVotesStore.js` — `userVibeVoteKeys` Set, `vibeCountsByEst` Map cache, `toggleVibeVote()` with optimistic UI.
+- `src/components/VibeVotes.svelte` — chip row mounted on `Card.svelte` (mobile + desktop). Anonymous users redirect to login on click.
+- Counts load lazily per est_id when a Card opens; user's own vote keys load once on auth.
 
 ---
 

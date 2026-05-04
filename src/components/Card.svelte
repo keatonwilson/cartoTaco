@@ -10,6 +10,7 @@
   import ContactInfo from "./ContactInfo.svelte";
   import CollapsibleSection from "./CollapsibleSection.svelte";
   import FavoriteButton from "./FavoriteButton.svelte";
+  import VibeVotes from "./VibeVotes.svelte";
   import { selectedSite, summaryStats } from "$lib/stores";
   import { isMobile } from "$lib/deviceDetection";
   import {
@@ -116,6 +117,10 @@
           >
             {showLongDescription ? "Show less" : "Read more"}
           </button>
+        </div>
+        <div class="vibe-section">
+          <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Vibe Check</h2>
+          <VibeVotes estId={$selectedSite.est_id} />
         </div>
         <CollapsibleSection title="Menu Summary" defaultOpen={false}>
           <div class="radar-chart-container">
@@ -236,6 +241,11 @@
             />
           </CollapsibleSection>
         </div>
+      </div>
+
+      <!-- Row 2.5: Vibe votes (anti-review) -->
+      <div class="desktop-vibe-row">
+        <VibeVotes estId={$selectedSite.est_id} compact={true} />
       </div>
 
       <!-- Row 3: Two radar charts side by side -->
@@ -475,6 +485,14 @@
     border-top: 1px solid lightgray;
     display: flex;
     flex-direction: column;
+  }
+
+  .vibe-section {
+    margin-top: 6px;
+  }
+
+  .desktop-vibe-row {
+    padding: 2px 0;
   }
 
   /* ========== DESKTOP LAYOUT STYLES ========== */

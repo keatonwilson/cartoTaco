@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { initTheme } from '$lib/theme.js';
 	import { loadFavorites } from '$lib/favoritesStore.js';
+	import { loadUserVibeVotes } from '$lib/vibeVotesStore.js';
 	import { isAuthenticated } from '$lib/authStore.js';
 	import { initializeStores } from '$lib/stores.js';
 	import '../app.css';
@@ -19,9 +20,10 @@
 		// Initialize theme system (returns cleanup function)
 		const cleanupTheme = initTheme();
 
-		// Load favorites if authenticated
+		// Load user-scoped social data if authenticated
 		if ($isAuthenticated) {
 			loadFavorites();
+			loadUserVibeVotes();
 		}
 
 		// Auto-start tour for first-time visitors (delay to let map render)
@@ -39,9 +41,10 @@
 		};
 	});
 
-	// Reload favorites when authentication state changes
+	// Reload user-scoped social data when authentication state changes
 	$: if ($isAuthenticated) {
 		loadFavorites();
+		loadUserVibeVotes();
 	}
 </script>
 

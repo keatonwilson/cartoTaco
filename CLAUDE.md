@@ -66,6 +66,7 @@ Migrations must be run in this order:
 24. `migrations/024_enable_rls_staging_extractions.sql` - Enables RLS on staging_extractions table (admin data-entry helper app); authenticated users get SELECT/INSERT/UPDATE, anonymous blocked
 25. `migrations/025_fix_sites_complete_security_invoker.sql` - Fixes SECURITY DEFINER warning on sites_complete view by setting security_invoker = true (PostgreSQL 15+)
 26. `migrations/026_add_quesadilla_to_view.sql` - Adds quesadilla_yes/quesadilla_perc to sites_complete view (columns already exist in menu table)
+27. `migrations/027_create_vibe_votes.sql` - Creates `vibe_votes` table for the anti-review feature (binary emoji votes across four dimensions: heat_legit, authentic, value, vibe). Public SELECT for aggregate counts; INSERT/DELETE gated on `auth.uid() = user_id`
 
 ### Schema Management
 - **`schema/sites_complete_view.sql`** is the single source of truth for the `sites_complete` view definition
@@ -104,6 +105,13 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 - `favoritesLoading` - Loading state
 - `favoritesCount` (derived) - Count of favorited sites
 - Functions: `loadFavorites()`, `addFavorite(estId)`, `removeFavorite(estId)`, `toggleFavorite(estId)`, `isFavorited(estId)`
+
+### Vibe Votes Store (src/lib/vibeVotesStore.js)
+- `userVibeVoteKeys` - Set of `"${estId}:${dimension}"` strings for the current user's votes
+- `vibeCountsByEst` - `Map<estId, {heat_legit, authentic, value, vibe}>` aggregate cache, populated lazily when a Card opens
+- `VIBE_DIMENSIONS` - `['heat_legit', 'authentic', 'value', 'vibe']`
+- Functions: `loadUserVibeVotes()`, `loadVibeCounts(estId, { force })`, `toggleVibeVote(estId, dimension)`, `hasVoted(estId, dimension)`
+- Optimistic UI: toggle flips the user state and bumps the count immediately, reverting on DB failure
 
 ### Trail Store (src/lib/trailStore.js)
 - `trailModeActive` - Whether trail building mode is active
@@ -238,6 +246,7 @@ Located in src/lib/dataWrangling.js:
 - `TasteProfile.svelte` - Personal taste profile visualization with archetype display, protein affinities, and scatter plot (heat vs salsa)
 - `TourOverlay.svelte` - Multi-step onboarding tour with targeted tooltips, step highlighting, and next/prev/skip navigation
 - `SummitResults.svelte` - Taco Summit results view: ECharts stacked horizontal bar showing rank distribution per spot (orange gradient), winner callout, dark-mode reactive, optional PNG card download
+- `VibeVotes.svelte` - Anti-review chip row on each Card: 🔥 Heat Legit · 🌮 Authentic · 💸 Value · 🎭 Vibe. Click toggles your vote (anonymous users redirected to login); displays aggregate counts. Accepts `compact` prop for tight desktop layouts.
 
 ### Routes
 - `src/routes/+layout.svelte` - Root layout (Header, theme initialization)
