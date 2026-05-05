@@ -12,6 +12,7 @@
   let loading = false;
   let error = null;
   let success = false;
+  let confirmEmailSent = false;
 
   function validateForm() {
     if (!email) {
@@ -50,12 +51,15 @@
     if (result.error) {
       error = result.error.message || 'Failed to create account. Please try again.';
       loading = false;
+    } else if (!result.session) {
+      // Account created but email confirmation is required before signing in
+      confirmEmailSent = true;
+      loading = false;
     } else {
-      // Successfully signed up
+      // Account created and session active (email confirmation disabled)
       success = true;
       loading = false;
 
-      // Redirect to home after a brief delay
       setTimeout(() => {
         goto('/');
       }, 1500);
@@ -89,6 +93,18 @@
       </div>
     {/if}
 
+    {#if confirmEmailSent}
+      <div class="success-message">
+        {#if browser}
+          <CheckCircleOutline class="success-icon" />
+        {/if}
+        <div>
+          <p class="success-title">Check your email!</p>
+          <p class="success-subtitle">We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account, then sign in.</p>
+        </div>
+      </div>
+    {/if}
+
     {#if success}
       <div class="success-message">
         {#if browser}
@@ -101,7 +117,7 @@
       </div>
     {/if}
 
-    {#if !success}
+    {#if !success && !confirmEmailSent}
       <form on:submit={handleSubmit} class="form">
         <!-- Email Input -->
         <div class="input-group">
