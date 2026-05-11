@@ -20,6 +20,10 @@ This document outlines potential improvements to enhance CartoTaco's functionali
 14. **Onboarding Tour System** - 7-step guided tour with targeted tooltips, localStorage persistence, and restartable from help button
 15. **New Spots Badge** - Notification badge for recently added establishments with localStorage-based "seen" tracking and map fly-to on click
 16. **Bottom Sheet Mobile UX** - Mobile-optimized card display with bottom sheet pattern, swipe-to-dismiss, and iOS Safari compatibility fixes
+17. **Anti-Review Vibe Votes (C6)** - Four binary emoji chips per Card (Heat Legit, Authentic, Value, Vibe) replacing star ratings. Phosphor icons, optimistic toggle, aggregate counts public. Tour step explains the system.
+18. **Profile Foundations** - `username` (UNIQUE slug) + `bio` on `profiles`; auto-generated usernames on signup; public `/u/[username]` route with SSR 404; avatar uploads via Supabase Storage `avatars` bucket; profile editor with live username validation.
+19. **Toast Notification System** - Tiny non-blocking notification store + `ToastHost` mounted once in `+layout`. Phosphor icons for success/error/info; auto-dismiss; dismissable.
+20. **iPad Header Layout Fix** - Bumped desktop-nav breakpoint from 768px → 1100px so iPad portrait and split-view widths get the hamburger menu instead of an overflowing 8-item nav.
 
 See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARCH_FILTER.md), [MARKER_CLUSTERING.md](./MARKER_CLUSTERING.md), and [USER_SUBMISSIONS.md](./USER_SUBMISSIONS.md) for details.
 
@@ -115,24 +119,8 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 
 ## 🚀 User Engagement Features
 
-### 4. Community Ratings & Quick Reviews
-**Features**:
-- 5-star rating system per establishment
-- Quick tags (e.g., "Best carnitas", "Great salsa bar", "Family friendly")
-- Optional short text reviews
-- Display average rating on map markers
-
-**Impact**: Adds social proof and user-generated content
-
-**Effort**: High (1 week)
-
-**Technical Details**:
-- Requires user authentication (already implemented)
-- Create `ratings` table: `user_id`, `est_id`, `stars`, `review_text`, `tags`
-- Create `tags` lookup table
-- Calculate average rating in database view
-- Display ratings in popup and on markers (colored star overlay)
-- Moderation tools for inappropriate content
+### 4. Community Ratings & Quick Reviews — ❌ Superseded
+**Status**: Replaced by the **Social Features Arc** (see above). The Anti-Review Vibe Votes (C6, ✅ shipped) intentionally avoids star ratings; user-generated commentary moves into Phase 3 check-in notes (≤280 chars, optional). No 5-star system planned.
 
 ---
 
@@ -157,36 +145,117 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 
 ---
 
-## 🎮 Social & Gamification
+## 🤝 Social Features Arc
 
-### G1. Taco Passport + Check-Ins
-**Feature**:
-- Users "check in" at spots they've visited (requires auth)
-- Virtual passport that stamps each unique spot visited
-- Badges/achievements: "Al Pastor Pilgrim" (5 spots), "Taco Conquistador" (all spots), "Heat Seeker" (all 10-spice spots), "Carnivore" (tried all protein types)
-- Check-in count displayed on spot cards ("27 tacoheads have been here")
+A coherent multi-phase plan to turn CartoTaco from a solo discovery tool into a social-fabric app. Phases are sequenced so each one unlocks the next; ship in order.
 
-**Impact**: Major retention and engagement driver; makes CartoTaco genuinely memorable vs. just a directory
+| Phase | Status | Scope | Effort |
+|---|---|---|---|
+| 1. Anti-Review (C6) | ✅ Shipped 2026-05-04 | 4 emoji-chip votes per Card | ~2 days |
+| 2. Profile Foundations | ✅ Shipped 2026-05-04 | username, bio, avatar, public `/u/[username]` | ~2 days |
+| 3. Check-ins + Aficionado (G1+G2) | ⏳ Next up | geo-fenced check-ins with notes, tier badges, recent-on-Card | ~4–5 days |
+| 4. Meetups | ⏸ Planned | in-person events as a map layer with RSVPs | ~3–4 days |
+| 5. Follow / Feed / Reactions | ⏸ Planned | social graph + activity feed + check-in reactions | ~2–3 days |
+| 6. Challenges / Badges | ⏸ Stretch | client-derived achievements from check-in data | ~2 days |
 
-**Effort**: High (1 week)
-
-**Technical Details**:
-- New `check_ins` table: `user_id`, `est_id`, `checked_in_at`
-- Aggregate check-in counts in view or cached summary
-- Badges computed server-side or derived from check-in history
-- Passport page showing user's visited spots on a mini-map
+### Carry-over from Phase 2 (small)
+- **Header → public profile link**: surface `@username` (clickable to `/u/[username]`) in the desktop user-info area and mobile menu. Needs a tiny `profileStore` that loads the current user's username on auth. ~15 min follow-up; bundle with Phase 3.
 
 ---
 
-### G2. Personal Taco Stats Page
-**Feature**:
-- User profile page with stats: spots visited, proteins tried, favorite neighborhood, hottest spot tried
-- "Your taco journey" — timeline of check-ins
-- Comparison mode: "You vs. the average CartoTaco user"
+### Phase 3 — G1. Geo-fenced Check-ins + G2. Aficionado Tiers ⏳ Next up
+**Feature**: Users check in at the spot they're physically at, optionally leave a ≤280-char note, and earn tier badges as they accumulate verified visits. Recent check-ins appear on each Card; full timeline lives on `/u/[username]`. Replaces and supersedes the original G1/G2 entries.
 
-**Impact**: High engagement, encourages sharing
+**Impact**: The core social data substrate. Every later phase (feed, reactions, challenges) compounds on this.
 
-**Effort**: Moderate (3-4 days, builds on G1)
+**Effort**: High (~4–5 days)
+
+**Schema (migration 030)**:
+```sql
+CREATE TABLE check_ins (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  est_id INTEGER NOT NULL,
+  note TEXT CHECK (char_length(note) <= 280),
+  latitude NUMERIC(10,8) NOT NULL,
+  longitude NUMERIC(11,8) NOT NULL,
+  distance_m INTEGER NOT NULL,        -- server-computed via trigger
+  verified BOOLEAN NOT NULL DEFAULT false, -- distance_m <= 200
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+**Geo-fence verification** — two layers:
+1. **Client**: `navigator.geolocation` + existing `calculateDistance()` in `src/lib/geocoding.js`. Live "✓ You're here" / "⚠ 1.2 km away" pill in the check-in modal. Allow submit either way.
+2. **Server**: `BEFORE INSERT` Postgres trigger looks up the site's lat/lon, recomputes distance from submitted coords, writes `distance_m`, sets `verified = (distance_m <= 200)`. Honor system, not fraud-proof; geo can be spoofed in DevTools.
+
+**Aficionado tiers** (client-derived from `verified` count only):
+- 🌮 Taco Tourist (5+)
+- 🌮🌮 Regular (15+)
+- 🌮🌮🌮 Aficionado (30+ across 15+ unique spots)
+- 👑 Conquistador (all spots checked in)
+
+**Components / files**:
+- `src/lib/checkIns.js` — CRUD + `getRecentForSite(est_id)` + `getForUser(user_id)`
+- `src/lib/checkInsStore.js` — own check-ins + site-scoped cache (60s TTL)
+- `src/components/CheckInButton.svelte` + `CheckInModal.svelte`
+- `src/components/RecentCheckIns.svelte` — slot on `Card.svelte` between description and Menu Summary
+- `src/components/AficionadoBadge.svelte` — reusable chip
+- Fill in the Phase 2 placeholder on `/u/[username]` with the timeline
+
+**Reuses**: `calculateDistance()`, `navigator.geolocation` pattern from `TrailTray.svelte:27`, favorites store template, `ToastHost` for confirmation, `CollapsibleSection` on Card.
+
+---
+
+### Phase 4 — Meetups
+**Feature**: Anyone authenticated can create an in-person taco meetup at a spot (or a freeform location), set a start/end time, and others RSVP. Appears as a distinct map pin from ~24h before start through end time, then disappears.
+
+**Impact**: First feature that brings users physically together. Map-native usage of CartoTaco's strength.
+
+**Effort**: Moderate (3–4 days)
+
+**Schema**:
+- `meetups(id, creator_id, est_id?, title, description, starts_at, ends_at, latitude, longitude, cancelled_at?, created_at)`
+- `meetup_rsvps(id, meetup_id, user_id, status ENUM('going','interested'))` with `UNIQUE(meetup_id, user_id)`
+
+**Map integration**: mirror the trail-layer pattern in `src/lib/mapping.js:462-559` — new `meetup-events` source + circle/symbol layers. Reactive store `upcomingMeetupsStore` populated at app init + Supabase Realtime on `meetups`.
+
+**Routes**:
+- `(protected)/meetups/new` — creation form with `LocationPicker` or site picker
+- `meetups/[id]` — detail + RSVP list
+
+**Moderation surface**: highest of any phase so far (free-text title + description). MVP gets a "Report" button writing to a simple `reports` table; admin review is manual.
+
+---
+
+### Phase 5 — Follow + Feed + Reactions
+**Feature**: Three small additions that compound hard on Phase 3:
+1. **Follows** — `user_follows(follower_id, followed_id)` with unique pair. Follow button on `/u/[username]`.
+2. **Activity feed** at `/feed` — UNION of check-ins and upcoming meetups from followed users, sorted DESC, paginated.
+3. **Reactions on check-ins** — `check_in_reactions(check_in_id, user_id, reaction TEXT CHECK in ('drool','fire','taco'))`. Aggregate count beside each check-in; tap to toggle. Zero prose = zero moderation.
+
+**Effort**: Moderate (2–3 days)
+
+---
+
+### Phase 6 — Challenges / Badges (Stretch)
+**Feature**: Pure client-derived achievements from existing check-in data. No DB writes; just a function that takes `checkIns + sites` and returns `{id, name, progress, completed}` records. Rendered on `/u/[username]` and own profile.
+
+Sample challenges:
+- **Protein Sweep** — try every protein (chicken/beef/pork/fish/veg) at verified check-ins
+- **Truck Stop** — 5 check-ins at food trucks
+- **Weekend Warrior** — check in every Saturday for 4 weeks
+- **Heat Seeker** — 3 check-ins at spots with heat ≥ 8
+
+**Effort**: Low (~2 days)
+
+---
+
+### Cross-cutting risks & call-outs
+- **Geolocation spoofing** — accepted, not engineered around. Aficionado tiers only count `verified=true`.
+- **Storage costs** — Supabase free tier handles MVP. 1 MB avatar cap enforced client + server.
+- **Realtime quota** — 200 concurrent connections on free tier. Lazy-subscribe (only when Card open, only for relevant `est_id`).
+- **Note moderation** — 280-char limit only. Add report button + length filter at Phase 3 launch; build admin tooling if abuse materializes.
 
 ---
 
@@ -539,34 +608,36 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 15. ✅ **New spots badge** — COMPLETED
 16. ✅ **Bottom sheet mobile UX** — COMPLETED
 17. ✅ **"Surprise Me" button (D1)** — Quick win, fun UX
-18. **Taco Tuesday Tracker (S2)** — Weekly engagement, low effort
-19. **Tucson Taco Census page (V1)** — Press-worthy, no new data needed
-20. **Accessibility audit (P1)** — Important for inclusivity
-21. **SEO/Open Graph tags (P5)** — Low effort, better sharing
-22. **Analytics integration (P6)** — Data-driven decisions
-23. **Community ratings & reviews (#4)** — Add social proof
-24. **PWA support (P2)** — Install as app, offline capability
-25. **Price Tier filter (V2)** — Practical, needs data entry
-26. **E2E testing with Playwright (P4)** — Confidence for shipping
-27. **Code splitting (P3)** — Performance improvement
-28. **Taco Passport + Check-ins (G1)** — Big engagement feature
-29. **Personal Taco Stats (G2)** — Builds on G1
-30. **Comparison enhancements (P8)** — Expand existing feature
-31. **Taste profile tuning (P9)** — Better recommendations
-32. **Similar Spots (D3)** — Discovery improvement
-33. **Neighborhood Mode (D2)** — Hyper-local differentiation
-34. **Share Card generator (S1)** — Organic growth
-35. **Photo gallery (P7)** — Visual appeal
-36. **Heat map view (#5)** — Alternative visualization
-37. **Tour improvements (P10)** — Better onboarding
-38. **Owner Portal (O1)** — Long-term data sustainability
-39. **AI menu extraction (#11)** — Advanced automation
-40. **Tucson Taco Index (C1)** — Economic indicator, press-worthy
-41. **Neighborhood Origin Stories (C2)** — Hyper-local storytelling
-42. ✅ **Group Decision Mode (C3)** — Completed (2026-04-02)
-43. **Community Busyness Reports (C4)** — Real-time crowd signal
-44. **The Midnight Map (C5)** — Late-night discovery, visually striking
-45. **The Anti-Review (C6)** — Richer engagement than star ratings
+18. ✅ **Group Decision Mode (C3)** — Completed 2026-04-02
+19. ✅ **Anti-Review Vibe Votes (C6)** — Completed 2026-05-04 (Social Arc Phase 1)
+20. ✅ **Profile Foundations** — Completed 2026-05-04 (Social Arc Phase 2)
+21. **Check-ins + Aficionado Tiers (G1+G2)** — ⏳ Next up (Social Arc Phase 3)
+22. **Meetups** — Planned (Social Arc Phase 4)
+23. **Follow / Feed / Reactions** — Planned (Social Arc Phase 5)
+24. **Challenges / Badges** — Stretch (Social Arc Phase 6)
+25. **Taco Tuesday Tracker (S2)** — Weekly engagement, low effort
+26. **Tucson Taco Census page (V1)** — Press-worthy, no new data needed
+27. **Accessibility audit (P1)** — Important for inclusivity
+28. **SEO/Open Graph tags (P5)** — Low effort, better sharing
+29. **Analytics integration (P6)** — Data-driven decisions
+30. **PWA support (P2)** — Install as app, offline capability
+31. **Price Tier filter (V2)** — Practical, needs data entry
+32. **E2E testing with Playwright (P4)** — Confidence for shipping
+33. **Code splitting (P3)** — Performance improvement
+34. **Comparison enhancements (P8)** — Expand existing feature
+35. **Taste profile tuning (P9)** — Better recommendations
+36. **Similar Spots (D3)** — Discovery improvement
+37. **Neighborhood Mode (D2)** — Hyper-local differentiation
+38. **Share Card generator (S1)** — Organic growth
+39. **Photo gallery (P7)** — Visual appeal
+40. **Heat map view (#5)** — Alternative visualization
+41. **Tour improvements (P10)** — Better onboarding
+42. **Owner Portal (O1)** — Long-term data sustainability
+43. **AI menu extraction (#11)** — Advanced automation
+44. **Tucson Taco Index (C1)** — Economic indicator, press-worthy
+45. **Neighborhood Origin Stories (C2)** — Hyper-local storytelling
+46. **Community Busyness Reports (C4)** — Real-time crowd signal
+47. **The Midnight Map (C5)** — Late-night discovery, visually striking
 
 ---
 
@@ -592,4 +663,4 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 
 ---
 
-**Last Updated**: 2026-04-01
+**Last Updated**: 2026-05-04 — Added Social Features Arc section (Phases 1–6); marked C6, Profile Foundations, Toast system, iPad header fix as shipped; superseded ratings/reviews item in favor of the arc.
