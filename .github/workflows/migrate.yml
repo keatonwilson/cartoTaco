@@ -1,0 +1,30 @@
+name: Migrate Database
+
+on:
+  push:
+    branches:
+      - staging
+      - main
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Migrate staging
+        if: github.ref == 'refs/heads/staging'
+        run: supabase db push --project-ref ${{ secrets.SUPABASE_STAGING_REF }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Migrate production
+        if: github.ref == 'refs/heads/main'
+        run: supabase db push --project-ref ${{ secrets.SUPABASE_PROD_REF }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
