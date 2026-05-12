@@ -19,16 +19,14 @@ jobs:
 
       - name: Migrate staging
         if: github.ref == 'refs/heads/staging'
-        run: supabase db push --linked
+        run: supabase db push --db-url "$SUPABASE_DB_URL"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD_STAGING }}
-          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_STAGING_REF }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL_STAGING }}
 
       - name: Migrate production
         if: github.ref == 'refs/heads/main'
-        run: supabase db push --linked
+        run: supabase db push --db-url "$SUPABASE_DB_URL"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD_PROD }}
-          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROD_REF }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL_PROD }}
