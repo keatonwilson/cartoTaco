@@ -17,11 +17,11 @@ jobs:
           sudo apt-get install -y postgresql-client-17
 
       - name: Dump prod schema and data
-        run: pg_dump --no-owner --no-acl -d "$PROD_DB_URL" -f dump.sql
+        run: /usr/lib/postgresql/17/bin/pg_dump --no-owner --no-acl -d "$PROD_DB_URL" -f dump.sql
         env:
           PROD_DB_URL: ${{ secrets.SUPABASE_DB_URL_PROD }}
 
       - name: Restore into staging
-        run: psql -d "$STAGING_DB_URL" -f dump.sql
+        run: /usr/lib/postgresql/17/bin/psql -d "$STAGING_DB_URL" -f dump.sql
         env:
           STAGING_DB_URL: ${{ secrets.SUPABASE_DB_URL_STAGING }}
