@@ -53,6 +53,12 @@ export const TOUR_STEPS = [
 		description: 'Click clusters to zoom in, click markers to see details. Drag and zoom to explore all of Tucson.'
 	},
 	{
+		id: 'vibe',
+		target: null,
+		title: 'Vibe Check, not Star Reviews',
+		description: "Tap any spot to open its card and weigh in: 🔥 Heat Legit · ✓ Authentic · 💰 Value · ✨ Vibe. One tap per chip — no essays, no five-star math. Your votes plus everyone else's build a quick fingerprint of what each spot actually nails."
+	},
+	{
 		id: 'theme',
 		target: '[data-tour="theme"]',
 		title: 'Switch Themes',

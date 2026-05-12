@@ -66,6 +66,9 @@ Migrations must be run in this order:
 24. `migrations/024_enable_rls_staging_extractions.sql` - Enables RLS on staging_extractions table (admin data-entry helper app); authenticated users get SELECT/INSERT/UPDATE, anonymous blocked
 25. `migrations/025_fix_sites_complete_security_invoker.sql` - Fixes SECURITY DEFINER warning on sites_complete view by setting security_invoker = true (PostgreSQL 15+)
 26. `migrations/026_add_quesadilla_to_view.sql` - Adds quesadilla_yes/quesadilla_perc to sites_complete view (columns already exist in menu table)
+27. `migrations/027_create_vibe_votes.sql` - Creates `vibe_votes` table for the anti-review feature (binary emoji votes across four dimensions: heat_legit, authentic, value, vibe). Public SELECT for aggregate counts; INSERT/DELETE gated on `auth.uid() = user_id`
+28. `migrations/028_extend_profiles.sql` - Adds `username` (UNIQUE slug, `[a-z0-9_]{3,20}`) and `bio` (≤280 chars) to `profiles`; updates the signup trigger to auto-generate a unique username from the email local-part; backfills existing rows; opens SELECT to anon/authenticated for `/u/[username]` browsing
+29. `migrations/029_create_avatars_bucket.sql` - Creates the `avatars` Storage bucket (public-read, 1 MB cap, image/* mime types) and RLS on `storage.objects` so users can only write to their own folder (`avatars/<user_id>/`)
 
 ### Schema Management
 - **`schema/sites_complete_view.sql`** is the single source of truth for the `sites_complete` view definition
@@ -105,6 +108,13 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 - `favoritesCount` (derived) - Count of favorited sites
 - Functions: `loadFavorites()`, `addFavorite(estId)`, `removeFavorite(estId)`, `toggleFavorite(estId)`, `isFavorited(estId)`
 
+### Vibe Votes Store (src/lib/vibeVotesStore.js)
+- `userVibeVoteKeys` - Set of `"${estId}:${dimension}"` strings for the current user's votes
+- `vibeCountsByEst` - `Map<estId, {heat_legit, authentic, value, vibe}>` aggregate cache, populated lazily when a Card opens
+- `VIBE_DIMENSIONS` - `['heat_legit', 'authentic', 'value', 'vibe']`
+- Functions: `loadUserVibeVotes()`, `loadVibeCounts(estId, { force })`, `toggleVibeVote(estId, dimension)`, `hasVoted(estId, dimension)`
+- Optimistic UI: toggle flips the user state and bumps the count immediately, reverting on DB failure
+
 ### Trail Store (src/lib/trailStore.js)
 - `trailModeActive` - Whether trail building mode is active
 - `trailStops` - Ordered array of trail stop site objects
@@ -141,7 +151,7 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 - `tourActive` - Whether the tour overlay is showing
 - `tourStep` - Current step index (0-based)
 - `tourExpandFilters` - Whether to expand filters during the filters tour step
-- `TOUR_STEPS` - Array of 10 step definitions: `welcome`, `search`, `surprise`, `filters`, `trail`, `summit`, `map`, `theme`, `signup`, `done`
+- `TOUR_STEPS` - Array of 11 step definitions: `welcome`, `search`, `surprise`, `filters`, `trail`, `summit`, `map`, `vibe`, `theme`, `signup`, `done`
   - Each step has `id`, `target` (CSS selector or null for centered modal), `title`, `description`, optional `onEnter` action
 - Functions: `startTour()`, `endTour()`, `nextStep()`, `prevStep()`, `shouldAutoStart()`
 - Persistence: localStorage key `cartoTaco_tourCompleted`
@@ -211,6 +221,8 @@ Located in src/lib/dataWrangling.js:
 - `src/lib/theme.js` - Dark/light mode management
 - `src/lib/deviceDetection.js` - Responsive device type detection (mobile/tablet/desktop)
 - `src/lib/supabaseBrowser.js` - Browser-side Supabase client using `@supabase/ssr` `createBrowserClient` with cookie support; exports `supabaseBrowser` client and `getAuthenticatedUser()` helper
+- `src/lib/profiles.js` - Profiles CRUD: `getOwnProfile()`, `getProfileByUsername()`, `updateProfile()`, `uploadAvatar()`. Public reads use only safe columns (no email). Avatar uploads write to `avatars/<user_id>/avatar.{ext}` and bust browser cache via `?t=` query param.
+- `src/lib/toastStore.js` - Tiny non-blocking notification store with `toast.success/error/info()` helpers. Rendered by `<ToastHost />` mounted once in `+layout.svelte`.
 
 ## Component Organization
 
@@ -238,6 +250,8 @@ Located in src/lib/dataWrangling.js:
 - `TasteProfile.svelte` - Personal taste profile visualization with archetype display, protein affinities, and scatter plot (heat vs salsa)
 - `TourOverlay.svelte` - Multi-step onboarding tour with targeted tooltips, step highlighting, and next/prev/skip navigation
 - `SummitResults.svelte` - Taco Summit results view: ECharts stacked horizontal bar showing rank distribution per spot (orange gradient), winner callout, dark-mode reactive, optional PNG card download
+- `VibeVotes.svelte` - Anti-review chip row on each Card: 🔥 Heat Legit · 🌮 Authentic · 💸 Value · 🎭 Vibe. Click toggles your vote (anonymous users redirected to login); displays aggregate counts. Accepts `compact` prop for tight desktop layouts.
+- `ToastHost.svelte` - Renders the `toasts` store as a stack of dismissable notifications, mounted once in `+layout.svelte`. Uses Phosphor `CheckCircle/WarningCircle/Info/X` icons.
 
 ### Routes
 - `src/routes/+layout.svelte` - Root layout (Header, theme initialization)
@@ -251,6 +265,7 @@ Located in src/lib/dataWrangling.js:
 - `src/routes/compare/+page.js` - Route config for comparison page
 - `src/routes/vote/new/+page.svelte` - Taco Summit creation: pick 2–6 spots, set a title, creates a `group_sessions` row and redirects to the voting page
 - `src/routes/vote/[session_id]/+page.svelte` - Taco Summit voting/results page; states: ranked-choice ballot entry, post-vote waiting with live preview, locked results with `SummitResults`; uses Supabase Realtime for live vote counts and session lock detection; anonymous via `voter_token` UUID in localStorage; creator identified by `creator_token` in localStorage
+- `src/routes/u/[username]/+page.svelte` + `+page.server.js` - Public profile page; server load looks up `profiles` by username (404 if not found); renders avatar, display name, username, bio, member-since. Recent check-ins section is a placeholder until Phase 3 ships.
 
 #### Authentication Routes (`src/routes/(auth)/`)
 - `login/+page.svelte` - Login form

@@ -260,7 +260,10 @@
     gap: 1rem;
   }
 
-  @media (min-width: 768px) {
+  /* Show desktop nav only when there's room for all 8+ items.
+     Below this, fall back to the hamburger menu — iPad portrait (834px)
+     and split-view widths land here. */
+  @media (min-width: 1100px) {
     .desktop-nav {
       display: flex;
     }
@@ -439,7 +442,7 @@
     cursor: pointer;
   }
 
-  @media (min-width: 768px) {
+  @media (min-width: 1100px) {
     .mobile-menu-button {
       display: none;
     }
@@ -462,7 +465,7 @@
     border-top-color: rgba(255, 255, 255, 0.08);
   }
 
-  @media (min-width: 768px) {
+  @media (min-width: 1100px) {
     .mobile-menu {
       display: none;
     }
@@ -529,7 +532,7 @@
     gap: 0.25rem;
   }
 
-  @media (min-width: 768px) {
+  @media (min-width: 1100px) {
     .mobile-header-controls {
       display: none;
     }
