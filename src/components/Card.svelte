@@ -162,10 +162,12 @@
             <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1" id="spicy-label">Spiciness</h2>
             <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
             <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Tortilla Type</h2>
-            <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
-            {#if $selectedSite.handmadeTortilla}
-              <HandmadeBadge />
-            {/if}
+            <div class="tortilla-row">
+              <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
+              {#if $selectedSite.handmadeTortilla}
+                <HandmadeBadge />
+              {/if}
+            </div>
           </div>
           <div class='salsa-container'>
             <SalsaCount
@@ -496,8 +498,27 @@
     flex-direction: column;
   }
 
+  .tortilla-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .tortilla-row :global(.handmade-badge) {
+    margin-top: 0;
+  }
+
   .vibe-section {
-    margin-top: 6px;
+    margin-top: 12px;
+    margin-bottom: 8px;
+    padding-top: 10px;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  :global(.dark) .vibe-section {
+    border-top-color: #374151;
   }
 
   .vibe-subtitle {
