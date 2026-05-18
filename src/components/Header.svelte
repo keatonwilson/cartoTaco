@@ -282,10 +282,6 @@
     color: #d1d5db;
   }
 
-  .user-icon {
-    color: #FE795D;
-  }
-
   .user-email {
     max-width: 200px;
     overflow: hidden;

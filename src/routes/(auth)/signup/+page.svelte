@@ -303,11 +303,6 @@
     align-items: start;
   }
 
-  .success-icon {
-    flex-shrink: 0;
-    color: #059669;
-  }
-
   .success-title {
     font-weight: 600;
     margin-bottom: 0.25rem;

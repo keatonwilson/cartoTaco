@@ -41,6 +41,12 @@ Run in order. Each migration depends on the previous ones.
 | 021 | `021_create_group_sessions.sql` | Creates `group_sessions` table for Taco Summit (`id`, `creator_token`, `site_ids`, `title`, `closed_at`) with open RLS |
 | 022 | `022_create_group_votes.sql` | Creates `group_votes` table for ranked-choice ballots (`session_id`, `voter_token`, `est_id`, `rank`) with unique constraint, index, and open RLS |
 | 023 | `023_add_snacks_menu_type.sql` | Adds snacks as a menu type |
+| 024 | `024_enable_rls_staging_extractions.sql` | Enables RLS on `staging_extractions` table; authenticated users get SELECT/INSERT/UPDATE, anonymous blocked |
+| 025 | `025_fix_sites_complete_security_invoker.sql` | Fixes SECURITY DEFINER warning on `sites_complete` view by setting `security_invoker = true` (PostgreSQL 15+) |
+| 026 | `026_add_quesadilla_to_view.sql` | Adds `quesadilla_yes` / `quesadilla_perc` to `sites_complete` view |
+| 027 | `027_create_vibe_votes.sql` | Creates `vibe_votes` table for Anti-Review feature (binary emoji votes: heat_legit, authentic, value, vibe) with public SELECT and auth-gated INSERT/DELETE |
+| 028 | `028_extend_profiles.sql` | Adds `username` (UNIQUE slug) and `bio` (≤280 chars) to `profiles`; auto-generates username on signup; opens SELECT to anon for `/u/[username]` browsing |
+| 029 | `029_create_avatars_bucket.sql` | Creates the `avatars` Storage bucket (public-read, 1 MB cap, image/* mime types) with user-scoped RLS on `storage.objects` |
 
 ## Rollback
 
