@@ -91,6 +91,7 @@ VITE_MAPBOX_KEY=your_mapbox_api_key
 Detailed documentation for all features:
 
 - **[Improvements Roadmap](docs/IMPROVEMENTS.md)** - Planned features and enhancements
+- **[Deployment & CI/CD](docs/DEPLOYMENT.md)** - Staging/production workflow and GitHub Actions
 - **[Query Optimization](docs/QUERY_OPTIMIZATION.md)** - Database view implementation
 - **[Search & Filter](docs/SEARCH_FILTER.md)** - Filter system documentation
 - **[Marker Clustering](docs/MARKER_CLUSTERING.md)** - Clustering implementation
@@ -126,21 +127,25 @@ src/
 │   ├── tourStore.js         # Onboarding tour state
 │   ├── uiStore.js           # UI state (filter panel, mobile nav)
 │   ├── newSpotsStore.js     # New spots notification state
+│   ├── vibeVotesStore.js    # Anti-review vibe vote state
+│   ├── toastStore.js        # Non-blocking toast notifications
 │   ├── mapping.js           # Mapbox GL rendering with clustering
 │   ├── mapStore.js          # Mapbox map instance holder
 │   ├── dataWrangling.js     # Data transformation utilities
 │   ├── supabase.js          # Supabase server client
 │   ├── supabaseBrowser.js   # Supabase browser client (SSR cookie support)
-│   └── ...                  # geocoding, validation, theme, deviceDetection
+│   └── ...                  # geocoding, validation, theme, deviceDetection, profiles
 ├── routes/                  # SvelteKit routes
 │   ├── +page.svelte         # Main map page
 │   ├── Map.svelte           # Map component
 │   ├── compare/             # Spot comparison page (shareable via ?ids=)
+│   ├── vote/                # Taco Summit creation (/vote/new) and voting (/vote/[id])
+│   ├── u/[username]/        # Public user profile page
 │   ├── (auth)/              # Login, signup, email confirmation
 │   └── (protected)/         # Favorites, profile, submit (requires auth)
 ├── app.css                  # Global styles
 docs/                        # Feature documentation
-migrations/                  # Database migrations (001-020)
+migrations/                  # Database migrations (001-029)
 schema/                      # Canonical view definitions
 ```
 
@@ -159,7 +164,7 @@ The application uses Supabase with the following main tables:
 
 ### Running Migrations
 
-After setting up your Supabase project, run the 20 migrations in order. See [CLAUDE.md](CLAUDE.md) for the full migration list and [migrations/README.md](migrations/README.md) for detailed instructions.
+After setting up your Supabase project, run the 29 migrations in order. See [CLAUDE.md](CLAUDE.md) for the full migration list and [migrations/README.md](migrations/README.md) for detailed instructions.
 
 ## 🌟 Roadmap
 
@@ -180,14 +185,20 @@ See [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md) for the complete feature roadma
 - ✅ Directions deep-link
 - ✅ New spots badge
 - ✅ Vercel deployment
+- ✅ "Surprise Me" random spot picker
+- ✅ Taco Summit group ranked-choice voting
+- ✅ Anti-review Vibe Votes (Heat Legit / Authentic / Value / Vibe)
+- ✅ User profiles (username, bio, avatar, public `/u/[username]`)
+- ✅ Toast notification system
+- ✅ Staging/production CI pipeline with automated migrations
 
 **Next Up:**
-- "Surprise Me" random spot picker
+- Check-ins + Aficionado Tiers (geo-fenced check-ins, tier badges)
+- Meetups (in-person events as a map layer with RSVPs)
 - Taco Tuesday Tracker
 - Tucson Taco Census stats page
-- Community ratings & reviews
+- Accessibility audit (WCAG 2.1)
 - PWA support
-- Accessibility audit
 
 ## 🤝 Contributing
 
