@@ -8,8 +8,6 @@
 	import { processedTacoData } from '$lib/stores';
 	import FavoriteButton from '../../../components/FavoriteButton.svelte';
 
-	export let data;
-
 	let favoriteLocations = [];
 	let loading = true;
 
@@ -159,11 +157,6 @@
 		align-items: center;
 		text-align: center;
 		margin-bottom: 2rem;
-	}
-
-	.header-icon {
-		color: #FE795D;
-		margin-bottom: 1rem;
 	}
 
 	.favorites-title {
@@ -361,11 +354,6 @@
 
 	.detail-value.address {
 		line-height: 1.4;
-	}
-
-	.detail-icon {
-		color: #FE795D;
-		flex-shrink: 0;
 	}
 
 	.card-description {

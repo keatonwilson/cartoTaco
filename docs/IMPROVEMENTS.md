@@ -663,4 +663,4 @@ Sample challenges:
 
 ---
 
-**Last Updated**: 2026-05-04 — Added Social Features Arc section (Phases 1–6); marked C6, Profile Foundations, Toast system, iPad header fix as shipped; superseded ratings/reviews item in favor of the arc.
+**Last Updated**: 2026-05-18 — Updated migrations table to 029; added staging/prod deployment workflow to docs. No shipped features since 2026-05-04.

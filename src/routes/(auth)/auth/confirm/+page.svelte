@@ -124,14 +124,6 @@
     }
   }
 
-  .success-icon {
-    color: #059669;
-  }
-
-  .error-icon {
-    color: #DC2626;
-  }
-
   .title {
     font-size: 1.5rem;
     font-weight: 700;

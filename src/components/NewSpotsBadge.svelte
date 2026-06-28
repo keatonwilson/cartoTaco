@@ -140,11 +140,13 @@
         class="mobile-panel-overlay"
         use:portal
         on:click={closeDropdown}
+        on:keydown={(e) => e.key === 'Escape' && closeDropdown()}
         role="button"
         tabindex="-1"
         aria-label="Close panel"
       >
-        <div class="mobile-panel" on:click|stopPropagation>
+        <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+        <div class="mobile-panel" role="dialog" aria-modal="true" on:click|stopPropagation on:keydown|stopPropagation>
           <div class="panel-header">
             <h3 class="panel-title">New Spots</h3>
             <button class="close-button" on:click={closeDropdown} aria-label="Close">×</button>

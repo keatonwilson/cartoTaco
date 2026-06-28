@@ -6,8 +6,6 @@
 	import { validateSubmissionForm } from '$lib/validation.js';
 	import { submitLocation } from '$lib/submissions.js';
 
-	export let data;
-
 	// Form state
 	let formData = {
 		name: '',
