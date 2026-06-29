@@ -278,22 +278,25 @@
               data={$selectedSite.topFiveProteinValues || []}
             />
           </div>
-          {#if $selectedSite.proteinStyles && Object.keys($selectedSite.proteinStyles).length > 0}
-            <div class="protein-styles protein-styles-compact">
-              {#each Object.entries($selectedSite.proteinStyles) as [protein, styles]}
-                <div class="protein-style-row">
-                  <span class="protein-label">{protein}</span>
-                  <div class="style-chips">
-                    {#each styles as style}
-                      <span class="style-chip">{style}</span>
-                    {/each}
-                  </div>
-                </div>
-              {/each}
-            </div>
-          {/if}
         </div>
       </div>
+
+      <!-- Row 5b: Protein prep styles — full width below the charts so neither
+           radar column is left with empty space beneath it -->
+      {#if $selectedSite.proteinStyles && Object.keys($selectedSite.proteinStyles).length > 0}
+        <div class="desktop-protein-styles">
+          {#each Object.entries($selectedSite.proteinStyles) as [protein, styles]}
+            <div class="protein-style-row">
+              <span class="protein-label">{protein}</span>
+              <div class="style-chips">
+                {#each styles as style}
+                  <span class="style-chip">{style}</span>
+                {/each}
+              </div>
+            </div>
+          {/each}
+        </div>
+      {/if}
 
       <!-- Row 6: Spice + Tortilla + Salsa in one compact strip -->
       <div class="desktop-stats-row">
@@ -549,7 +552,7 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 8px 0;
+    padding: 5px 0;
     margin-top: 2px;
     flex-wrap: wrap;
     border-top: 1px solid #e5e7eb;
@@ -632,6 +635,12 @@
   /* Row 2: Description (full width) */
   .desktop-description {
     margin-top: 0;
+    padding: 7px 10px;
+  }
+
+  .desktop-description .expand-button {
+    padding: 3px 4px;
+    margin-top: 1px;
   }
 
   /* Row 3: Hours (kept at natural width so the custom grid renders exactly as
@@ -658,7 +667,7 @@
   .desktop-charts-row {
     display: flex;
     gap: 4px;
-    padding: 4px 0;
+    padding: 2px 0;
   }
 
   .desktop-chart-col {
@@ -673,22 +682,26 @@
     display: flex;
     justify-content: center;
     width: 100%;
-    height: 220px;
+    height: 150px;
     position: relative;
     overflow: visible;
   }
 
-  .protein-styles-compact {
-    gap: 3px;
+  /* Row 5b: protein prep styles — full width, flowing across both columns */
+  .desktop-protein-styles {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 14px;
     padding: 2px 0;
   }
 
-  .protein-styles-compact .protein-label {
+  .desktop-protein-styles .protein-label {
     font-size: 10px;
-    min-width: 44px;
+    min-width: auto;
   }
 
-  .protein-styles-compact .style-chip {
+  .desktop-protein-styles .style-chip {
     font-size: 10px;
     padding: 1px 6px;
   }
@@ -698,7 +711,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 8px;
+    padding: 5px 8px;
     background: #f9fafb;
     border-radius: 6px;
   }
@@ -763,6 +776,11 @@
 
   :global(.dark) .desktop-specialties {
     border-top-color: #374151;
+  }
+
+  /* Compact the specialty card on desktop so the popup fits without scrolling */
+  .desktop-specialties :global(.compact-card) {
+    min-height: 100px;
   }
 
   /* Header action groups */
