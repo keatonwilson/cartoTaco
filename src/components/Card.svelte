@@ -259,15 +259,19 @@
         <VibeVotes estId={$selectedSite.est_id} compact={true} />
       </div>
 
-      <!-- Row 5: Two radar charts side by side -->
+      <!-- Row 5: Two radar charts side by side. Protein prep styles sit
+           directly under the Protein radar so they read as belonging to it;
+           the Menu radar is vertically centered to match the column height. -->
       <div class="desktop-charts-row">
         <div class="desktop-chart-col">
           <h2 class="text-xs font-semibold text-gray-800 dark:text-gray-100 text-center">Menu</h2>
-          <div class="desktop-radar-container">
-            <RadarChart
-              labels={$selectedSite.topFiveMenuItems || []}
-              data={$selectedSite.topFiveMenuValues || []}
-            />
+          <div class="desktop-radar-center">
+            <div class="desktop-radar-container">
+              <RadarChart
+                labels={$selectedSite.topFiveMenuItems || []}
+                data={$selectedSite.topFiveMenuValues || []}
+              />
+            </div>
           </div>
         </div>
         <div class="desktop-chart-col">
@@ -278,25 +282,22 @@
               data={$selectedSite.topFiveProteinValues || []}
             />
           </div>
+          {#if $selectedSite.proteinStyles && Object.keys($selectedSite.proteinStyles).length > 0}
+            <div class="desktop-protein-styles">
+              {#each Object.entries($selectedSite.proteinStyles) as [protein, styles]}
+                <div class="protein-style-row">
+                  <span class="protein-label">{protein}</span>
+                  <div class="style-chips">
+                    {#each styles as style}
+                      <span class="style-chip">{style}</span>
+                    {/each}
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
         </div>
       </div>
-
-      <!-- Row 5b: Protein prep styles — full width below the charts so neither
-           radar column is left with empty space beneath it -->
-      {#if $selectedSite.proteinStyles && Object.keys($selectedSite.proteinStyles).length > 0}
-        <div class="desktop-protein-styles">
-          {#each Object.entries($selectedSite.proteinStyles) as [protein, styles]}
-            <div class="protein-style-row">
-              <span class="protein-label">{protein}</span>
-              <div class="style-chips">
-                {#each styles as style}
-                  <span class="style-chip">{style}</span>
-                {/each}
-              </div>
-            </div>
-          {/each}
-        </div>
-      {/if}
 
       <!-- Row 6: Spice + Tortilla + Salsa in one compact strip -->
       <div class="desktop-stats-row">
@@ -682,18 +683,30 @@
     display: flex;
     justify-content: center;
     width: 100%;
-    height: 150px;
+    height: 140px;
     position: relative;
     overflow: visible;
   }
 
-  /* Row 5b: protein prep styles — full width, flowing across both columns */
+  /* Vertically centers the Menu radar so it lines up with the taller Protein
+     column (radar + prep-style chips) instead of leaving a dead gap below it. */
+  .desktop-radar-center {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+  }
+
+  /* Protein prep styles — sit under the Protein radar, centered in the column */
   .desktop-protein-styles {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 4px 14px;
-    padding: 2px 0;
+    justify-content: center;
+    width: 100%;
+    gap: 4px 12px;
+    padding: 4px 0 0;
   }
 
   .desktop-protein-styles .protein-label {
@@ -780,7 +793,7 @@
 
   /* Compact the specialty card on desktop so the popup fits without scrolling */
   .desktop-specialties :global(.compact-card) {
-    min-height: 100px;
+    min-height: 94px;
   }
 
   /* Header action groups */
