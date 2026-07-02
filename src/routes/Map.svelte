@@ -240,6 +240,8 @@
 			const modeParam = params.get('mode');
 			if (modeParam === 'drive') {
 				trailTransportMode.set('driving');
+			} else if (modeParam === 'bike') {
+				trailTransportMode.set('cycling');
 			}
 			const sites = ids.map((id) => $processedTacoData.find((s) => s.est_id === id)).filter(Boolean);
 			if (sites.length > 0) {

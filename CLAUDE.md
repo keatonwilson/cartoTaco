@@ -119,7 +119,7 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 ### Trail Store (src/lib/trailStore.js)
 - `trailModeActive` - Whether trail building mode is active
 - `trailStops` - Ordered array of trail stop site objects
-- `trailTransportMode` - `'walking'` | `'driving'` for routing
+- `trailTransportMode` - `'walking'` | `'cycling'` | `'driving'` for routing (Mapbox Directions profiles; share URLs use `mode=walk|bike|drive`)
 - `trailRoute` - GeoJSON LineString from Mapbox Directions API
 - `trailStopCount` (derived)
 - Functions: `enterTrailMode()`, `exitTrailMode()`, `addStop(site)`, `addLocationStop(site, position)`, `removeStop(estId)`, `moveStop(fromIndex, toIndex)`, `clearStops()`, `fetchRoute(stops, mode)`

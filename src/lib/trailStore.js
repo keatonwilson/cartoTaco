@@ -10,7 +10,7 @@ export const trailModeActive = writable(false);
 // Ordered array of full processedSite objects
 export const trailStops = writable([]);
 
-// 'walking' | 'driving'
+// 'walking' | 'cycling' | 'driving'
 export const trailTransportMode = writable('walking');
 
 // GeoJSON LineString from Mapbox Directions API, or null
@@ -95,7 +95,7 @@ export function clearStops() {
 /**
  * Fetch a route from Mapbox Directions API and update trailRoute
  * @param {object[]} stops - Array of processedSite objects with longitude/latitude
- * @param {string} mode - 'walking' | 'driving'
+ * @param {string} mode - 'walking' | 'cycling' | 'driving'
  */
 export async function fetchRoute(stops, mode) {
 	if (!stops || stops.length < 2) {
@@ -104,7 +104,7 @@ export async function fetchRoute(stops, mode) {
 	}
 
 	const coords = stops.map((s) => `${s.longitude},${s.latitude}`).join(';');
-	const profile = mode === 'driving' ? 'driving' : 'walking';
+	const profile = mode === 'driving' ? 'driving' : mode === 'cycling' ? 'cycling' : 'walking';
 	const token = import.meta.env.VITE_MAPBOX_KEY;
 	const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${coords}?geometries=geojson&overview=full&access_token=${token}`;
 
