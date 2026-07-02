@@ -212,24 +212,6 @@ export const summaryStats = derived(
   }
 );
 
-// Shared radar axis maxima, derived from the whole dataset: every spot's radar
-// uses the same scale (so shapes stay comparable) while the scale itself fits
-// the real data instead of a hardcoded 100 that leaves tiny polygons.
-export const radarScales = derived(
-  processedTacoData,
-  ($processedTacoData) => {
-    let menuMax = 0;
-    let proteinMax = 0;
-    for (const site of $processedTacoData || []) {
-      for (const v of site.topFiveMenuValues || []) menuMax = Math.max(menuMax, v);
-      for (const v of site.topFiveProteinValues || []) proteinMax = Math.max(proteinMax, v);
-    }
-    // Round up to the next 10 so the outer ring sits just beyond the data
-    const roundUp = (v) => Math.max(10, Math.ceil(v / 10) * 10);
-    return { menu: roundUp(menuMax), protein: roundUp(proteinMax) };
-  }
-);
-
 // Derived store for per-spot percentile ranks within the city distribution
 // (powers "Hotter than X% of Tucson spots" context lines).
 // Percentile = share of all spots with a strictly lower value.

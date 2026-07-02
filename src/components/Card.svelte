@@ -15,7 +15,8 @@
   import HandmadeBadge from "./HandmadeBadge.svelte";
   import SalsaLineup from "./SalsaLineup.svelte";
   import ContextStrip from "./ContextStrip.svelte";
-  import { selectedSite, summaryStats, distributionStats, radarScales, processedTacoData } from "$lib/stores";
+  import { selectedSite, summaryStats, distributionStats, processedTacoData } from "$lib/stores";
+  import { radarMax } from "$lib/chartTheme";
   import { isMobile } from "$lib/deviceDetection";
   import {
     comparisonSites,
@@ -41,6 +42,11 @@
 
   // City heat distribution for the mobile context strip
   $: cityHeats = $processedTacoData.map((s) => s.heatOverall || 0);
+
+  // Radar scales fit this spot's own values so the polygon fills the plot;
+  // cross-spot comparison happens on /compare, which shares a scale there
+  $: menuRadarMax = radarMax($selectedSite?.topFiveMenuValues);
+  $: proteinRadarMax = radarMax($selectedSite?.topFiveProteinValues);
 
   async function toggleComparison() {
     if (!$selectedSite) return;
@@ -146,7 +152,7 @@
             <RadarChart
               labels={$selectedSite.topFiveMenuItems || []}
               data={$selectedSite.topFiveMenuValues || []}
-              max={$radarScales.menu}
+              max={menuRadarMax}
             />
           </div>
         </CollapsibleSection>
@@ -157,7 +163,7 @@
             <RadarChart
               labels={$selectedSite.topFiveProteinItems || []}
               data={$selectedSite.topFiveProteinValues || []}
-              max={$radarScales.protein}
+              max={proteinRadarMax}
             />
           </div>
           {#if $selectedSite.proteinStyles && Object.keys($selectedSite.proteinStyles).length > 0}
@@ -303,7 +309,7 @@
               <RadarChart
                 labels={$selectedSite.topFiveMenuItems || []}
                 data={$selectedSite.topFiveMenuValues || []}
-                max={$radarScales.menu}
+                max={menuRadarMax}
               />
             </div>
           </div>
@@ -314,7 +320,7 @@
             <RadarChart
               labels={$selectedSite.topFiveProteinItems || []}
               data={$selectedSite.topFiveProteinValues || []}
-              max={$radarScales.protein}
+              max={proteinRadarMax}
             />
           </div>
           {#if $selectedSite.proteinStyles && Object.keys($selectedSite.proteinStyles).length > 0}

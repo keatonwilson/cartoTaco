@@ -2,7 +2,8 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
-  import { processedTacoData, isLoading, summaryStats, radarScales } from '$lib/stores';
+  import { processedTacoData, isLoading, summaryStats } from '$lib/stores';
+  import { radarMax } from '$lib/chartTheme';
   import { isMobile } from '$lib/deviceDetection';
   import RadarChart from '../../components/RadarChart.svelte';
   import SpiceGauge from '../../components/SpiceGauge.svelte';
@@ -68,6 +69,17 @@
     name: site.name,
     values: PROTEIN_AXES.map(p => proteinValueFor(site, p))
   }));
+
+  // One scale across the spots being compared (not the whole city), shared by
+  // the desktop overlays and the mobile per-spot radars alike
+  $: comparedMenuMax = radarMax(
+    ...menuSeries.map(s => s.values),
+    ...sites.map(s => s.topFiveMenuValues || [])
+  );
+  $: comparedProteinMax = radarMax(
+    ...proteinSeries.map(s => s.values),
+    ...sites.map(s => s.topFiveProteinValues || [])
+  );
 
   // Mobile: active card index
   let activeCardIndex = 0;
@@ -184,7 +196,7 @@
               <RadarChart
                 labels={activeSite.topFiveMenuItems || []}
                 data={activeSite.topFiveMenuValues || []}
-                max={$radarScales.menu}
+                max={comparedMenuMax}
               />
             </div>
           </div>
@@ -195,7 +207,7 @@
               <RadarChart
                 labels={activeSite.topFiveProteinItems || []}
                 data={activeSite.topFiveProteinValues || []}
-                max={$radarScales.protein}
+                max={comparedProteinMax}
               />
             </div>
             {#if activeSite.proteinStyles && Object.keys(activeSite.proteinStyles).length > 0}
@@ -262,13 +274,13 @@
       <!-- Row: Menu radar — one overlay, shared axes, one series per spot -->
       <div class="row-label">Menu</div>
       <div class="chart-cell overlay-cell" style="grid-column: 2 / -1;">
-        <RadarChart labels={menuAxes} seriesList={menuSeries} max={$radarScales.menu} />
+        <RadarChart labels={menuAxes} seriesList={menuSeries} max={comparedMenuMax} />
       </div>
 
       <!-- Row: Protein radar — fixed 5 axes so shapes compare honestly -->
       <div class="row-label">Protein</div>
       <div class="chart-cell overlay-cell" style="grid-column: 2 / -1;">
-        <RadarChart labels={PROTEIN_AXES.map(capitalize)} seriesList={proteinSeries} max={$radarScales.protein} />
+        <RadarChart labels={PROTEIN_AXES.map(capitalize)} seriesList={proteinSeries} max={comparedProteinMax} />
         <div class="overlay-styles">
           {#each sites as site}
             {#if site.proteinStyles && Object.keys(site.proteinStyles).length > 0}

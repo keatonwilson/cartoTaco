@@ -104,6 +104,23 @@ export function withAlpha(hex, alpha) {
 	return `rgba(${r},${g},${b},${alpha})`;
 }
 
+/**
+ * Radar axis max for a chart: the largest value across the series shown on
+ * that chart, rounded up to the next 10 (with a nudge so a round max doesn't
+ * pin the polygon to the outer ring). Scale per chart — a spot's card fills
+ * its plot; overlaid/compared series share one honest scale.
+ */
+export function radarMax(...valueLists) {
+	let max = 0;
+	for (const list of valueLists) {
+		for (const v of list || []) {
+			const n = Number(v);
+			if (!isNaN(n) && n > max) max = n;
+		}
+	}
+	return Math.max(10, Math.ceil((max + 1) / 10) * 10);
+}
+
 /** Five-point star symbol path for ECharts (centroid markers etc.). */
 export const STAR_PATH =
 	'path://M50 5 L61.8 38.2 L97.5 38.2 L68.7 59.5 L79.4 93.5 L50 72.5 L20.6 93.5 L31.3 59.5 L2.5 38.2 L38.2 38.2 Z';
