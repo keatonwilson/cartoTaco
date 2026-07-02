@@ -305,7 +305,8 @@
     align-items: start;
   }
 
-  .success-icon {
+  /* Class lands on the icon component's <svg>, outside Svelte's scoping */
+  .success-message :global(.success-icon) {
     flex-shrink: 0;
     color: #059669;
   }

@@ -294,11 +294,41 @@
 
   // Chart height scales with number of spots
   $: chartHeight = Math.max(180, sites.length * 52);
+
+  // ─── Winner confetti (locked results only, once, reduced-motion aware) ────
+  let winnerCardEl;
+  let confettiFired = false;
+
+  function fireConfetti() {
+    if (confettiFired || typeof window === 'undefined' || !winnerCardEl) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    confettiFired = true;
+
+    const colors = ['#FE795D', '#2A9D8F', '#E9A03B', '#6366F1', '#FFD5CC'];
+    const host = document.createElement('div');
+    host.className = 'confetti-host';
+    winnerCardEl.appendChild(host);
+
+    for (let i = 0; i < 36; i++) {
+      const p = document.createElement('span');
+      p.className = 'confetti-piece';
+      p.style.left = 50 + (Math.random() * 60 - 30) + '%';
+      p.style.background = colors[i % colors.length];
+      p.style.setProperty('--dx', Math.random() * 260 - 130 + 'px');
+      p.style.setProperty('--dy', -(90 + Math.random() * 170) + 'px');
+      p.style.setProperty('--rot', Math.random() * 720 - 360 + 'deg');
+      p.style.animationDelay = Math.random() * 0.15 + 's';
+      host.appendChild(p);
+    }
+    setTimeout(() => host.remove(), 2400);
+  }
+
+  $: if (locked && chartData && winnerCardEl) fireConfetti();
 </script>
 
 {#if chartData}
   <!-- Winner callout -->
-  <div class="winner-card" class:locked>
+  <div class="winner-card" class:locked bind:this={winnerCardEl}>
     <span class="trophy" aria-hidden="true">{#if locked}<Trophy size={28} weight="duotone" />{:else}<ChartBar size={28} weight="duotone" />{/if}</span>
     <div class="winner-body">
       <div class="winner-label">{locked ? 'Summit Winner!' : 'Current Leader'}</div>
@@ -340,6 +370,7 @@
 
 <style>
   .winner-card {
+    position: relative;
     display: flex;
     align-items: flex-start;
     gap: 0.875rem;
@@ -348,6 +379,36 @@
     background: rgba(254, 121, 93, 0.07);
     border-radius: 0 0.5rem 0.5rem 0;
     margin-bottom: 1.25rem;
+  }
+
+  /* Winner confetti burst */
+  .winner-card :global(.confetti-host) {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: visible;
+    z-index: 5;
+  }
+
+  .winner-card :global(.confetti-piece) {
+    position: absolute;
+    top: 45%;
+    width: 7px;
+    height: 11px;
+    border-radius: 2px;
+    opacity: 0;
+    animation: confetti-pop 1.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes confetti-pop {
+    0% {
+      opacity: 1;
+      transform: translate(0, 0) rotate(0deg);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(var(--dx), var(--dy)) rotate(var(--rot));
+    }
   }
 
   .winner-card.locked {

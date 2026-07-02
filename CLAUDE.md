@@ -242,7 +242,8 @@ Located in src/lib/dataWrangling.js:
 - `DirectionsButton.svelte` - Opens Google Maps directions to an establishment
 - `FavoriteButton.svelte` - Heart button for toggling favorites (requires auth)
 - `FilterBar.svelte` - Search and filter controls: toggle chips with live city-composition counts (proteins, types, Open Now), dual-thumb spice range slider, and a removable active-filters chip row visible even when the panel is collapsed
-- `Header.svelte` - Main application header with auth state and navigation
+- `Header.svelte` - Main application header; authenticated desktop nav consolidates account actions (Submit/Favorites/Profile/Sign Out) into a user dropdown menu
+- `LoadingState.svelte` - Shared loading indicator (bobbing taco + pulsing dots + message), reduced-motion aware; used by Map, census, and compare
 - `HoursInput.svelte` - Input component for hours data (used in submission form)
 - `HoursOpen.svelte` - Week Rhythm strip: 7 day pills with mini open-span bars on a shared 24h scale, today ring, calm open/closed status dot; overnight hours wrap
 - `IconHighlight.svelte` - Icon-based feature highlights

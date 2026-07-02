@@ -19,6 +19,7 @@
 	import { mapLens } from '../lib/mapLensStore.js';
 	import FilterBar from '../components/FilterBar.svelte';
 	import MapLensPicker from '../components/MapLensPicker.svelte';
+	import LoadingState from '../components/LoadingState.svelte';
 	import TrailTray from '../components/TrailTray.svelte';
 	import ComparisonTray from '../components/ComparisonTray.svelte';
 	import { comparisonActive, addToComparison } from '../lib/comparisonStore.js';
@@ -300,8 +301,7 @@
 
 	{#if $isLoading}
 		<div class="loading-container">
-			<div class="loading-spinner"></div>
-			<p>Loading taco data...</p>
+			<LoadingState message="Mapping Tucson's tacos…" />
 		</div>
 	{/if}
 
@@ -481,21 +481,6 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     text-align: center;
     z-index: 10;
-  }
-  
-  .loading-spinner {
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #3498db;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 16px auto;
-  }
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
   }
   
   .retry-button {

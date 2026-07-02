@@ -8,6 +8,8 @@
 	import Question from 'phosphor-svelte/lib/Question';
 	import Ranking from 'phosphor-svelte/lib/Ranking';
 	import ChartBar from 'phosphor-svelte/lib/ChartBar';
+	import CaretDown from 'phosphor-svelte/lib/CaretDown';
+	import { fly } from 'svelte/transition';
 	import ThemeToggle from './ThemeToggle.svelte';
 	import NewSpotsBadge from './NewSpotsBadge.svelte';
 	import { startTour } from '$lib/tourStore.js';
@@ -35,7 +37,34 @@
     closeMobileMenu();
     goto(path);
   }
+
+  // Desktop user menu
+  let userMenuOpen = false;
+  let userMenuEl;
+
+  function toggleUserMenu() {
+    userMenuOpen = !userMenuOpen;
+  }
+
+  function handleMenuNavigation(path) {
+    userMenuOpen = false;
+    goto(path);
+  }
+
+  async function handleMenuSignOut() {
+    userMenuOpen = false;
+    await signOut();
+    goto('/');
+  }
+
+  function handleWindowClick(event) {
+    if (userMenuOpen && userMenuEl && !userMenuEl.contains(event.target)) {
+      userMenuOpen = false;
+    }
+  }
 </script>
+
+<svelte:window on:click={handleWindowClick} />
 
 <header class="header">
   <div class="header-container">
@@ -74,36 +103,38 @@
       </button>
 
       {#if $isAuthenticated}
-        <div class="user-info">
-          {#if browser}
-            <UserCircle size={20} class="user-icon" />
+        <!-- User menu: consolidates account actions behind one control -->
+        <div class="user-menu-wrapper" bind:this={userMenuEl}>
+          <button
+            class="user-menu-button"
+            on:click={toggleUserMenu}
+            aria-expanded={userMenuOpen}
+            aria-haspopup="menu"
+          >
+            {#if browser}
+              <UserCircle size={22} weight="duotone" class="user-icon" />
+            {/if}
+            <span class="user-name">{$currentUser?.email?.split('@')[0]}</span>
+            {#if browser}<CaretDown size={12} />{/if}
+          </button>
+          {#if userMenuOpen}
+            <div class="user-dropdown" role="menu" transition:fly={{ y: -6, duration: 150 }}>
+              <button role="menuitem" on:click={() => handleMenuNavigation('/submit')}>
+                Submit Location
+              </button>
+              <button role="menuitem" on:click={() => handleMenuNavigation('/favorites')}>
+                Favorites
+              </button>
+              <button role="menuitem" on:click={() => handleMenuNavigation('/profile')}>
+                Profile
+              </button>
+              <div class="dropdown-divider"></div>
+              <button role="menuitem" class="dropdown-signout" on:click={handleMenuSignOut}>
+                Sign Out
+              </button>
+            </div>
           {/if}
-          <span class="user-email">{$currentUser?.email}</span>
         </div>
-        <button
-          class="nav-link"
-          on:click={() => handleNavigation('/submit')}
-        >
-          Submit Location
-        </button>
-        <button
-          class="nav-link"
-          on:click={() => handleNavigation('/favorites')}
-        >
-          Favorites
-        </button>
-        <button
-          class="nav-link"
-          on:click={() => handleNavigation('/profile')}
-        >
-          Profile
-        </button>
-        <button
-          class="nav-link sign-out"
-          on:click={handleSignOut}
-        >
-          Sign Out
-        </button>
       {:else}
         <button
           class="nav-link"
@@ -288,21 +319,92 @@
     }
   }
 
-  .user-info {
+  /* Desktop user menu */
+  .user-menu-wrapper {
+    position: relative;
+  }
+
+  .user-menu-button {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    color: #374151;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--line-1);
+    border-radius: 999px;
+    background: var(--surface-1);
+    color: var(--ink-1);
     font-size: 0.875rem;
-    margin-right: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
   }
 
-  :global(.dark) .user-info {
-    color: #d1d5db;
+  .user-menu-button:hover {
+    border-color: var(--accent);
   }
 
-  .user-info :global(.user-icon) {
+  .user-menu-button :global(.user-icon) {
     color: var(--accent);
+  }
+
+  .user-name {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .user-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 185px;
+    background: var(--surface-1);
+    border: 1px solid var(--line-1);
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    z-index: 10000;
+  }
+
+  :global(.dark) .user-dropdown {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  }
+
+  .user-dropdown button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ink-1);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .user-dropdown button:hover {
+    background: var(--surface-3);
+    color: var(--accent);
+  }
+
+  .dropdown-divider {
+    height: 1px;
+    background: var(--line-1);
+    margin: 4px 6px;
+  }
+
+  .dropdown-signout {
+    color: var(--error) !important;
+  }
+
+  .dropdown-signout:hover {
+    background: rgba(239, 68, 68, 0.08) !important;
+    color: var(--error) !important;
   }
 
   .user-email {
@@ -420,16 +522,6 @@
     left: 0;
     color: #FE795D;
     font-weight: bold;
-  }
-
-  .nav-link.sign-out {
-    border-color: #DC2626;
-    color: #DC2626;
-  }
-
-  .nav-link.sign-out:hover {
-    background: #DC2626;
-    color: white;
   }
 
   .nav-link.summit-link {

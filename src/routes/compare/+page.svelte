@@ -10,6 +10,7 @@
   import HoursOpen from '../../components/HoursOpen.svelte';
   import IconHighlight from '../../components/IconHighlight.svelte';
   import SpecCarousel from '../../components/SpecCarousel.svelte';
+  import LoadingState from '../../components/LoadingState.svelte';
 
   // Parse IDs from URL
   $: ids = ($page.url.searchParams.get('ids') || '').split(',').map(Number).filter(Boolean);
@@ -95,7 +96,7 @@
   </div>
 
   {#if $isLoading || !browser}
-    <div class="status-message">Loading data...</div>
+    <LoadingState message="Lining up the contenders…" />
   {:else if sites.length < 2}
     <div class="status-message">
       <p>Select 2–3 spots from the map to compare them.</p>

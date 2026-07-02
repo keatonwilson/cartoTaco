@@ -10,9 +10,28 @@
   import { accent, SEQUENTIAL, chartInk, tooltipStyle, baseTextStyle } from '$lib/chartTheme';
   import { toast } from '$lib/toastStore';
   import ShareNetwork from 'phosphor-svelte/lib/ShareNetwork';
+  import LoadingState from '../../components/LoadingState.svelte';
+  import { tweened } from 'svelte/motion';
+  import { cubicOut } from 'svelte/easing';
 
   $: isDark = $effectiveTheme === 'dark';
   $: stats = $censusStats;
+
+  // Hero numbers count up on load (skipped for reduced-motion users)
+  const reduceMotion =
+    browser && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const tweenOpts = { duration: reduceMotion ? 0 : 900, easing: cubicOut };
+  const spotsTween = tweened(0, tweenOpts);
+  const openTween = tweened(0, tweenOpts);
+  const heatTween = tweened(0, tweenOpts);
+  const salsasTween = tweened(0, tweenOpts);
+
+  $: if (stats) {
+    spotsTween.set(stats.totalSpots);
+    openTween.set(stats.openNow);
+    heatTween.set(stats.avgHeat);
+    salsasTween.set(stats.totalSalsas);
+  }
 
   function label(item) {
     return item.charAt(0).toUpperCase() + item.slice(1);
@@ -256,7 +275,7 @@
   </div>
 
   {#if $isLoading || !browser}
-    <div class="status-message">Counting tacos…</div>
+    <LoadingState message="Counting Tucson's tacos…" />
   {:else if !stats}
     <div class="status-message">No census data available.</div>
   {:else}
@@ -268,19 +287,19 @@
     <!-- Hero stat tiles -->
     <div class="hero-tiles">
       <div class="tile">
-        <span class="tile-number stat-number">{stats.totalSpots}</span>
+        <span class="tile-number stat-number">{Math.round($spotsTween)}</span>
         <span class="tile-label">spots on the map</span>
       </div>
       <div class="tile">
-        <span class="tile-number stat-number">{stats.openNow}</span>
+        <span class="tile-number stat-number">{Math.round($openTween)}</span>
         <span class="tile-label">open right now</span>
       </div>
       <div class="tile">
-        <span class="tile-number stat-number">{stats.avgHeat.toFixed(1)}</span>
+        <span class="tile-number stat-number">{$heatTween.toFixed(1)}</span>
         <span class="tile-label">avg heat / 10</span>
       </div>
       <div class="tile">
-        <span class="tile-number stat-number">{stats.totalSalsas}</span>
+        <span class="tile-number stat-number">{Math.round($salsasTween)}</span>
         <span class="tile-label">salsas citywide</span>
       </div>
       {#if stats.newest}

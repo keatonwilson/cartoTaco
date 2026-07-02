@@ -9,6 +9,7 @@
   import X from 'phosphor-svelte/lib/X';
   import MagicWand from 'phosphor-svelte/lib/MagicWand';
   import { browser } from '$app/environment';
+  import { scale } from 'svelte/transition';
   import { trailModeActive, enterTrailMode, exitTrailMode } from '../lib/trailStore.js';
   import { tourExpandFilters } from '$lib/tourStore.js';
   import { filterPanelOpen } from '$lib/uiStore.js';
@@ -289,7 +290,12 @@
   {#if activeChips.length > 0}
     <div class="active-chips-row">
       {#each activeChips as chip (chip.id)}
-        <button class="active-chip" on:click={chip.remove} title="Remove filter">
+        <button
+          class="active-chip"
+          transition:scale|local={{ duration: 140, start: 0.85 }}
+          on:click={chip.remove}
+          title="Remove filter"
+        >
           {chip.label}
           <X size={11} weight="bold" />
         </button>
