@@ -11,6 +11,8 @@
   import IconHighlight from '../../components/IconHighlight.svelte';
   import SpecCarousel from '../../components/SpecCarousel.svelte';
   import LoadingState from '../../components/LoadingState.svelte';
+  import EmptyState from '../../components/EmptyState.svelte';
+  import VibeFingerprint from '../../components/VibeFingerprint.svelte';
 
   // Parse IDs from URL
   $: ids = ($page.url.searchParams.get('ids') || '').split(',').map(Number).filter(Boolean);
@@ -71,6 +73,36 @@
   let activeCardIndex = 0;
   $: activeSite = sites[activeCardIndex] || null;
 
+  // "At a glance" verdicts: leader per metric with its margin over second place
+  function menuBreadth(site) {
+    return Object.entries(site.rawData?.menu || {}).filter(
+      ([k, v]) => k.endsWith('_yes') && v === true
+    ).length;
+  }
+
+  $: verdicts = sites.length >= 2
+    ? [
+        { label: 'Spiciest', accessor: (s) => s.heatOverall || 0, unit: '/10' },
+        { label: 'Most salsas', accessor: (s) => s.salsaCount || 0, unit: ' salsas' },
+        { label: 'Biggest menu', accessor: (s) => menuBreadth(s), unit: ' items' }
+      ]
+        .map(({ label, accessor, unit }) => {
+          const ranked = [...sites].sort((a, b) => accessor(b) - accessor(a));
+          const lead = accessor(ranked[0]);
+          if (lead === 0) return null;
+          const second = accessor(ranked[1]);
+          const tie = lead === second;
+          const margin = Math.round((lead - second) * 10) / 10;
+          return {
+            label,
+            name: tie ? 'Tie' : ranked[0].name,
+            value: `${lead}${unit}`,
+            margin: tie ? null : `+${margin}`
+          };
+        })
+        .filter(Boolean)
+    : [];
+
   let copied = false;
   async function shareComparison() {
     try {
@@ -84,38 +116,60 @@
 </script>
 
 <div class="comparison-page">
-  <!-- Header -->
-  <div class="page-header">
-    <button class="back-btn" on:click={() => goto('/')}>
-      &larr; Back to Map
-    </button>
-    <h1 class="page-title">Spot Comparison</h1>
-    <button class="share-btn" on:click={shareComparison} disabled={sites.length < 2}>
-      {copied ? 'Copied!' : 'Share'}
-    </button>
+  <!-- Sticky command bar: page actions (+ spot tabs on mobile) stay reachable
+       at any scroll depth -->
+  <div class="sticky-zone">
+    <div class="page-header">
+      <button class="back-btn" on:click={() => goto('/')}>
+        &larr; Back to Map
+      </button>
+      <h1 class="page-title">Spot Comparison</h1>
+      <button class="share-btn" on:click={shareComparison} disabled={sites.length < 2}>
+        {copied ? 'Copied!' : 'Share'}
+      </button>
+    </div>
+    {#if browser && !$isLoading && $isMobile && sites.length >= 2}
+      <div class="mobile-tabs">
+        {#each sites as site, i}
+          <button
+            class="mobile-tab"
+            class:tab-active={activeCardIndex === i}
+            on:click={() => { activeCardIndex = i; }}
+          >
+            {site.name}
+          </button>
+        {/each}
+      </div>
+    {/if}
   </div>
 
   {#if $isLoading || !browser}
     <LoadingState message="Lining up the contenders…" />
   {:else if sites.length < 2}
-    <div class="status-message">
-      <p>Select 2–3 spots from the map to compare them.</p>
-      <button class="back-link" on:click={() => goto('/')}>Go to Map</button>
-    </div>
-  {:else if $isMobile}
-    <!-- MOBILE: tab navigation -->
-    <div class="mobile-tabs">
-      {#each sites as site, i}
-        <button
-          class="mobile-tab"
-          class:tab-active={activeCardIndex === i}
-          on:click={() => { activeCardIndex = i; }}
-        >
-          {site.name}
-        </button>
-      {/each}
-    </div>
+    <EmptyState
+      emoji="⚖️"
+      title="Nothing to compare yet"
+      message="Pick 2–3 spots from the map with the + Compare button and they'll face off here."
+      ctaLabel="Go to Map"
+      onCta={() => goto('/')}
+    />
+  {:else}
+    <!-- At a glance: the verdict before any scrolling -->
+    {#if verdicts.length > 0}
+      <div class="verdict-strip">
+        {#each verdicts as v}
+          <div class="verdict">
+            <span class="verdict-label">{v.label}</span>
+            <span class="verdict-name">{v.name}</span>
+            <span class="verdict-value">
+              {v.value}{#if v.margin}&nbsp;<em>({v.margin})</em>{/if}
+            </span>
+          </div>
+        {/each}
+      </div>
+    {/if}
 
+    {#if $isMobile}
     {#if activeSite}
       <div class="mobile-card">
         {#key activeCardIndex}
@@ -191,9 +245,11 @@
       </div>
     {/if}
   {:else}
-    <!-- DESKTOP: side-by-side grid -->
-    <div class="comparison-grid" style="grid-template-columns: 130px repeat({sites.length}, 1fr);">
-      <!-- Row: Spot names -->
+    <!-- DESKTOP: sticky spot-name header row + side-by-side grid.
+         The header lives in its own grid: sticky can't work on items inside
+         .comparison-grid (its overflow:hidden makes a clipping box, and grid
+         items can only stick within their own row track anyway). -->
+    <div class="comparison-head" style="grid-template-columns: 130px repeat({sites.length}, 1fr);">
       <div class="row-label">Spot</div>
       {#each sites as site}
         <div class="col-header">
@@ -201,7 +257,8 @@
           <IconHighlight type="siteType" data={site.type || 'unknown'} />
         </div>
       {/each}
-
+    </div>
+    <div class="comparison-grid" style="grid-template-columns: 130px repeat({sites.length}, 1fr);">
       <!-- Row: Menu radar — one overlay, shared axes, one series per spot -->
       <div class="row-label">Menu</div>
       <div class="chart-cell overlay-cell" style="grid-column: 2 / -1;">
@@ -250,6 +307,14 @@
         </div>
       {/each}
 
+      <!-- Row: Vibe fingerprint (anti-review aggregate) -->
+      <div class="row-label">Vibes</div>
+      {#each sites as site}
+        <div class="stat-cell">
+          <VibeFingerprint estId={site.est_id} showEmpty={true} />
+        </div>
+      {/each}
+
       <!-- Row: Hours -->
       <div class="row-label">Hours</div>
       {#each sites as site}
@@ -272,6 +337,7 @@
         </div>
       {/each}
     </div>
+    {/if}
   {/if}
 </div>
 
@@ -284,7 +350,9 @@
     padding: 1rem;
     padding-top: 80px;
     min-height: 100vh;
-    overflow-x: hidden;
+    /* clip, not hidden: hidden creates a scrollport that breaks
+       position: sticky for every descendant */
+    overflow-x: clip;
   }
 
   @media (max-width: 640px) {
@@ -315,11 +383,81 @@
   }
 
   /* Header */
+  /* Sticky command bar: pins below the app header (~64px) so page actions
+     and the mobile spot tabs stay reachable at any scroll depth */
+  .sticky-zone {
+    position: sticky;
+    top: 81px; /* app header height */
+    z-index: 60;
+    background: var(--surface-1);
+    margin: 0 -1rem 1rem;
+    padding: 4px 1rem 8px;
+    border-bottom: 1px solid var(--line-1);
+  }
+
+  :global(.dark) .sticky-zone {
+    background: var(--surface-3);
+  }
+
   .page-header {
     display: flex;
     align-items: center;
     gap: 1rem;
-    margin-bottom: 1.5rem;
+  }
+
+  /* At-a-glance verdicts */
+  .verdict-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 1rem;
+  }
+
+  .verdict {
+    flex: 1;
+    min-width: 150px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 10px 14px;
+    border: 1px solid var(--line-1);
+    border-radius: 10px;
+    background: var(--surface-2);
+  }
+
+  .verdict-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--ink-3);
+  }
+
+  .verdict-name {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink-1);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .verdict-value {
+    font-size: 12px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent-hover);
+  }
+
+  :global(.dark) .verdict-value {
+    color: var(--accent);
+  }
+
+  .verdict-value em {
+    font-style: normal;
+    color: var(--ink-3);
+    font-weight: 500;
   }
 
   .page-title {
@@ -379,42 +517,29 @@
     cursor: not-allowed;
   }
 
-  .status-message {
-    text-align: center;
-    padding: 4rem 2rem;
-    color: #6b7280;
-    font-size: 1rem;
-  }
-
-  :global(.dark) .status-message {
-    color: #9ca3af;
-  }
-
-  .back-link {
-    margin-top: 1rem;
-    padding: 10px 24px;
-    border: none;
-    border-radius: 8px;
-    background: #FE795D;
-    color: white;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    display: block;
-    width: fit-content;
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  .back-link:hover {
-    background: #e55a3c;
-  }
-
   /* ===== DESKTOP GRID ===== */
+  /* Sticky spot-name header: its own grid so it can pin below the command bar */
+  .comparison-head {
+    display: grid;
+    position: sticky;
+    top: 133px; /* app header + command bar */
+    z-index: 45;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px 12px 0 0;
+    overflow: hidden;
+    background: white;
+  }
+
+  :global(.dark) .comparison-head {
+    border-color: #374151;
+    background: #111827;
+  }
+
   .comparison-grid {
     display: grid;
     border: 1px solid #e5e7eb;
-    border-radius: 12px;
+    border-top: none;
+    border-radius: 0 0 12px 12px;
     overflow: hidden;
     background: white;
   }
@@ -454,6 +579,14 @@
     align-items: center;
     gap: 8px;
     background: #f9fafb;
+  }
+
+  .comparison-head .col-header {
+    border-bottom: none;
+  }
+
+  .comparison-head .row-label {
+    border-bottom: none;
   }
 
   .col-header:last-child {
@@ -643,7 +776,7 @@
   .mobile-tabs {
     display: flex;
     gap: 4px;
-    margin-bottom: 1rem;
+    margin-top: 8px;
     width: 100%;
   }
 

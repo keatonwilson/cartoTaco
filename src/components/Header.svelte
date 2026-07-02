@@ -1,5 +1,6 @@
 <script>
 	import { isAuthenticated, currentUser, signOut } from '$lib/authStore';
+	import { getOwnProfile } from '$lib/profiles';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import List from 'phosphor-svelte/lib/List';
@@ -41,6 +42,32 @@
   // Desktop user menu
   let userMenuOpen = false;
   let userMenuEl;
+
+  // Profile identity for the menu button (username + avatar); falls back to
+  // the email local-part and a generic icon until the profile loads
+  let profileName = null;
+  let profileAvatarUrl = null;
+
+  async function loadProfileIdentity() {
+    try {
+      const result = await getOwnProfile();
+      if (result.success && result.data) {
+        profileName = result.data.username || result.data.display_name || null;
+        profileAvatarUrl = result.data.avatar_url || null;
+      }
+    } catch {
+      // fall back to email local-part
+    }
+  }
+
+  $: if ($isAuthenticated) {
+    loadProfileIdentity();
+  } else {
+    profileName = null;
+    profileAvatarUrl = null;
+  }
+
+  $: menuDisplayName = profileName || $currentUser?.email?.split('@')[0] || 'Account';
 
   function toggleUserMenu() {
     userMenuOpen = !userMenuOpen;
@@ -111,10 +138,12 @@
             aria-expanded={userMenuOpen}
             aria-haspopup="menu"
           >
-            {#if browser}
+            {#if profileAvatarUrl}
+              <img class="user-avatar" src={profileAvatarUrl} alt="" />
+            {:else if browser}
               <UserCircle size={22} weight="duotone" class="user-icon" />
             {/if}
-            <span class="user-name">{$currentUser?.email?.split('@')[0]}</span>
+            <span class="user-name">{menuDisplayName}</span>
             {#if browser}<CaretDown size={12} />{/if}
           </button>
           {#if userMenuOpen}
@@ -345,6 +374,14 @@
 
   .user-menu-button :global(.user-icon) {
     color: var(--accent);
+  }
+
+  .user-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
   }
 
   .user-name {

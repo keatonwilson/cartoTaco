@@ -11,9 +11,11 @@
   import CollapsibleSection from "./CollapsibleSection.svelte";
   import FavoriteButton from "./FavoriteButton.svelte";
   import VibeVotes from "./VibeVotes.svelte";
+  import VibeFingerprint from "./VibeFingerprint.svelte";
   import HandmadeBadge from "./HandmadeBadge.svelte";
   import SalsaLineup from "./SalsaLineup.svelte";
-  import { selectedSite, summaryStats, distributionStats, radarScales } from "$lib/stores";
+  import ContextStrip from "./ContextStrip.svelte";
+  import { selectedSite, summaryStats, distributionStats, radarScales, processedTacoData } from "$lib/stores";
   import { isMobile } from "$lib/deviceDetection";
   import {
     comparisonSites,
@@ -29,10 +31,16 @@
   $: isInComparison = $comparisonSites.some(s => s.est_id === $selectedSite?.est_id);
   $: comparisonFull = $comparisonCount >= 3 && !isInComparison;
 
-  // City-percentile context for the heat ladder
+  // City-percentile context for the heat ladder and salsa bullet
   $: heatPercentile = $selectedSite
     ? $distributionStats.get($selectedSite.est_id)?.heatPercentile ?? null
     : null;
+  $: salsaPercentile = $selectedSite
+    ? $distributionStats.get($selectedSite.est_id)?.salsaPercentile ?? null
+    : null;
+
+  // City heat distribution for the mobile context strip
+  $: cityHeats = $processedTacoData.map((s) => s.heatOverall || 0);
 
   async function toggleComparison() {
     if (!$selectedSite) return;
@@ -129,6 +137,9 @@
           <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Vibe Check</h2>
           <p class="vibe-subtitle">Tap any chip to vote on what this spot does well. Your vote, plus everyone else's, builds a vibe fingerprint — no stars, no essays.</p>
           <VibeVotes estId={$selectedSite.est_id} />
+          <div class="vibe-fingerprint-wrap">
+            <VibeFingerprint estId={$selectedSite.est_id} />
+          </div>
         </div>
         <CollapsibleSection title="Menu Summary" defaultOpen={false}>
           <div class="radar-chart-container">
@@ -169,6 +180,13 @@
           <div class="right-box">
             <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1" id="spicy-label">Spiciness</h2>
             <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} percentile={heatPercentile} />
+            <ContextStrip
+              values={cityHeats}
+              value={$selectedSite.heatOverall || 0}
+              min={0}
+              max={10}
+              label="Every Tucson spot's heat — this one highlighted"
+            />
             <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Tortilla Type</h2>
             <div class="tortilla-row">
               <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
@@ -182,6 +200,7 @@
               value={$selectedSite.salsaCount || 0}
               meanValue={$summaryStats.avgSalsaNum || 0}
               maxValue={$summaryStats.maxSalsaNum || 0}
+              percentile={salsaPercentile}
             />
           </div>
           <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Salsa Lineup</h2>
@@ -266,10 +285,11 @@
         </div>
       </div>
 
-      <!-- Row 4: Vibe votes (anti-review), centered -->
+      <!-- Row 4: Vibe votes (anti-review) + aggregate fingerprint, centered -->
       <div class="desktop-vibe-row">
         <span class="desktop-vibe-label">Vibe Check:</span>
         <VibeVotes estId={$selectedSite.est_id} compact={true} />
+        <VibeFingerprint estId={$selectedSite.est_id} />
       </div>
 
       <!-- Row 5: Two radar charts side by side. Protein prep styles sit
@@ -331,6 +351,7 @@
             value={$selectedSite.salsaCount || 0}
             meanValue={$summaryStats.avgSalsaNum || 0}
             maxValue={$summaryStats.maxSalsaNum || 0}
+            percentile={salsaPercentile}
           />
         </div>
       </div>
@@ -564,6 +585,10 @@
     line-height: 1.35;
     color: #6b7280;
     margin: 0 0 6px 0;
+  }
+
+  .vibe-fingerprint-wrap {
+    margin-top: 6px;
   }
 
   :global(.dark) .vibe-subtitle {
@@ -808,7 +833,7 @@
   }
 
   .desktop-salsa-item :global(.salsa-explanation) {
-    display: none;
+    font-size: 9px;
   }
 
   /* Row 7: Specialties */

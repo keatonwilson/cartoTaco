@@ -56,6 +56,54 @@ export const resetListeners = (map) => {
   clearTrailLayers(map);
 };
 
+/**
+ * Register the establishment-type glyphs as map images (U3). Drawn on an
+ * offscreen canvas — no sprite files needed. White marks sit on the coral
+ * marker circle. Re-run after style switches (setStyle clears images).
+ */
+function ensureTypeGlyphs(map) {
+  if (typeof document === 'undefined') return;
+
+  const GLYPHS = {
+    'glyph-restaurant': (ctx) => {
+      // Storefront: awning + body with a door notch
+      ctx.fillRect(5, 9, 22, 5);
+      ctx.fillRect(7, 16, 18, 11);
+      ctx.clearRect(13, 20, 6, 7);
+    },
+    'glyph-stand': (ctx) => {
+      // Market stand: tent roof + pole
+      ctx.beginPath();
+      ctx.moveTo(16, 6);
+      ctx.lineTo(28, 18);
+      ctx.lineTo(4, 18);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillRect(14.5, 18, 3, 9);
+    },
+    'glyph-truck': (ctx) => {
+      // Food truck: box + cab + wheels
+      ctx.fillRect(4, 10, 15, 12);
+      ctx.fillRect(19, 14, 8, 8);
+      ctx.beginPath();
+      ctx.arc(10, 24, 3, 0, Math.PI * 2);
+      ctx.arc(22, 24, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+
+  for (const [name, draw] of Object.entries(GLYPHS)) {
+    if (map.hasImage && map.hasImage(name)) continue;
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    draw(ctx);
+    map.addImage(name, ctx.getImageData(0, 0, 32, 32), { pixelRatio: 2 });
+  }
+}
+
 // Convert processed sites to GeoJSON format
 function sitesToGeoJSON(processedSites) {
   return {
@@ -174,6 +222,9 @@ export const updateMarkers = (processedSites, map) => {
     }
   });
 
+  // Register type glyph images (idempotent; re-adds after style switches)
+  ensureTypeGlyphs(map);
+
   // Add unclustered points layer with hover effects
   map.addLayer({
     id: 'unclustered-point',
@@ -202,6 +253,27 @@ export const updateMarkers = (processedSites, map) => {
         0.9  // Slightly transparent by default
       ],
       'circle-stroke-opacity': 1
+    }
+  });
+
+  // Type glyph on top of each marker circle (restaurant / stand / truck)
+  map.addLayer({
+    id: 'unclustered-point-glyph',
+    type: 'symbol',
+    source: 'taco-sites',
+    filter: ['!', ['has', 'point_count']],
+    layout: {
+      'icon-image': [
+        'match',
+        ['get', 'type'],
+        'Brick and Mortar', 'glyph-restaurant',
+        'Stand', 'glyph-stand',
+        'Truck', 'glyph-truck',
+        'glyph-restaurant'
+      ],
+      'icon-size': 0.85,
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true
     }
   });
 
@@ -441,7 +513,13 @@ export const updateMarkers = (processedSites, map) => {
 };
 
 // Layer groups toggled by the lenses
-const SPOTS_LAYERS = ['clusters', 'cluster-count', 'unclustered-point', 'unclustered-point-label'];
+const SPOTS_LAYERS = [
+  'clusters',
+  'cluster-count',
+  'unclustered-point',
+  'unclustered-point-glyph',
+  'unclustered-point-label'
+];
 const LENS_POINT_LAYERS = ['lens-points', 'lens-points-label'];
 
 /**

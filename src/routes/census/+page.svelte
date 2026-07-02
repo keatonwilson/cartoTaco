@@ -11,6 +11,7 @@
   import { toast } from '$lib/toastStore';
   import ShareNetwork from 'phosphor-svelte/lib/ShareNetwork';
   import LoadingState from '../../components/LoadingState.svelte';
+  import EmptyState from '../../components/EmptyState.svelte';
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
 
@@ -277,7 +278,11 @@
   {#if $isLoading || !browser}
     <LoadingState message="Counting Tucson's tacos…" />
   {:else if !stats}
-    <div class="status-message">No census data available.</div>
+    <EmptyState
+      emoji="📉"
+      title="No census data yet"
+      message="The count starts as soon as the map data loads. Check back in a moment."
+    />
   {:else}
     <p class="census-intro">
       Everything we know about tacos in Tucson, in one page — computed live from
@@ -400,8 +405,9 @@
     max-width: 920px;
     margin: 0 auto;
     padding: 84px 16px 40px;
-    /* Defense in depth: never let an overflowing child pan the whole page */
-    overflow-x: hidden;
+    /* Defense in depth: never let an overflowing child pan the whole page.
+       clip, not hidden — hidden would break position: sticky descendants */
+    overflow-x: clip;
   }
 
   .census-section,
@@ -452,12 +458,6 @@
     font-size: 13px;
     color: var(--ink-2);
     margin: 0 0 18px;
-  }
-
-  .status-message {
-    text-align: center;
-    color: var(--ink-2);
-    padding: 3rem 0;
   }
 
   /* Hero tiles */

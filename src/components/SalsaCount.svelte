@@ -7,6 +7,8 @@
     export let value;
     export let meanValue;
     export let maxValue;
+    /** 0–100 share of spots this one has more salsas than; null keeps the generic line */
+    export let percentile = null;
 
     let container;
     let chart;
@@ -107,7 +109,11 @@
       <span class="stat-item">Max: <strong>{maxValue}</strong></span>
     </div>
     <div class="salsa-explanation">
-      Number of different salsas available at this location
+      {#if percentile !== null}
+        More salsa variety than {percentile}% of Tucson spots
+      {:else}
+        Number of different salsas available at this location
+      {/if}
     </div>
   </div>
 
