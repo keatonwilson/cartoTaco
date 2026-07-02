@@ -250,7 +250,7 @@ Located in src/lib/dataWrangling.js:
 - `MapStylePicker.svelte` - Switches between Mapbox map styles
 - `MapLensPicker.svelte` - Map lens switcher (Spots / Heat / Salsas / Density) with inline legends; drives `mapLens` store
 - `NewSpotsBadge.svelte` - Badge showing count of recently added establishments
-- `RadarChart.svelte` - Visualizes menu and protein distributions using ECharts
+- `RadarChart.svelte` - Menu/protein radar (ECharts) with a fixed 0–100 scale so shapes compare across spots; supports multi-series overlays via `seriesList` prop (categorical palette + legend), used by `/compare` and TasteProfile
 - `SalsaCount.svelte` - Salsa count bullet bar (ECharts): value bar over city-max track with an average tick
 - `SalsaLineup.svelte` - Per-salsa chip row: named varieties (Verde, Rojo, …) plus the spot's "other" house salsas with individual heat dots and tap-to-reveal descriptions. Data comes from `salsaVarieties`/`otherSalsas` on `processedTacoData`
 - `SpecCarousel.svelte` & `SpecCard.svelte` - Specialty item displays
@@ -272,7 +272,8 @@ Located in src/lib/dataWrangling.js:
 - `src/routes/Map.svelte` - Map component with filter integration and trail mode support
 
 #### Public Routes
-- `src/routes/compare/+page.svelte` - Side-by-side comparison of up to 3 spots (shareable via `?ids=1,2,3` query params)
+- `src/routes/census/+page.svelte` - Tucson Taco Census: public city-wide stats dashboard (hero tiles, menu prevalence, protein leaderboard, heat histogram, tortilla split, 7×24 open-hours grid, growth timeline), all client-side from `censusStats` (`src/lib/censusStore.js`)
+- `src/routes/compare/+page.svelte` - Side-by-side comparison of up to 3 spots (shareable via `?ids=1,2,3` query params); desktop renders Menu/Protein as single overlaid radars with shared axes
 - `src/routes/compare/+page.js` - Route config for comparison page
 - `src/routes/vote/new/+page.svelte` - Taco Summit creation: pick 2–6 spots, set a title, creates a `group_sessions` row and redirects to the voting page
 - `src/routes/vote/[session_id]/+page.svelte` - Taco Summit voting/results page; states: ranked-choice ballot entry, post-vote waiting with live preview, locked results with `SummitResults`; uses Supabase Realtime for live vote counts and session lock detection; anonymous via `voter_token` UUID in localStorage; creator identified by `creator_token` in localStorage

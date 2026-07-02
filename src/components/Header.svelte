@@ -7,6 +7,7 @@
 	import UserCircle from 'phosphor-svelte/lib/UserCircle';
 	import Question from 'phosphor-svelte/lib/Question';
 	import Ranking from 'phosphor-svelte/lib/Ranking';
+	import ChartBar from 'phosphor-svelte/lib/ChartBar';
 	import ThemeToggle from './ThemeToggle.svelte';
 	import NewSpotsBadge from './NewSpotsBadge.svelte';
 	import { startTour } from '$lib/tourStore.js';
@@ -62,6 +63,14 @@
       >
         <Ranking size={16} weight="duotone" />
         Summit
+      </button>
+      <button
+        class="nav-link"
+        on:click={() => handleNavigation('/census')}
+        title="City-wide taco statistics"
+      >
+        <ChartBar size={16} weight="duotone" />
+        Census
       </button>
 
       {#if $isAuthenticated}
@@ -155,6 +164,13 @@
       >
         <Ranking size={16} weight="duotone" />
         Summit — group vote
+      </button>
+      <button
+        class="mobile-nav-link"
+        on:click={() => handleNavigation('/census')}
+      >
+        <ChartBar size={16} weight="duotone" />
+        Taco Census
       </button>
       {#if $isAuthenticated}
         <div class="mobile-user-info">

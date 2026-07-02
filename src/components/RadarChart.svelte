@@ -2,46 +2,70 @@
   import { onMount } from "svelte";
   import * as echarts from "echarts";
   import { effectiveTheme } from '$lib/theme';
-  import { accent, withAlpha, chartInk, tooltipStyle, CHART_FONT } from '$lib/chartTheme';
+  import { seriesColors, withAlpha, chartInk, tooltipStyle, baseTextStyle, CHART_FONT } from '$lib/chartTheme';
 
+  /** Axis labels, shared by every series */
   export let labels;
-  export let data;
+  /** Single-series values (legacy API) — ignored when seriesList is given */
+  export let data = null;
+  /**
+   * Multi-series overlay: [{ name, values, dashed? }] — series wear the
+   * categorical palette in fixed slot order and get a legend.
+   */
+  export let seriesList = null;
+  /**
+   * Fixed axis max so radar shapes are comparable across spots/cards.
+   * Values are percentages, so 100 is the honest default.
+   */
+  export let max = 100;
 
   let container;
   let chart;
   let resizeObserver;
 
-  // Calculate dynamic max value based on data
-  $: maxDataValue = data && data.length > 0 ? Math.max(...data) : 100;
-  $: dynamicMax = maxDataValue < 50 ? 50 : 75;
-
   $: isDark = $effectiveTheme === 'dark';
+  $: resolvedSeries = seriesList || (data ? [{ name: 'Distribution', values: data }] : []);
+  $: multiSeries = resolvedSeries.length > 1;
 
   function buildOption() {
     const ink = chartInk(isDark);
-    const brand = accent(isDark);
+    const colors = seriesColors(isDark, Math.max(resolvedSeries.length, 1));
 
     return {
       backgroundColor: 'transparent',
+      legend: multiSeries
+        ? {
+            bottom: 0,
+            itemWidth: 10,
+            itemHeight: 10,
+            icon: 'circle',
+            textStyle: { ...baseTextStyle(isDark) }
+          }
+        : undefined,
       tooltip: {
         ...tooltipStyle(isDark),
         trigger: 'item',
         confine: true,
-        formatter: () => {
-          return (labels || [])
-            .map((label, i) => {
-              const value = Math.round(data?.[i] ?? 0);
-              return `${label}: <b>${value}%</b>`;
-            })
-            .join('<br/>');
+        formatter: (params) => {
+          const series = resolvedSeries[params.dataIndex ?? 0] || resolvedSeries[0];
+          const header = multiSeries ? `<b>${params.name}</b><br/>` : '';
+          return (
+            header +
+            (labels || [])
+              .map((label, i) => {
+                const value = Math.round(params.value?.[i] ?? series?.values?.[i] ?? 0);
+                return `${label}: <b>${value}%</b>`;
+              })
+              .join('<br/>')
+          );
         }
       },
       radar: {
-        indicator: (labels || []).map((name) => ({ name, max: dynamicMax, min: 0 })),
+        indicator: (labels || []).map((name) => ({ name, max, min: 0 })),
         // Modest radius leaves room for axis labels — ECharts doesn't auto-fit
         // them into the container the way Chart.js did
-        radius: '58%',
-        center: ['50%', '52%'],
+        radius: multiSeries ? '52%' : '58%',
+        center: ['50%', multiSeries ? '48%' : '52%'],
         nameGap: 8,
         axisName: {
           color: ink.strong,
@@ -59,13 +83,19 @@
       series: [
         {
           type: 'radar',
-          data: [{ value: data || [], name: 'Distribution' }],
-          symbol: 'circle',
-          symbolSize: 6,
-          lineStyle: { width: 2, color: brand },
-          itemStyle: { color: brand, borderColor: '#fff', borderWidth: 1 },
-          areaStyle: { color: withAlpha(brand, 0.18) },
-          emphasis: { itemStyle: { symbolSize: 8 } }
+          data: resolvedSeries.map((s, i) => ({
+            value: s.values || [],
+            name: s.name,
+            symbol: 'circle',
+            symbolSize: multiSeries ? 4 : 6,
+            lineStyle: {
+              width: 2,
+              color: colors[i],
+              type: s.dashed ? 'dashed' : 'solid'
+            },
+            itemStyle: { color: colors[i], borderColor: '#fff', borderWidth: 1 },
+            areaStyle: { color: withAlpha(colors[i], s.dashed ? 0.06 : multiSeries ? 0.12 : 0.18) }
+          }))
         }
       ]
     };
@@ -93,7 +123,7 @@
   });
 
   // Rebuild when data, labels, or theme change
-  $: if (chart && labels && data && (isDark === true || isDark === false)) {
+  $: if (chart && labels && resolvedSeries.length > 0 && (isDark === true || isDark === false)) {
     chart.setOption(buildOption(), { notMerge: true });
   }
 </script>

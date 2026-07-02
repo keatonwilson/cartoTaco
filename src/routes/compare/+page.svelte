@@ -26,8 +26,45 @@
 
   $: salsaWinners = getWinners(sites, s => s.salsaCount);
   $: spiceWinners = getWinners(sites, s => s.heatOverall);
-  $: menuWinners = getWinners(sites, s => (s.topFiveMenuItems || []).length);
-  $: proteinWinners = getWinners(sites, s => (s.topFiveProteinItems || []).length);
+
+  // ── Overlay radar data: shared axes so shapes are directly comparable ──
+  const PROTEIN_AXES = ['chicken', 'beef', 'pork', 'fish', 'veg'];
+
+  function capitalize(s) {
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  // Union of the compared sites' top menu items (capped so labels stay legible)
+  $: menuAxes = (() => {
+    const seen = [];
+    for (const site of sites) {
+      for (const item of site.topFiveMenuItems || []) {
+        if (!seen.includes(item)) seen.push(item);
+      }
+    }
+    return seen.slice(0, 8);
+  })();
+
+  function menuValueFor(site, item) {
+    const entry = (site.menuItems || []).find(([k]) => k === `${item}_perc`);
+    const v = entry ? parseFloat(entry[1]) : 0;
+    return isNaN(v) ? 0 : Math.round(v * 100);
+  }
+
+  function proteinValueFor(site, p) {
+    const v = parseFloat(site.rawData?.protein?.[`${p}_perc`]);
+    return isNaN(v) ? 0 : Math.round(v * 100);
+  }
+
+  $: menuSeries = sites.map(site => ({
+    name: site.name,
+    values: menuAxes.map(a => menuValueFor(site, a))
+  }));
+
+  $: proteinSeries = sites.map(site => ({
+    name: site.name,
+    values: PROTEIN_AXES.map(p => proteinValueFor(site, p))
+  }));
 
   // Mobile: active card index
   let activeCardIndex = 0;
@@ -156,35 +193,33 @@
         </div>
       {/each}
 
-      <!-- Row: Menu radar -->
+      <!-- Row: Menu radar — one overlay, shared axes, one series per spot -->
       <div class="row-label">Menu</div>
-      {#each sites as site}
-        <div class="chart-cell" class:winner={menuWinners.includes(site.est_id)}>
-          <RadarChart labels={site.topFiveMenuItems || []} data={site.topFiveMenuValues || []} />
-        </div>
-      {/each}
+      <div class="chart-cell overlay-cell" style="grid-column: 2 / -1;">
+        <RadarChart labels={menuAxes} seriesList={menuSeries} />
+      </div>
 
-      <!-- Row: Protein radar -->
+      <!-- Row: Protein radar — fixed 5 axes so shapes compare honestly -->
       <div class="row-label">Protein</div>
-      {#each sites as site}
-        <div class="chart-cell" class:winner={proteinWinners.includes(site.est_id)}>
-          <RadarChart labels={site.topFiveProteinItems || []} data={site.topFiveProteinValues || []} />
-          {#if site.proteinStyles && Object.keys(site.proteinStyles).length > 0}
-            <div class="protein-styles">
-              {#each Object.entries(site.proteinStyles) as [protein, styles]}
-                <div class="protein-style-row">
-                  <span class="protein-label">{protein}</span>
-                  <div class="style-chips">
+      <div class="chart-cell overlay-cell" style="grid-column: 2 / -1;">
+        <RadarChart labels={PROTEIN_AXES.map(capitalize)} seriesList={proteinSeries} />
+        <div class="overlay-styles">
+          {#each sites as site}
+            {#if site.proteinStyles && Object.keys(site.proteinStyles).length > 0}
+              <div class="protein-style-row">
+                <span class="protein-label">{site.name}</span>
+                <div class="style-chips">
+                  {#each Object.entries(site.proteinStyles) as [protein, styles]}
                     {#each styles as style}
-                      <span class="style-chip">{style}</span>
+                      <span class="style-chip">{protein} · {style}</span>
                     {/each}
-                  </div>
+                  {/each}
                 </div>
-              {/each}
-            </div>
-          {/if}
+              </div>
+            {/if}
+          {/each}
         </div>
-      {/each}
+      </div>
 
       <!-- Row: Spice gauge -->
       <div class="row-label">Spiciness</div>
@@ -445,6 +480,24 @@
     position: relative;
   }
 
+  /* Overlay cell: one radar spanning all spot columns, taller for the legend */
+  .overlay-cell {
+    height: 300px;
+  }
+
+  .overlay-cell :global(.chart-wrapper) {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .overlay-styles {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 100%;
+    padding-top: 4px;
+  }
+
   .chart-cell:last-child {
     border-right: none;
   }
@@ -554,29 +607,27 @@
     font-size: 11px;
     font-weight: 700;
     text-transform: capitalize;
-    color: #FF9800;
+    color: var(--accent-hover);
     min-width: 44px;
     flex-shrink: 0;
   }
 
   :global(.dark) .protein-label {
-    color: #FFB74D;
+    color: var(--accent);
   }
 
   .style-chip {
     font-size: 10px;
     padding: 2px 7px;
     border-radius: 10px;
-    border: 1px solid #FF9800;
-    color: #FF9800;
-    background: rgba(255, 152, 0, 0.08);
+    border: 1px solid var(--accent);
+    color: var(--accent-hover);
+    background: var(--accent-soft);
     white-space: nowrap;
   }
 
   :global(.dark) .style-chip {
-    background: rgba(255, 152, 0, 0.15);
-    color: #FFB74D;
-    border-color: #FFB74D;
+    color: var(--accent);
   }
 
   /* ===== MOBILE ===== */

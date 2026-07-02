@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { tasteProfile } from '$lib/tasteProfileStore';
+  import { processedTacoData } from '$lib/stores';
   import { isAuthenticated } from '$lib/authStore';
   import { effectiveTheme } from '$lib/theme';
   import { goto } from '$app/navigation';
@@ -13,11 +14,25 @@
     goto(`/?location=${site.est_id}`);
   }
 
-  // Protein radar data
+  // Protein radar data — user affinity overlaid on the city average
   const proteinLabels = ['Chicken', 'Beef', 'Pork', 'Fish', 'Veg'];
   $: proteinValues = $tasteProfile
     ? proteinLabels.map(l => $tasteProfile.proteinAffinities[l.toLowerCase()] || 0)
     : [];
+
+  $: cityAvgProtein = proteinLabels.map(l => {
+    const key = `${l.toLowerCase()}_perc`;
+    const vals = $processedTacoData.map(s => {
+      const v = parseFloat(s.rawData?.protein?.[key]);
+      return isNaN(v) ? 0 : v * 100;
+    });
+    return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+  });
+
+  $: proteinSeriesList = [
+    { name: 'You', values: proteinValues },
+    { name: 'Tucson average', values: cityAvgProtein, dashed: true }
+  ];
 
   function fmtPct(val) {
     return Math.round(val * 100) + '%';
@@ -205,8 +220,9 @@
     <!-- Protein Affinities -->
     <div class="profile-section">
       <h3 class="section-title">Protein Preferences</h3>
+      <p class="section-subtitle">Your favorites vs. the Tucson average</p>
       <div class="radar-container">
-        <RadarChart labels={proteinLabels} data={proteinValues} />
+        <RadarChart labels={proteinLabels} seriesList={proteinSeriesList} />
       </div>
       <div class="protein-bars">
         {#each Object.entries($tasteProfile.proteinAffinities).sort((a, b) => b[1] - a[1]) as [protein, pct]}
@@ -481,7 +497,7 @@
 
   /* Radar chart */
   .radar-container {
-    height: 180px;
+    height: 210px;
     margin-bottom: 0.75rem;
   }
 
