@@ -88,6 +88,7 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 - `processedTacoData` - Transforms raw site data into component-ready format with pre-computed values (top 5 menu items, proteins, percentages, and specialty items embedded from view)
 - `filteredTacoData` - Filters `processedTacoData` based on `filterConfig` (search, protein type, establishment type, spice level, open hours, favorites)
 - `summaryStats` - Computed from `processedTacoData` `{ maxSalsaNum, avgSalsaNum, maxHeatLevel, avgHeatLevel }`
+- `distributionStats` - `Map<est_id, { heatPercentile, salsaPercentile }>` percentile ranks within the city distribution (powers "Hotter than X% of Tucson spots" context lines)
 - `recentlyAddedSites` - Spots added in the last 30 days, sorted newest first (used by NewSpotsBadge)
 
 ### UI State Stores
@@ -236,15 +237,16 @@ Located in src/lib/dataWrangling.js:
 - `FilterBar.svelte` - Search and filter controls
 - `Header.svelte` - Main application header with auth state and navigation
 - `HoursInput.svelte` - Input component for hours data (used in submission form)
-- `HoursOpen.svelte` - Operating hours display
+- `HoursOpen.svelte` - Week Rhythm strip: 7 day pills with mini open-span bars on a shared 24h scale, today ring, calm open/closed status dot; overnight hours wrap
 - `IconHighlight.svelte` - Icon-based feature highlights
 - `LocationPicker.svelte` - Map-based location selection component
 - `MapStylePicker.svelte` - Switches between Mapbox map styles
 - `NewSpotsBadge.svelte` - Badge showing count of recently added establishments
 - `RadarChart.svelte` - Visualizes menu and protein distributions using ECharts
-- `SalsaCount.svelte` - Salsa variety count with context
+- `SalsaCount.svelte` - Salsa count bullet bar (ECharts): value bar over city-max track with an average tick
+- `SalsaLineup.svelte` - Per-salsa chip row: named varieties (Verde, Rojo, …) plus the spot's "other" house salsas with individual heat dots and tap-to-reveal descriptions. Data comes from `salsaVarieties`/`otherSalsas` on `processedTacoData`
 - `SpecCarousel.svelte` & `SpecCard.svelte` - Specialty item displays
-- `SpiceGauge.svelte` - Heat level visualization
+- `SpiceGauge.svelte` - Heat Ladder: 10-notch sequential-coral meter with hero number and optional city-percentile context line (pure Svelte/CSS, no chart lib)
 - `ThemeToggle.svelte` - Dark/light mode toggle button
 - `TrailTray.svelte` - Taco trail builder interface (stop list, reordering, transport mode, route display)
 - `ComparisonTray.svelte` - Floating tray for selecting up to 3 spots for side-by-side comparison

@@ -12,7 +12,8 @@
   import FavoriteButton from "./FavoriteButton.svelte";
   import VibeVotes from "./VibeVotes.svelte";
   import HandmadeBadge from "./HandmadeBadge.svelte";
-  import { selectedSite, summaryStats } from "$lib/stores";
+  import SalsaLineup from "./SalsaLineup.svelte";
+  import { selectedSite, summaryStats, distributionStats } from "$lib/stores";
   import { isMobile } from "$lib/deviceDetection";
   import {
     comparisonSites,
@@ -27,6 +28,11 @@
   // Comparison state for this card
   $: isInComparison = $comparisonSites.some(s => s.est_id === $selectedSite?.est_id);
   $: comparisonFull = $comparisonCount >= 3 && !isInComparison;
+
+  // City-percentile context for the heat ladder
+  $: heatPercentile = $selectedSite
+    ? $distributionStats.get($selectedSite.est_id)?.heatPercentile ?? null
+    : null;
 
   async function toggleComparison() {
     if (!$selectedSite) return;
@@ -160,7 +166,7 @@
         <CollapsibleSection title="Spiciness & Details" defaultOpen={true}>
           <div class="right-box">
             <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1" id="spicy-label">Spiciness</h2>
-            <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
+            <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} percentile={heatPercentile} />
             <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Tortilla Type</h2>
             <div class="tortilla-row">
               <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
@@ -176,6 +182,11 @@
               maxValue={$summaryStats.maxSalsaNum || 0}
             />
           </div>
+          <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Salsa Lineup</h2>
+          <SalsaLineup
+            salsaVarieties={$selectedSite.salsaVarieties || []}
+            otherSalsas={$selectedSite.otherSalsas || []}
+          />
         </CollapsibleSection>
 
         <div class="specialties-section">
@@ -302,7 +313,7 @@
       <!-- Row 6: Spice + Tortilla + Salsa in one compact strip -->
       <div class="desktop-stats-row">
         <div class="desktop-stat-item">
-          <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
+          <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} percentile={heatPercentile} />
         </div>
         <div class="desktop-stat-item desktop-tortilla-item">
           <h2 class="text-xs font-semibold text-gray-800 dark:text-gray-100 mb-1">Tortilla</h2>
@@ -320,7 +331,16 @@
         </div>
       </div>
 
-      <!-- Row 7: Specialties -->
+      <!-- Row 7: Salsa lineup (per-salsa data from the salsa table) -->
+      <div class="desktop-salsa-lineup">
+        <span class="desktop-lineup-label">Salsas:</span>
+        <SalsaLineup
+          salsaVarieties={$selectedSite.salsaVarieties || []}
+          otherSalsas={$selectedSite.otherSalsas || []}
+        />
+      </div>
+
+      <!-- Row 8: Specialties -->
       <div class="desktop-specialties">
         <h2 class="text-xs font-semibold text-gray-800 dark:text-gray-100 mb-1">Specialties</h2>
         {#if $selectedSite.specialties && $selectedSite.specialties.length > 0}
@@ -739,24 +759,32 @@
     min-width: 0;
   }
 
-  .desktop-stat-item :global(.gauge-container) {
-    width: 64px !important;
-    height: 64px !important;
-    max-width: 64px !important;
-    max-height: 64px !important;
+  .desktop-stat-item :global(.gauge-wrapper) {
+    gap: 2px;
   }
 
-  .desktop-stat-item :global(.gauge-wrapper) {
-    gap: 0;
+  .desktop-stat-item :global(.hero-number) {
+    font-size: 20px;
   }
 
   .desktop-stat-item :global(.spice-description) {
     font-size: 11px;
-    margin-top: -2px;
   }
 
-  .desktop-stat-item :global(.spice-explanation) {
-    display: none;
+  /* Salsa lineup row */
+  .desktop-salsa-lineup {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 5px 0 2px;
+  }
+
+  .desktop-lineup-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-2);
+    flex-shrink: 0;
+    padding-top: 3px;
   }
 
   .desktop-tortilla-item :global(.icons) {

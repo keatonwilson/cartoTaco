@@ -1,146 +1,204 @@
 <script>
-  import { convertHoursData } from "$lib/dataWrangling";
+  // Week Rhythm strip — 7 day pills with mini open-span bars on a shared 24h
+  // scale, plus a calm open/closed status dot (V4 of the UI refresh).
   export let startHours;
   export let endHours;
 
-  // Reactive — re-runs whenever props change so the display updates on site switch
-  $: convertedHours = convertHoursData(startHours, endHours);
+  const DAYS = [
+    { key: 'mon', label: 'Mo', dow: 1 },
+    { key: 'tue', label: 'Tu', dow: 2 },
+    { key: 'wed', label: 'We', dow: 3 },
+    { key: 'thu', label: 'Th', dow: 4 },
+    { key: 'fri', label: 'Fr', dow: 5 },
+    { key: 'sat', label: 'Sa', dow: 6 },
+    { key: 'sun', label: 'Su', dow: 0 }
+  ];
 
-  // Current day for the "today" highlight in the hours grid (stable for the session)
-  let currentDay = new Date().getDay(); // 0 = Sunday … 6 = Saturday
+  // Current day for the "today" ring (stable for the session)
+  const currentDow = new Date().getDay();
 
-  function dayToNumber(day) {
-    const dayMap = { Su: 0, Mo: 1, Tu: 2, We: 3, Th: 4, Fr: 5, Sa: 6 };
-    return dayMap[day];
+  /** "11:00 AM" / "23:30" → minutes since midnight, or null */
+  function parseTime(s) {
+    if (!s || s === 'NA') return null;
+    const [time, period] = String(s).trim().split(' ');
+    let [h, m] = time.split(':').map(Number);
+    if (isNaN(h)) return null;
+    if (period) {
+      if (period.toUpperCase() === 'PM' && h !== 12) h += 12;
+      if (period.toUpperCase() === 'AM' && h === 12) h = 0;
+    }
+    return h * 60 + (m || 0);
   }
+
+  // Reactive — re-runs whenever props change so the display updates on site switch
+  $: dayData = (() => {
+    const startObj = Object.fromEntries(startHours || []);
+    const endObj = Object.fromEntries(endHours || []);
+
+    return DAYS.map(({ key, label, dow }) => {
+      const startStr = startObj[`${key}_start`];
+      const endStr = endObj[`${key}_end`];
+      const start = parseTime(startStr);
+      const end = parseTime(endStr);
+      const closed = start === null || end === null;
+
+      // Open span segments as % of the 24h track; overnight hours wrap into two
+      let segments = [];
+      if (!closed) {
+        if (end > start) {
+          segments = [{ top: (start / 1440) * 100, height: ((end - start) / 1440) * 100 }];
+        } else {
+          segments = [
+            { top: (start / 1440) * 100, height: ((1440 - start) / 1440) * 100 },
+            { top: 0, height: (end / 1440) * 100 }
+          ];
+        }
+      }
+
+      return {
+        label,
+        closed,
+        segments,
+        today: dow === currentDow,
+        tooltip: closed ? `${label}: closed` : `${label}: ${startStr} – ${endStr}`
+      };
+    });
+  })();
 
   /**
-   * Returns true if the establishment is open right now.
-   *
-   * Works directly from the raw startHours/endHours prop arrays so it has
-   * full minute precision (convertedHours truncates to hour-only for display).
-   * Mirrors the isOpenNow() logic in stores.js used by the Open Now filter.
+   * Open right now? Mirrors the isOpenNow() logic in stores.js (minute
+   * precision, overnight-aware).
    */
-  function isOpen(startHours, endHours) {
-    const startObj = Object.fromEntries(startHours);
-    const endObj   = Object.fromEntries(endHours);
-    const now      = new Date();
-    const days     = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-    const todayKey = days[now.getDay()];
+  $: openNow = (() => {
+    const dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    const now = new Date();
+    const todayKey = dayKeys[now.getDay()];
+    const startObj = Object.fromEntries(startHours || []);
+    const endObj = Object.fromEntries(endHours || []);
 
-    const startStr = startObj[`${todayKey}_start`];
-    const endStr   = endObj[`${todayKey}_end`];
+    const start = parseTime(startObj[`${todayKey}_start`]);
+    const end = parseTime(endObj[`${todayKey}_end`]);
+    if (start === null || end === null) return false;
 
-    if (!startStr || !endStr || endStr === 'NA') return false;
-
-    const parseTime = (s) => {
-      const [time, period] = s.trim().split(' ');
-      let [h, m] = time.split(':').map(Number);
-      if (period) {
-        if (period.toUpperCase() === 'PM' && h !== 12) h += 12;
-        if (period.toUpperCase() === 'AM' && h === 12) h = 0;
-      }
-      return h * 60 + (m || 0);
-    };
-
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    const startMinutes   = parseTime(startStr);
-    const endMinutes     = parseTime(endStr);
-
-    if (isNaN(startMinutes) || isNaN(endMinutes)) return false;
-
-    // Handle overnight hours (e.g. open until 1:00 AM next day)
-    if (endMinutes < startMinutes) {
-      return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
-    }
-
-    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
-  }
-
-  // Reactive — re-evaluates whenever startHours or endHours props change
-  $: openNow = isOpen(startHours, endHours);
+    const current = now.getHours() * 60 + now.getMinutes();
+    if (end < start) return current >= start || current <= end;
+    return current >= start && current <= end;
+  })();
 </script>
-
-
-<style>
-  .container {
-    display: flex;
-    align-items: center;
-    border: 1px solid lightgray;
-    border-radius: 6px;
-    padding: 6px 8px;
-    margin: 0px;
-    background: #f9fafb;
-    color: #111827;
-    font-size: 12px;
-  }
-
-  :global(.dark) .container {
-    background: #374151;
-    border-color: #4b5563;
-    color: #f9fafb;
-  }
-  .days {
-    display: flex;
-  }
-  .day {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 20px; /* Adjust width as needed */
-    margin: 0 5px;
-    text-align: center;
-    position: relative;
-  }
-  .day.closed .day-letter {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    text-decoration: line-through;
-  }
-  .day.current {
-    font-weight: bold;
-  }
-  .open-now, .closed-now {
-    font-weight: bold;
-    margin-left: auto; /* Push "Open Now" to the right */
-    animation: flash-shadow 1s infinite;
-    text-align: right;
-  }
-  .open-now {
-    color: green;
-  }
-  .closed-now {
-    color: red;
-  }
-  @keyframes flash-shadow {
-    0% {
-      text-shadow: 0 0 5px currentColor;
-    }
-    50% {
-      text-shadow: 0 0 8px currentColor;
-    }
-    100% {
-      text-shadow: 0 0 5px currentColor;
-    }
-  }
-</style>
 
 <div>
   <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">Hours</h2>
   <div class="container">
     <div class="days">
-      {#each convertedHours as {day, open, close, closed}, i}
-        <div class="day {closed ? 'closed' : ''} {dayToNumber(day) === currentDay ? 'current' : ''}">
-          <div>{closed ? '' : open}</div>
-          <div class="day-letter">{day}</div>
-          <div>{closed ? '' : close}</div>
+      {#each dayData as day}
+        <div class="day-pill" class:today={day.today} class:closed={day.closed} title={day.tooltip}>
+          <div class="track">
+            {#each day.segments as seg}
+              <div class="span" style="top:{seg.top}%; height:{Math.max(seg.height, 6)}%"></div>
+            {/each}
+          </div>
+          <span class="day-letter">{day.label}</span>
         </div>
       {/each}
     </div>
-    <div class="{openNow ? 'open-now' : 'closed-now'}">
+    <div class="status" class:open={openNow}>
+      <span class="status-dot"></span>
       {openNow ? 'Open Now' : 'Closed Now'}
     </div>
   </div>
 </div>
 
+<style>
+  .container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid var(--line-1);
+    border-radius: 8px;
+    padding: 6px 10px;
+    background: var(--surface-2);
+  }
+
+  .days {
+    display: flex;
+    gap: 4px;
+  }
+
+  .day-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 4px 2px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+  }
+
+  .day-pill.today {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .track {
+    position: relative;
+    width: 7px;
+    height: 26px;
+    border-radius: 4px;
+    background: var(--line-1);
+    overflow: hidden;
+  }
+
+  .span {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-radius: 3px;
+    background: var(--accent);
+  }
+
+  .day-pill.closed .track {
+    opacity: 0.45;
+  }
+
+  .day-letter {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--ink-2);
+    line-height: 1;
+  }
+
+  .day-pill.closed .day-letter {
+    color: var(--ink-3);
+  }
+
+  .day-pill.today .day-letter {
+    color: var(--accent-hover);
+  }
+
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--error);
+    flex-shrink: 0;
+  }
+
+  .status.open {
+    color: var(--success);
+  }
+
+  .status.open .status-dot {
+    background: var(--success);
+  }
+</style>
