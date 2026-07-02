@@ -214,57 +214,64 @@
         </div>
       </div>
 
-      <!-- Row 2: Description (short, with expand) + Hours/Contact collapsible -->
-      <div class="desktop-info-row">
-        <div class="description desktop-description">
-          <p class="dark:text-gray-300">{$selectedSite.shortDescription || 'No description available'}</p>
-          <div class="long-description" class:visible={showLongDescription}>
-            <p class="dark:text-gray-300">{$selectedSite.longDescription || 'No detailed description available'}</p>
-          </div>
-          <button
-            class="expand-button"
-            on:click={toggleLongDescription}
-            aria-expanded={showLongDescription}
-            aria-label={showLongDescription ? "Show less description" : "Read more description"}
-          >
-            {showLongDescription ? "Show less" : "Read more"}
-          </button>
+      <!-- Row 2: Description (full width, short with expand) -->
+      <div class="description desktop-description">
+        <p class="dark:text-gray-300">{$selectedSite.shortDescription || 'No description available'}</p>
+        <div class="long-description" class:visible={showLongDescription}>
+          <p class="dark:text-gray-300">{$selectedSite.longDescription || 'No detailed description available'}</p>
         </div>
-        <div class="desktop-details-collapsible">
-          <CollapsibleSection title="Hours & Contact" defaultOpen={false}>
-            <HoursOpen
-              startHours={$selectedSite.startHours || {}}
-              endHours={$selectedSite.endHours || {}}
-            />
-            <ContactInfo
-              phone={$selectedSite.site?.phone}
-              website={$selectedSite.site?.website}
-              instagram={$selectedSite.site?.instagram}
-              facebook={$selectedSite.site?.facebook}
-              address={$selectedSite.site?.address}
-              latitude={$selectedSite.latitude}
-              longitude={$selectedSite.longitude}
-              name={$selectedSite.name || 'Taco Location'}
-            />
-          </CollapsibleSection>
+        <button
+          class="expand-button"
+          on:click={toggleLongDescription}
+          aria-expanded={showLongDescription}
+          aria-label={showLongDescription ? "Show less description" : "Read more description"}
+        >
+          {showLongDescription ? "Show less" : "Read more"}
+        </button>
+      </div>
+
+      <!-- Row 3: Hours (always visible, unchanged) + quick contact actions beside it -->
+      <div class="desktop-hours-row">
+        <div class="desktop-hours">
+          <HoursOpen
+            startHours={$selectedSite.startHours || {}}
+            endHours={$selectedSite.endHours || {}}
+          />
+        </div>
+        <div class="desktop-contact">
+          <ContactInfo
+            compact={true}
+            phone={$selectedSite.site?.phone}
+            website={$selectedSite.site?.website}
+            instagram={$selectedSite.site?.instagram}
+            facebook={$selectedSite.site?.facebook}
+            address={$selectedSite.site?.address}
+            latitude={$selectedSite.latitude}
+            longitude={$selectedSite.longitude}
+            name={$selectedSite.name || 'Taco Location'}
+          />
         </div>
       </div>
 
-      <!-- Row 2.5: Vibe votes (anti-review) -->
+      <!-- Row 4: Vibe votes (anti-review), centered -->
       <div class="desktop-vibe-row">
         <span class="desktop-vibe-label">Vibe Check:</span>
         <VibeVotes estId={$selectedSite.est_id} compact={true} />
       </div>
 
-      <!-- Row 3: Two radar charts side by side -->
+      <!-- Row 5: Two radar charts side by side. Protein prep styles sit
+           directly under the Protein radar so they read as belonging to it;
+           the Menu radar is vertically centered to match the column height. -->
       <div class="desktop-charts-row">
         <div class="desktop-chart-col">
           <h2 class="text-xs font-semibold text-gray-800 dark:text-gray-100 text-center">Menu</h2>
-          <div class="desktop-radar-container">
-            <RadarChart
-              labels={$selectedSite.topFiveMenuItems || []}
-              data={$selectedSite.topFiveMenuValues || []}
-            />
+          <div class="desktop-radar-center">
+            <div class="desktop-radar-container">
+              <RadarChart
+                labels={$selectedSite.topFiveMenuItems || []}
+                data={$selectedSite.topFiveMenuValues || []}
+              />
+            </div>
           </div>
         </div>
         <div class="desktop-chart-col">
@@ -276,7 +283,7 @@
             />
           </div>
           {#if $selectedSite.proteinStyles && Object.keys($selectedSite.proteinStyles).length > 0}
-            <div class="protein-styles protein-styles-compact">
+            <div class="desktop-protein-styles">
               {#each Object.entries($selectedSite.proteinStyles) as [protein, styles]}
                 <div class="protein-style-row">
                   <span class="protein-label">{protein}</span>
@@ -292,7 +299,7 @@
         </div>
       </div>
 
-      <!-- Row 4: Spice + Tortilla + Salsa in one compact strip -->
+      <!-- Row 6: Spice + Tortilla + Salsa in one compact strip -->
       <div class="desktop-stats-row">
         <div class="desktop-stat-item">
           <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
@@ -313,7 +320,7 @@
         </div>
       </div>
 
-      <!-- Row 5: Specialties -->
+      <!-- Row 7: Specialties -->
       <div class="desktop-specialties">
         <h2 class="text-xs font-semibold text-gray-800 dark:text-gray-100 mb-1">Specialties</h2>
         {#if $selectedSite.specialties && $selectedSite.specialties.length > 0}
@@ -418,16 +425,25 @@
 
   .expand-button {
     cursor: pointer;
-    color: blue;
+    color: #FE795D;
     text-decoration: underline;
     display: inline-block;
     padding: 6px 4px;
     margin-top: 2px;
     font-size: 12px;
+    transition: color 0.15s ease;
+  }
+
+  .expand-button:hover {
+    color: #d66548;
   }
 
   :global(.dark) .expand-button {
-    color: #60a5fa;
+    color: #FF9E80;
+  }
+
+  :global(.dark) .expand-button:hover {
+    color: #FFB28F;
   }
 
   .protein-chart-container {
@@ -535,9 +551,16 @@
   .desktop-vibe-row {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    padding: 2px 0;
+    padding: 5px 0;
+    margin-top: 2px;
     flex-wrap: wrap;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  :global(.dark) .desktop-vibe-row {
+    border-top-color: #374151;
   }
 
   .desktop-vibe-label {
@@ -610,27 +633,42 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   }
 
-  /* Row 2: Description + Hours/Contact collapsible */
-  .desktop-info-row {
-    display: flex;
-    gap: 8px;
-    align-items: flex-start;
-  }
-
+  /* Row 2: Description (full width) */
   .desktop-description {
-    flex: 1;
     margin-top: 0;
+    padding: 7px 10px;
   }
 
-  .desktop-details-collapsible {
+  .desktop-description .expand-button {
+    padding: 3px 4px;
+    margin-top: 1px;
+  }
+
+  /* Row 3: Hours (kept at natural width so the custom grid renders exactly as
+     designed) + quick contact actions filling the space beside it */
+  .desktop-hours-row {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    padding: 2px 0;
+  }
+
+  .desktop-hours {
+    flex: 0 0 auto;
+  }
+
+  .desktop-contact {
     flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
   }
 
-  /* Row 3: Two radar charts side by side */
+  /* Row 5: Two radar charts side by side */
   .desktop-charts-row {
     display: flex;
     gap: 4px;
-    padding: 4px 0;
+    padding: 2px 0;
   }
 
   .desktop-chart-col {
@@ -645,32 +683,48 @@
     display: flex;
     justify-content: center;
     width: 100%;
-    height: 220px;
+    height: 140px;
     position: relative;
     overflow: visible;
   }
 
-  .protein-styles-compact {
-    gap: 3px;
-    padding: 2px 0;
+  /* Vertically centers the Menu radar so it lines up with the taller Protein
+     column (radar + prep-style chips) instead of leaving a dead gap below it. */
+  .desktop-radar-center {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
   }
 
-  .protein-styles-compact .protein-label {
+  /* Protein prep styles — sit under the Protein radar, centered in the column */
+  .desktop-protein-styles {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    gap: 4px 12px;
+    padding: 4px 0 0;
+  }
+
+  .desktop-protein-styles .protein-label {
     font-size: 10px;
-    min-width: 44px;
+    min-width: auto;
   }
 
-  .protein-styles-compact .style-chip {
+  .desktop-protein-styles .style-chip {
     font-size: 10px;
     padding: 1px 6px;
   }
 
-  /* Row 4: Spice + Tortilla + Salsa strip */
+  /* Row 6: Spice + Tortilla + Salsa strip */
   .desktop-stats-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 8px;
+    padding: 5px 8px;
     background: #f9fafb;
     border-radius: 6px;
   }
@@ -727,7 +781,7 @@
     display: none;
   }
 
-  /* Row 5: Specialties */
+  /* Row 7: Specialties */
   .desktop-specialties {
     padding-top: 4px;
     border-top: 1px solid lightgray;
@@ -735,6 +789,11 @@
 
   :global(.dark) .desktop-specialties {
     border-top-color: #374151;
+  }
+
+  /* Compact the specialty card on desktop so the popup fits without scrolling */
+  .desktop-specialties :global(.compact-card) {
+    min-height: 94px;
   }
 
   /* Header action groups */
