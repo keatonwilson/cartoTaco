@@ -13,7 +13,7 @@
   import VibeVotes from "./VibeVotes.svelte";
   import HandmadeBadge from "./HandmadeBadge.svelte";
   import SalsaLineup from "./SalsaLineup.svelte";
-  import { selectedSite, summaryStats, distributionStats } from "$lib/stores";
+  import { selectedSite, summaryStats, distributionStats, radarScales } from "$lib/stores";
   import { isMobile } from "$lib/deviceDetection";
   import {
     comparisonSites,
@@ -135,6 +135,7 @@
             <RadarChart
               labels={$selectedSite.topFiveMenuItems || []}
               data={$selectedSite.topFiveMenuValues || []}
+              max={$radarScales.menu}
             />
           </div>
         </CollapsibleSection>
@@ -145,6 +146,7 @@
             <RadarChart
               labels={$selectedSite.topFiveProteinItems || []}
               data={$selectedSite.topFiveProteinValues || []}
+              max={$radarScales.protein}
             />
           </div>
           {#if $selectedSite.proteinStyles && Object.keys($selectedSite.proteinStyles).length > 0}
@@ -281,6 +283,7 @@
               <RadarChart
                 labels={$selectedSite.topFiveMenuItems || []}
                 data={$selectedSite.topFiveMenuValues || []}
+                max={$radarScales.menu}
               />
             </div>
           </div>
@@ -291,6 +294,7 @@
             <RadarChart
               labels={$selectedSite.topFiveProteinItems || []}
               data={$selectedSite.topFiveProteinValues || []}
+              max={$radarScales.protein}
             />
           </div>
           {#if $selectedSite.proteinStyles && Object.keys($selectedSite.proteinStyles).length > 0}

@@ -27,6 +27,13 @@ function createDataStore() {
 // Create stores with loading and error states
 export const tacoStore = createDataStore();
 
+// Legacy data uses the literal string 'NA' as a null marker
+function cleanNA(value) {
+  if (value == null) return null;
+  const s = String(value).trim();
+  return s === '' || s.toUpperCase() === 'NA' ? null : value;
+}
+
 // Named salsa varieties tracked as boolean columns on the salsa table
 const SALSA_VARIETIES = [
   { key: 'verde', label: 'Verde' },
@@ -145,14 +152,15 @@ export const processedTacoData = derived(
           heatOverall: site.salsa.heat_overall,
 
           // Per-salsa lineup: named varieties served + up to 3 "other" salsas
-          // (each with its own name, heat, and description) from the salsa table
+          // (each with its own name, heat, and description) from the salsa table.
+          // Legacy rows use the literal string 'NA' as a null marker.
           salsaVarieties: SALSA_VARIETIES.filter(v => site.salsa[`${v.key}_yes`] === true)
             .map(v => ({ name: v.label })),
           otherSalsas: [1, 2, 3]
             .map(n => ({
-              name: site.salsa[`other_${n}_name`],
-              heat: site.salsa[`other_${n}_heat`],
-              description: site.salsa[`other_${n}_descrip`]
+              name: cleanNA(site.salsa[`other_${n}_name`]),
+              heat: cleanNA(site.salsa[`other_${n}_heat`]),
+              description: cleanNA(site.salsa[`other_${n}_descrip`])
             }))
             .filter(s => s.name),
 
@@ -201,6 +209,24 @@ export const summaryStats = derived(
       maxHeatLevel: Math.max(...heatLevels),
       avgHeatLevel: heatLevels.reduce((a, b) => a + b, 0) / heatLevels.length
     };
+  }
+);
+
+// Shared radar axis maxima, derived from the whole dataset: every spot's radar
+// uses the same scale (so shapes stay comparable) while the scale itself fits
+// the real data instead of a hardcoded 100 that leaves tiny polygons.
+export const radarScales = derived(
+  processedTacoData,
+  ($processedTacoData) => {
+    let menuMax = 0;
+    let proteinMax = 0;
+    for (const site of $processedTacoData || []) {
+      for (const v of site.topFiveMenuValues || []) menuMax = Math.max(menuMax, v);
+      for (const v of site.topFiveProteinValues || []) proteinMax = Math.max(proteinMax, v);
+    }
+    // Round up to the next 10 so the outer ring sits just beyond the data
+    const roundUp = (v) => Math.max(10, Math.ceil(v / 10) * 10);
+    return { menu: roundUp(menuMax), protein: roundUp(proteinMax) };
   }
 );
 

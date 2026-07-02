@@ -400,6 +400,13 @@
     max-width: 920px;
     margin: 0 auto;
     padding: 84px 16px 40px;
+    /* Defense in depth: never let an overflowing child pan the whole page */
+    overflow-x: hidden;
+  }
+
+  .census-section,
+  .chart {
+    min-width: 0;
   }
 
   .page-header {
@@ -592,16 +599,19 @@
     color: var(--ink-2);
   }
 
+  /* 24 columns must fit a 390px phone: keep the per-cell floor small
+     (24 × 8px + gaps + day label ≈ 286px) so the grid never forces the
+     document wider than the viewport */
   .grid-cell {
     flex: 1;
-    min-width: 12px;
+    min-width: 8px;
     height: 16px;
     border-radius: 3px;
   }
 
   .grid-hour-label {
     flex: 1;
-    min-width: 12px;
+    min-width: 8px;
     font-size: 9px;
     color: var(--ink-3);
     text-align: left;

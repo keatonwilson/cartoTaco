@@ -1,5 +1,6 @@
 <script>
   // Lens switcher: lets the map itself visualize data (N3 of the UI refresh).
+  // Renders as a static row — FilterBar mounts it as its attached bottom strip.
   import { mapLens, LENSES } from '$lib/mapLensStore.js';
 
   $: activeLens = LENSES.find((l) => l.id === $mapLens);
@@ -10,52 +11,57 @@
 </script>
 
 <div class="lens-picker" data-tour="lenses">
-  <div class="lens-chips" role="radiogroup" aria-label="Map data lens">
-    {#each LENSES as lens (lens.id)}
-      <button
-        class="lens-chip"
-        class:on={$mapLens === lens.id}
-        role="radio"
-        aria-checked={$mapLens === lens.id}
-        on:click={() => select(lens.id)}
-      >
-        {lens.label}
-      </button>
-    {/each}
-  </div>
-  {#if activeLens?.legend}
-    <div class="lens-legend">
-      {#if $mapLens === 'heat'}
-        <span class="legend-ramp" aria-hidden="true"></span>
-      {:else if $mapLens === 'salsa'}
-        <span class="legend-dots" aria-hidden="true">
-          <span class="legend-dot" style="width:6px;height:6px"></span>
-          <span class="legend-dot" style="width:10px;height:10px"></span>
-          <span class="legend-dot" style="width:14px;height:14px"></span>
-        </span>
-      {/if}
-      <span class="legend-text">{activeLens.legend}</span>
+  <div class="lens-row">
+    <span class="lens-label">View</span>
+    <div class="lens-chips" role="radiogroup" aria-label="Map data lens">
+      {#each LENSES as lens (lens.id)}
+        <button
+          class="lens-chip"
+          class:on={$mapLens === lens.id}
+          role="radio"
+          aria-checked={$mapLens === lens.id}
+          on:click={() => select(lens.id)}
+        >
+          {lens.label}
+        </button>
+      {/each}
     </div>
-  {/if}
+    {#if activeLens?.legend}
+      <div class="lens-legend">
+        {#if $mapLens === 'heat'}
+          <span class="legend-ramp" aria-hidden="true"></span>
+        {:else if $mapLens === 'salsa'}
+          <span class="legend-dots" aria-hidden="true">
+            <span class="legend-dot" style="width:5px;height:5px"></span>
+            <span class="legend-dot" style="width:9px;height:9px"></span>
+            <span class="legend-dot" style="width:13px;height:13px"></span>
+          </span>
+        {/if}
+        <span class="legend-text">{activeLens.legend}</span>
+      </div>
+    {/if}
+  </div>
 </div>
 
 <style>
   .lens-picker {
-    position: absolute;
-    top: 86px;
-    left: 10px;
-    z-index: 150;
-    background: var(--surface-1);
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    padding: 6px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+    width: 100%;
   }
 
-  :global(.dark) .lens-picker {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  .lens-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+  }
+
+  .lens-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--ink-3);
+    flex-shrink: 0;
   }
 
   .lens-chips {
@@ -64,7 +70,7 @@
   }
 
   .lens-chip {
-    padding: 5px 10px;
+    padding: 4px 10px;
     border-radius: 999px;
     border: 1px solid transparent;
     background: transparent;
@@ -97,11 +103,11 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 0 4px 2px;
+    min-width: 0;
   }
 
   .legend-ramp {
-    width: 56px;
+    width: 48px;
     height: 8px;
     border-radius: 4px;
     background: linear-gradient(90deg, #ffe4de 0%, #fe795d 50%, #a5371b 100%);
@@ -124,12 +130,8 @@
     font-size: 10px;
     color: var(--ink-2);
     line-height: 1.2;
-  }
-
-  /* Mobile: sit below the full-width FilterBar header */
-  @media (max-width: 768px) {
-    .lens-picker {
-      top: 136px;
-    }
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 </style>

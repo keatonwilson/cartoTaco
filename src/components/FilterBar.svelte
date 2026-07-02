@@ -14,6 +14,7 @@
   import { tourExpandFilters } from '$lib/tourStore.js';
   import { filterPanelOpen } from '$lib/uiStore.js';
   import { get } from 'svelte/store';
+  import MapLensPicker from './MapLensPicker.svelte';
 
   const PROTEINS = [
     { key: 'chicken', label: 'Chicken' },
@@ -434,6 +435,11 @@
       {/if}
     </div>
   {/if}
+
+  <!-- Map lens switcher: attached bottom strip of the filter bar -->
+  <div class="lens-strip">
+    <MapLensPicker />
+  </div>
 </div>
 
 <style>
@@ -638,6 +644,12 @@
     padding: 0 12px 12px 12px;
     border-top: 1px solid var(--line-1);
     animation: slideDown 0.2s ease-out;
+  }
+
+  /* Lens strip: visually part of the bar, separated by a hairline */
+  .lens-strip {
+    padding: 7px 12px 8px;
+    border-top: 1px solid var(--line-1);
   }
 
   @keyframes slideDown {

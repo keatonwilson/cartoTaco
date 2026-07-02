@@ -34,6 +34,13 @@
     { name: 'Tucson average', values: cityAvgProtein, dashed: true }
   ];
 
+  // Scale to this chart's own data so the shapes fill the plot
+  $: proteinRadarMax = (() => {
+    const all = [...proteinValues, ...cityAvgProtein];
+    const max = Math.max(10, ...all.map((v) => v || 0));
+    return Math.ceil(max / 10) * 10;
+  })();
+
   function fmtPct(val) {
     return Math.round(val * 100) + '%';
   }
@@ -222,7 +229,7 @@
       <h3 class="section-title">Protein Preferences</h3>
       <p class="section-subtitle">Your favorites vs. the Tucson average</p>
       <div class="radar-container">
-        <RadarChart labels={proteinLabels} seriesList={proteinSeriesList} />
+        <RadarChart labels={proteinLabels} seriesList={proteinSeriesList} max={proteinRadarMax} />
       </div>
       <div class="protein-bars">
         {#each Object.entries($tasteProfile.proteinAffinities).sort((a, b) => b[1] - a[1]) as [protein, pct]}

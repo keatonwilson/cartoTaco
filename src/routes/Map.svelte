@@ -18,7 +18,6 @@
 	import { mapInstance } from '../lib/mapStore.js';
 	import { mapLens } from '../lib/mapLensStore.js';
 	import FilterBar from '../components/FilterBar.svelte';
-	import MapLensPicker from '../components/MapLensPicker.svelte';
 	import LoadingState from '../components/LoadingState.svelte';
 	import TrailTray from '../components/TrailTray.svelte';
 	import ComparisonTray from '../components/ComparisonTray.svelte';
@@ -314,10 +313,9 @@
 	{/if}
 </div>
 
-<!-- Filter Bar + Lens Picker + Trail Tray + Comparison Tray -->
+<!-- Filter Bar (with attached lens strip) + Trail Tray + Comparison Tray -->
 {#if !$isLoading && !$hasError}
 	<FilterBar />
-	<MapLensPicker />
 	<TrailTray />
 	<ComparisonTray cardOpen={$isMobile && !!$selectedSite} />
 {/if}
