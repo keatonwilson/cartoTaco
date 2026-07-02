@@ -157,6 +157,10 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 - Functions: `startTour()`, `endTour()`, `nextStep()`, `prevStep()`, `shouldAutoStart()`
 - Persistence: localStorage key `cartoTaco_tourCompleted`
 
+### Map Lens Store (src/lib/mapLensStore.js)
+- `mapLens` - Active map lens: `'spots'` (default clustered markers) | `'heat'` (points colored by heat on the sequential ramp) | `'salsa'` (points sized by salsa count) | `'density'` (Mapbox heatmap)
+- `LENSES` - Lens definitions with labels and legend text
+
 ### UI Store (src/lib/uiStore.js)
 - `filterPanelOpen` - Whether the FilterBar filter panel is expanded
 - `mobileNavOpen` - Whether the mobile navigation menu is open
@@ -178,12 +182,15 @@ The map implementation (src/lib/mapping.js) uses Mapbox GL with clustering:
 2. `cluster-count` - Cluster count labels
 3. `unclustered-point` - Individual site markers with hover effects
 4. `unclustered-point-label` - Site name labels
-5. `trail-stop-circles` - Numbered orange circles for trail stops
-6. `trail-stop-numbers` - Stop number labels (1, 2, 3…)
-7. `trail-route-line` - Dashed route line connecting trail stops
+5. `lens-points` / `lens-points-label` - Unclustered points for the heat/salsa lenses (from the non-clustered `taco-sites-all` twin source, hidden in spots lens)
+6. `lens-heatmap` - Density heatmap lens layer
+7. `trail-stop-circles` - Numbered orange circles for trail stops
+8. `trail-stop-numbers` - Stop number labels (1, 2, 3…)
+9. `trail-route-line` - Dashed route line connecting trail stops
 
 ### Key Functions
 - `updateMarkers(processedSites, map)` - Add/update clusters and markers, attach event listeners
+- `applyLens(map, lensId)` - Switch marker styling for the active map lens (visibility + data-driven paint on `heat`/`salsas` feature properties)
 - `resetListeners(map)` - Clean up all event handlers
 - `sitesToGeoJSON(processedSites)` - Convert sites to GeoJSON with embedded properties
 - `flyToSite(map, site)` - Animate to location and open popup
@@ -220,7 +227,7 @@ Located in src/lib/dataWrangling.js:
 - `src/lib/submissions.js` - Location submission handling and DB persistence
 - `src/lib/validation.js` - Form validation functions for submissions/auth forms
 - `src/lib/theme.js` - Dark/light mode management
-- `src/lib/chartTheme.js` - Shared chart styling: validated categorical palettes (light/dark), sequential coral ramp, ink/grid/tooltip helpers, `CHART_FONT`. All ECharts components build their options from these. Design tokens live as CSS variables in `src/app.css` (surfaces, inks, hairlines, accent, chart tokens) and map into Tailwind as `surface-*`/`ink-*`/`line-*`/`accent-*`; dark mode flips the tokens, so new components should not need `:global(.dark)` overrides. Typography: Bricolage Grotesque Variable (display/headings) + Inter Variable (UI/body), self-hosted via `@fontsource-variable`.
+- `src/lib/chartTheme.js` - Shared chart styling: validated categorical palettes (light/dark), sequential coral ramp, ink/grid/tooltip helpers, `CHART_FONT`. All ECharts components build their options from these. Design tokens live as CSS variables in `src/app.css` (surfaces, inks, hairlines, accent, chart tokens) and map into Tailwind as `surface-*`/`ink-*`/`line-*`/`accent-*`; dark mode flips the tokens, so new components should not need `:global(.dark)` overrides. Typography: Outfit Variable (display/headings) + Inter Variable (UI/body), self-hosted via `@fontsource-variable`.
 - `src/lib/deviceDetection.js` - Responsive device type detection (mobile/tablet/desktop)
 - `src/lib/supabaseBrowser.js` - Browser-side Supabase client using `@supabase/ssr` `createBrowserClient` with cookie support; exports `supabaseBrowser` client and `getAuthenticatedUser()` helper
 - `src/lib/profiles.js` - Profiles CRUD: `getOwnProfile()`, `getProfileByUsername()`, `updateProfile()`, `uploadAvatar()`. Public reads use only safe columns (no email). Avatar uploads write to `avatars/<user_id>/avatar.{ext}` and bust browser cache via `?t=` query param.
@@ -234,13 +241,14 @@ Located in src/lib/dataWrangling.js:
 - `ContactInfo.svelte` - Displays contact links (phone, website, Instagram, Facebook)
 - `DirectionsButton.svelte` - Opens Google Maps directions to an establishment
 - `FavoriteButton.svelte` - Heart button for toggling favorites (requires auth)
-- `FilterBar.svelte` - Search and filter controls
+- `FilterBar.svelte` - Search and filter controls: toggle chips with live city-composition counts (proteins, types, Open Now), dual-thumb spice range slider, and a removable active-filters chip row visible even when the panel is collapsed
 - `Header.svelte` - Main application header with auth state and navigation
 - `HoursInput.svelte` - Input component for hours data (used in submission form)
 - `HoursOpen.svelte` - Week Rhythm strip: 7 day pills with mini open-span bars on a shared 24h scale, today ring, calm open/closed status dot; overnight hours wrap
 - `IconHighlight.svelte` - Icon-based feature highlights
 - `LocationPicker.svelte` - Map-based location selection component
 - `MapStylePicker.svelte` - Switches between Mapbox map styles
+- `MapLensPicker.svelte` - Map lens switcher (Spots / Heat / Salsas / Density) with inline legends; drives `mapLens` store
 - `NewSpotsBadge.svelte` - Badge showing count of recently added establishments
 - `RadarChart.svelte` - Visualizes menu and protein distributions using ECharts
 - `SalsaCount.svelte` - Salsa count bullet bar (ECharts): value bar over city-max track with an average tick

@@ -60,10 +60,19 @@
         closed,
         segments,
         today: dow === currentDow,
-        tooltip: closed ? `${label}: closed` : `${label}: ${startStr} – ${endStr}`
+        times: closed ? 'Closed' : `${startStr} – ${endStr}`
       };
     });
   })();
+
+  // Tooltip state: hover/focus shows transiently, tap pins (touch devices)
+  let hoverDay = null;
+  let pinnedDay = null;
+  $: activeDay = hoverDay !== null ? hoverDay : pinnedDay;
+
+  function togglePin(i) {
+    pinnedDay = pinnedDay === i ? null : i;
+  }
 
   /**
    * Open right now? Mirrors the isOpenNow() logic in stores.js (minute
@@ -90,15 +99,33 @@
   <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">Hours</h2>
   <div class="container">
     <div class="days">
-      {#each dayData as day}
-        <div class="day-pill" class:today={day.today} class:closed={day.closed} title={day.tooltip}>
+      {#each dayData as day, i}
+        <button
+          type="button"
+          class="day-pill"
+          class:today={day.today}
+          class:closed={day.closed}
+          class:active={activeDay === i}
+          on:mouseenter={() => (hoverDay = i)}
+          on:mouseleave={() => (hoverDay = null)}
+          on:focus={() => (hoverDay = i)}
+          on:blur={() => (hoverDay = null)}
+          on:click={() => togglePin(i)}
+          aria-label={`${day.label}: ${day.times}`}
+          aria-expanded={activeDay === i}
+        >
+          {#if activeDay === i}
+            <span class="time-tip" role="tooltip">
+              <strong>{day.label}</strong>&nbsp;{day.times}
+            </span>
+          {/if}
           <div class="track">
             {#each day.segments as seg}
               <div class="span" style="top:{seg.top}%; height:{Math.max(seg.height, 6)}%"></div>
             {/each}
           </div>
           <span class="day-letter">{day.label}</span>
-        </div>
+        </button>
       {/each}
     </div>
     <div class="status" class:open={openNow}>
@@ -125,6 +152,7 @@
   }
 
   .day-pill {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -132,11 +160,80 @@
     padding: 3px 4px 2px;
     border-radius: 6px;
     border: 1px solid transparent;
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .day-pill.today {
     border-color: var(--accent);
     background: var(--accent-soft);
+  }
+
+  .day-pill.active:not(.today) {
+    border-color: var(--line-2);
+    background: var(--surface-3);
+  }
+
+  /* Exact-times tooltip, shown on hover/focus or tap-pin */
+  .time-tip {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    background: var(--surface-1);
+    color: var(--ink-1);
+    border: 1px solid var(--line-1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 30;
+    pointer-events: none;
+  }
+
+  .time-tip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--line-1);
+  }
+
+  .time-tip strong {
+    color: var(--accent-hover);
+  }
+
+  :global(.dark) .time-tip strong {
+    color: var(--accent);
+  }
+
+  /* Edge pills: anchor the tooltip to the pill edge so it stays inside the card */
+  .day-pill:nth-child(-n + 2) .time-tip {
+    left: 0;
+    transform: none;
+  }
+
+  .day-pill:nth-child(-n + 2) .time-tip::after {
+    left: 12px;
+  }
+
+  .day-pill:nth-last-child(-n + 2) .time-tip {
+    left: auto;
+    right: 0;
+    transform: none;
+  }
+
+  .day-pill:nth-last-child(-n + 2) .time-tip::after {
+    left: auto;
+    right: 7px;
   }
 
   .track {

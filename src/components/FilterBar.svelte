@@ -1,16 +1,32 @@
 <script>
-  import { filterConfig, filteredTacoData, processedTacoData, flyToTarget } from '../lib/stores';
+  import { filterConfig, filteredTacoData, processedTacoData, flyToTarget, isOpenNow } from '../lib/stores';
   import { isAuthenticated } from '$lib/authStore';
   import MagnifyingGlass from 'phosphor-svelte/lib/MagnifyingGlass';
   import CaretDown from 'phosphor-svelte/lib/CaretDown';
   import CaretUp from 'phosphor-svelte/lib/CaretUp';
   import Heart from 'phosphor-svelte/lib/Heart';
+  import Clock from 'phosphor-svelte/lib/Clock';
+  import X from 'phosphor-svelte/lib/X';
   import MagicWand from 'phosphor-svelte/lib/MagicWand';
   import { browser } from '$app/environment';
   import { trailModeActive, enterTrailMode, exitTrailMode } from '../lib/trailStore.js';
   import { tourExpandFilters } from '$lib/tourStore.js';
   import { filterPanelOpen } from '$lib/uiStore.js';
   import { get } from 'svelte/store';
+
+  const PROTEINS = [
+    { key: 'chicken', label: 'Chicken' },
+    { key: 'beef', label: 'Beef' },
+    { key: 'pork', label: 'Pork' },
+    { key: 'fish', label: 'Fish' },
+    { key: 'veg', label: 'Vegetarian' }
+  ];
+
+  const TYPES = [
+    { key: 'Brick and Mortar', label: 'Restaurant' },
+    { key: 'Stand', label: 'Stand' },
+    { key: 'Truck', label: 'Truck' }
+  ];
 
   // Allow the tour to expand filters
   $: if ($tourExpandFilters) filterPanelOpen.set(true);
@@ -19,6 +35,22 @@
   // Count of filtered results
   $: resultCount = $filteredTacoData.length;
   $: totalCount = $processedTacoData.length;
+
+  // Live city-composition counts shown on the filter chips.
+  // Counts come from the full dataset (not the filtered one) so they read as
+  // "how many spots serve this" rather than shifting under the user.
+  $: proteinCounts = Object.fromEntries(
+    PROTEINS.map(p => [
+      p.key,
+      $processedTacoData.filter(s => s.rawData?.protein?.[`${p.key}_yes`] === true).length
+    ])
+  );
+
+  $: typeCounts = Object.fromEntries(
+    TYPES.map(t => [t.key, $processedTacoData.filter(s => s.type === t.key).length])
+  );
+
+  $: openNowCount = $processedTacoData.filter(s => isOpenNow(s.rawData?.hours)).length;
 
   // Aggregate unique styles per protein across all sites
   $: availableStyles = (() => {
@@ -36,6 +68,24 @@
     );
   })();
 
+  function toggleProtein(key) {
+    filterConfig.update(cfg => ({
+      ...cfg,
+      proteins: { ...cfg.proteins, [key]: !cfg.proteins[key] },
+      // Deactivating a protein clears its style sub-filters
+      styleFilters: cfg.proteins[key]
+        ? { ...cfg.styleFilters, [key]: [] }
+        : cfg.styleFilters
+    }));
+  }
+
+  function toggleType(key) {
+    filterConfig.update(cfg => ({
+      ...cfg,
+      types: { ...cfg.types, [key]: !cfg.types[key] }
+    }));
+  }
+
   function toggleStyleFilter(protein, style) {
     filterConfig.update(cfg => {
       const current = cfg.styleFilters[protein] || [];
@@ -43,6 +93,39 @@
       const updated = idx === -1 ? [...current, style] : current.filter((_, i) => i !== idx);
       return { ...cfg, styleFilters: { ...cfg.styleFilters, [protein]: updated } };
     });
+  }
+
+  function toggleOpenNow() {
+    filterConfig.update(cfg => ({ ...cfg, openNow: !cfg.openNow }));
+  }
+
+  function toggleFavoritesOnly() {
+    filterConfig.update(cfg => ({ ...cfg, showFavoritesOnly: !cfg.showFavoritesOnly }));
+  }
+
+  // Dual-thumb spice slider: clamp so the thumbs can't cross
+  function onSpiceMinInput(e) {
+    const v = Number(e.target.value);
+    filterConfig.update(cfg => ({
+      ...cfg,
+      spiceLevel: { ...cfg.spiceLevel, min: Math.min(v, cfg.spiceLevel.max) }
+    }));
+  }
+
+  function onSpiceMaxInput(e) {
+    const v = Number(e.target.value);
+    filterConfig.update(cfg => ({
+      ...cfg,
+      spiceLevel: { ...cfg.spiceLevel, max: Math.max(v, cfg.spiceLevel.min) }
+    }));
+  }
+
+  function resetSpice() {
+    filterConfig.update(cfg => ({ ...cfg, spiceLevel: { min: 0, max: 10 } }));
+  }
+
+  function clearSearch() {
+    filterConfig.update(cfg => ({ ...cfg, searchText: '' }));
   }
 
   function toggleExpanded() {
@@ -100,6 +183,44 @@
     $filterConfig.openNow ||
     $filterConfig.showFavoritesOnly ||
     Object.values($filterConfig.styleFilters).some(arr => arr.length > 0);
+
+  // Flat list of active filters for the removable-chip row
+  $: activeChips = (() => {
+    const chips = [];
+    const cfg = $filterConfig;
+    if (cfg.searchText) {
+      chips.push({ id: 'search', label: `“${cfg.searchText}”`, remove: clearSearch });
+    }
+    for (const p of PROTEINS) {
+      if (cfg.proteins[p.key]) {
+        chips.push({ id: `protein-${p.key}`, label: p.label, remove: () => toggleProtein(p.key) });
+      }
+      for (const style of cfg.styleFilters[p.key] || []) {
+        chips.push({
+          id: `style-${p.key}-${style}`,
+          label: `${p.label} · ${style}`,
+          remove: () => toggleStyleFilter(p.key, style)
+        });
+      }
+    }
+    for (const t of TYPES) {
+      if (cfg.types[t.key]) {
+        chips.push({ id: `type-${t.key}`, label: t.label, remove: () => toggleType(t.key) });
+      }
+    }
+    if (cfg.spiceLevel.min > 0 || cfg.spiceLevel.max < 10) {
+      chips.push({
+        id: 'spice',
+        label: `Spice ${cfg.spiceLevel.min}–${cfg.spiceLevel.max}`,
+        remove: resetSpice
+      });
+    }
+    if (cfg.openNow) chips.push({ id: 'open', label: 'Open Now', remove: toggleOpenNow });
+    if (cfg.showFavoritesOnly) {
+      chips.push({ id: 'favs', label: 'Favorites', remove: toggleFavoritesOnly });
+    }
+    return chips;
+  })();
 </script>
 
 <svelte:window on:click={handleWindowClick} on:keydown={handleKeydown} />
@@ -164,59 +285,75 @@
     </button>
   </div>
 
+  <!-- Active filters: removable chips, visible even when the panel is closed -->
+  {#if activeChips.length > 0}
+    <div class="active-chips-row">
+      {#each activeChips as chip (chip.id)}
+        <button class="active-chip" on:click={chip.remove} title="Remove filter">
+          {chip.label}
+          <X size={11} weight="bold" />
+        </button>
+      {/each}
+      <button class="clear-all-link" on:click={clearFilters}>Clear all</button>
+    </div>
+  {/if}
+
   <!-- Expanded Filter Panel -->
   {#if $filterPanelOpen}
     <div class="filter-panel">
-      <!-- Favorites Filter (only show if authenticated) -->
-      {#if $isAuthenticated}
-        <div class="filter-section favorites-section">
-          <label class="favorites-toggle">
-            <input type="checkbox" bind:checked={$filterConfig.showFavoritesOnly} />
-            <span class="favorites-label">
-              {#if browser}
-                <Heart weight="fill" size={16} class="heart-icon" />
-              {/if}
-              Show Favorites Only
-            </span>
-          </label>
+      <!-- Quick toggles -->
+      <div class="filter-section">
+        <div class="chip-group">
+          <button
+            class="filter-chip"
+            class:on={$filterConfig.openNow}
+            on:click={toggleOpenNow}
+            aria-pressed={$filterConfig.openNow}
+          >
+            {#if browser}<Clock size={13} />{/if}
+            Open Now
+            <span class="chip-count">{openNowCount}</span>
+          </button>
+          {#if $isAuthenticated}
+            <button
+              class="filter-chip"
+              class:on={$filterConfig.showFavoritesOnly}
+              on:click={toggleFavoritesOnly}
+              aria-pressed={$filterConfig.showFavoritesOnly}
+            >
+              {#if browser}<Heart size={13} weight={$filterConfig.showFavoritesOnly ? 'fill' : 'regular'} />{/if}
+              Favorites Only
+            </button>
+          {/if}
         </div>
-      {/if}
+      </div>
 
       <!-- Protein Filters -->
       <div class="filter-section">
         <h3 class="filter-title">Proteins</h3>
-        <div class="checkbox-group">
-          <label class="checkbox-label">
-            <input type="checkbox" bind:checked={$filterConfig.proteins.chicken} />
-            <span>Chicken</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" bind:checked={$filterConfig.proteins.beef} />
-            <span>Beef</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" bind:checked={$filterConfig.proteins.pork} />
-            <span>Pork</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" bind:checked={$filterConfig.proteins.fish} />
-            <span>Fish</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" bind:checked={$filterConfig.proteins.veg} />
-            <span>Vegetarian</span>
-          </label>
+        <div class="chip-group">
+          {#each PROTEINS as protein}
+            <button
+              class="filter-chip"
+              class:on={$filterConfig.proteins[protein.key]}
+              on:click={() => toggleProtein(protein.key)}
+              aria-pressed={$filterConfig.proteins[protein.key]}
+            >
+              {protein.label}
+              <span class="chip-count">{proteinCounts[protein.key] ?? 0}</span>
+            </button>
+          {/each}
         </div>
-        <!-- Style sub-filters: appear below when a protein is checked and styles exist -->
-        {#each ['chicken', 'beef', 'pork', 'fish', 'veg'] as protein}
-          {#if $filterConfig.proteins[protein] && availableStyles[protein]?.length > 0}
+        <!-- Style sub-filters: appear below when a protein is selected and styles exist -->
+        {#each PROTEINS as protein}
+          {#if $filterConfig.proteins[protein.key] && availableStyles[protein.key]?.length > 0}
             <div class="style-sub-row">
-              <span class="style-sub-label">{protein}:</span>
-              {#each availableStyles[protein] as style}
+              <span class="style-sub-label">{protein.label}:</span>
+              {#each availableStyles[protein.key] as style}
                 <button
                   class="style-filter-chip"
-                  class:active={$filterConfig.styleFilters[protein]?.includes(style)}
-                  on:click={() => toggleStyleFilter(protein, style)}
+                  class:active={$filterConfig.styleFilters[protein.key]?.includes(style)}
+                  on:click={() => toggleStyleFilter(protein.key, style)}
                 >
                   {style}
                 </button>
@@ -229,59 +366,53 @@
       <!-- Type Filters -->
       <div class="filter-section">
         <h3 class="filter-title">Type</h3>
-        <div class="checkbox-group">
-          <label class="checkbox-label">
-            <input type="checkbox" bind:checked={$filterConfig.types['Brick and Mortar']} />
-            <span>Restaurant</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" bind:checked={$filterConfig.types.Stand} />
-            <span>Stand</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" bind:checked={$filterConfig.types.Truck} />
-            <span>Truck</span>
-          </label>
+        <div class="chip-group">
+          {#each TYPES as type}
+            <button
+              class="filter-chip"
+              class:on={$filterConfig.types[type.key]}
+              on:click={() => toggleType(type.key)}
+              aria-pressed={$filterConfig.types[type.key]}
+            >
+              {type.label}
+              <span class="chip-count">{typeCounts[type.key] ?? 0}</span>
+            </button>
+          {/each}
         </div>
       </div>
 
-      <!-- Spice Level Filter -->
+      <!-- Spice Level Filter: one dual-thumb range -->
       <div class="filter-section">
         <h3 class="filter-title">
-          Spice Level: {$filterConfig.spiceLevel.min} - {$filterConfig.spiceLevel.max}
+          Spice Level: {$filterConfig.spiceLevel.min} – {$filterConfig.spiceLevel.max}
         </h3>
-        <div class="range-inputs">
-          <div class="range-input-group">
-            <label for="spice-min">Min</label>
-            <input
-              id="spice-min"
-              type="range"
-              min="0"
-              max="10"
-              bind:value={$filterConfig.spiceLevel.min}
-              class="range-slider"
-            />
-          </div>
-          <div class="range-input-group">
-            <label for="spice-max">Max</label>
-            <input
-              id="spice-max"
-              type="range"
-              min="0"
-              max="10"
-              bind:value={$filterConfig.spiceLevel.max}
-              class="range-slider"
-            />
-          </div>
+        <div class="dual-range">
+          <div class="dual-track"></div>
+          <div
+            class="dual-fill"
+            style="left:{$filterConfig.spiceLevel.min * 10}%; width:{($filterConfig.spiceLevel.max - $filterConfig.spiceLevel.min) * 10}%"
+          ></div>
+          <input
+            type="range"
+            min="0"
+            max="10"
+            aria-label="Minimum spice level"
+            value={$filterConfig.spiceLevel.min}
+            on:input={onSpiceMinInput}
+          />
+          <input
+            type="range"
+            min="0"
+            max="10"
+            aria-label="Maximum spice level"
+            value={$filterConfig.spiceLevel.max}
+            on:input={onSpiceMaxInput}
+          />
         </div>
-      </div>
-
-      <!-- Open Now Filter -->
-      <div class="filter-section">
-        <label class="checkbox-label open-now-label">
-          <input type="checkbox" bind:checked={$filterConfig.openNow} />
-          <span class="open-now-text">Open Now</span>
-        </label>
+        <div class="range-scale">
+          <span>0 · none</span>
+          <span>10 · scorching</span>
+        </div>
       </div>
 
       <!-- Results Counter -->
@@ -305,15 +436,14 @@
     top: 86px; /* 66px header + 20px margin */
     right: 60px;
     z-index: 200; /* above the bottom sheet (150) so the panel isn't hidden behind it */
-    background: white;
-    border-radius: 8px;
+    background: var(--surface-1);
+    border-radius: 10px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     width: 560px;
     max-width: 560px;
   }
 
   :global(.dark) .filter-container {
-    background: #1f2937;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   }
 
@@ -334,34 +464,28 @@
   :global(.search-icon) {
     position: absolute;
     left: 12px;
-    color: #666;
+    color: var(--ink-3);
     pointer-events: none;
-  }
-
-  :global(.dark) :global(.search-icon) {
-    color: #9ca3af;
   }
 
   .search-input {
     width: 100%;
     padding: 8px 12px 8px 36px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--line-1);
     border-radius: 6px;
     font-size: 14px;
     outline: none;
     transition: border-color 0.2s;
-    background: white;
-    color: #111827;
+    background: var(--surface-1);
+    color: var(--ink-1);
   }
 
   :global(.dark) .search-input {
-    background: #111827;
-    border-color: #4b5563;
-    color: #f9fafb;
+    background: var(--surface-2);
   }
 
   .search-input:focus {
-    border-color: #FE795D;
+    border-color: var(--accent);
   }
 
   /* Surprise Me button */
@@ -370,31 +494,20 @@
     align-items: center;
     gap: 6px;
     padding: 8px 12px;
-    background: #fff3ee;
-    border: 1.5px solid #FE795D;
+    background: var(--accent-soft);
+    border: 1.5px solid var(--accent);
     border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
-    color: #FE795D;
+    color: var(--accent);
     transition: all 0.2s;
     flex-shrink: 0;
   }
 
-  :global(.dark) .surprise-button {
-    background: #2d1f1a;
-    border-color: #FE795D;
-    color: #FE795D;
-  }
-
   .surprise-button:hover:not(:disabled) {
-    background: #FE795D;
-    color: white;
-  }
-
-  :global(.dark) .surprise-button:hover:not(:disabled) {
-    background: #FE795D;
-    color: white;
+    background: var(--accent);
+    color: var(--accent-contrast);
   }
 
   .surprise-button:disabled {
@@ -408,37 +521,28 @@
     align-items: center;
     gap: 6px;
     padding: 8px 12px;
-    background: #f5f5f5;
+    background: var(--surface-3);
     border: none;
     border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
-    color: #333;
+    color: var(--ink-1);
     transition: all 0.2s;
     flex-shrink: 0;
   }
 
-  :global(.dark) .trail-button {
-    background: #374151;
-    color: #f9fafb;
-  }
-
   .trail-button:hover {
-    background: #e8e8e8;
-  }
-
-  :global(.dark) .trail-button:hover {
-    background: #4b5563;
+    background: var(--line-1);
   }
 
   .trail-button.active {
-    background: #FE795D;
-    color: white;
+    background: var(--accent);
+    color: var(--accent-contrast);
   }
 
   .trail-button.active:hover {
-    background: #e55a3c;
+    background: var(--accent-hover);
   }
 
   .expand-button {
@@ -446,28 +550,19 @@
     align-items: center;
     gap: 6px;
     padding: 8px 12px;
-    background: #f5f5f5;
+    background: var(--surface-3);
     border: none;
     border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
-    color: #333;
+    color: var(--ink-1);
     transition: background-color 0.2s;
     position: relative;
   }
 
-  :global(.dark) .expand-button {
-    background: #374151;
-    color: #f9fafb;
-  }
-
   .expand-button:hover {
-    background: #e8e8e8;
-  }
-
-  :global(.dark) .expand-button:hover {
-    background: #4b5563;
+    background: var(--line-1);
   }
 
   .filter-text {
@@ -480,18 +575,63 @@
     right: 6px;
     width: 8px;
     height: 8px;
-    background: #FE795D;
+    background: var(--accent);
     border-radius: 50%;
+  }
+
+  /* Active-filters chip row (visible even when the panel is collapsed) */
+  .active-chips-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px 10px;
+  }
+
+  .active-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent-hover);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :global(.dark) .active-chip {
+    color: var(--accent);
+  }
+
+  .active-chip:hover {
+    background: var(--accent);
+    color: var(--accent-contrast);
+  }
+
+  .clear-all-link {
+    background: none;
+    border: none;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-2);
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 3px 4px;
+  }
+
+  .clear-all-link:hover {
+    color: var(--error);
   }
 
   .filter-panel {
     padding: 0 12px 12px 12px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--line-1);
     animation: slideDown 0.2s ease-out;
-  }
-
-  :global(.dark) .filter-panel {
-    border-top-color: #374151;
   }
 
   @keyframes slideDown {
@@ -506,124 +646,74 @@
   }
 
   .filter-section {
-    margin-top: 16px;
-  }
-
-  /* Favorites section styling */
-  .favorites-section {
-    margin-top: 0;
-    padding-bottom: 1rem;
-    margin-bottom: 1rem;
-    border-bottom: 2px solid #fe795d;
-  }
-
-  :global(.dark) .favorites-section {
-    border-bottom-color: #fe795d;
-  }
-
-  .favorites-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem;
-    background: linear-gradient(135deg, #fff5f2 0%, #ffe4de 100%);
-    border: 2px solid #fe795d;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  :global(.dark) .favorites-toggle {
-    background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
-    border-color: #fe795d;
-  }
-
-  .favorites-toggle:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(254, 121, 93, 0.2);
-  }
-
-  .favorites-toggle input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-    accent-color: #fe795d;
-  }
-
-  .favorites-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 600;
-    color: #374151;
-    font-size: 0.95rem;
-  }
-
-  :global(.dark) .favorites-label {
-    color: #f9fafb;
-  }
-
-  .favorites-toggle :global(.heart-icon) {
-    color: #fe795d;
+    margin-top: 14px;
   }
 
   .filter-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: #333;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-2);
     margin-bottom: 8px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    font-variant-numeric: tabular-nums;
   }
 
-  :global(.dark) .filter-title {
-    color: #d1d5db;
-  }
-
-  .checkbox-group {
+  /* Filter chips with counts */
+  .chip-group {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
   }
 
-  .checkbox-label {
-    display: flex;
+  .filter-chip {
+    display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 12px;
-    background: #f9f9f9;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    cursor: pointer;
+    padding: 5px 11px;
+    border-radius: 999px;
+    border: 1px solid var(--line-1);
+    background: var(--surface-2);
+    color: var(--ink-1);
     font-size: 13px;
-    transition: all 0.2s;
-    user-select: none;
-  }
-
-  :global(.dark) .checkbox-label {
-    background: #374151;
-    border-color: #4b5563;
-    color: #d1d5db;
-  }
-
-  .checkbox-label:hover {
-    background: #f0f0f0;
-    border-color: #FE795D;
-  }
-
-  :global(.dark) .checkbox-label:hover {
-    background: #4b5563;
-    border-color: #FE795D;
-  }
-
-  .checkbox-label input[type="checkbox"] {
+    font-weight: 500;
     cursor: pointer;
-    accent-color: #FE795D;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  .checkbox-label input[type="checkbox"]:checked + span {
+  @media (hover: hover) {
+    .filter-chip:hover:not(.on) {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+  }
+
+  .filter-chip.on {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-hover);
     font-weight: 600;
-    color: #FE795D;
+  }
+
+  :global(.dark) .filter-chip.on {
+    color: var(--accent);
+  }
+
+  .chip-count {
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--surface-3);
+    color: var(--ink-2);
+  }
+
+  .filter-chip.on .chip-count {
+    background: var(--accent);
+    color: var(--accent-contrast);
   }
 
   .style-sub-row {
@@ -639,162 +729,146 @@
     font-size: 11px;
     font-weight: 700;
     text-transform: capitalize;
-    color: #FF9800;
+    color: var(--accent-hover);
     flex-shrink: 0;
   }
 
   :global(.dark) .style-sub-label {
-    color: #FFB74D;
+    color: var(--accent);
   }
 
   .style-filter-chip {
     font-size: 11px;
     padding: 3px 9px;
     border-radius: 10px;
-    border: 1px solid #e0e0e0;
-    background: #f9f9f9;
-    color: #555;
+    border: 1px solid var(--line-1);
+    background: var(--surface-2);
+    color: var(--ink-2);
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
   }
 
-  :global(.dark) .style-filter-chip {
-    background: #374151;
-    border-color: #4b5563;
-    color: #d1d5db;
-  }
-
   .style-filter-chip:hover {
-    border-color: #FF9800;
-    color: #FF9800;
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
   .style-filter-chip.active {
-    background: rgba(255, 152, 0, 0.12);
-    border-color: #FF9800;
-    color: #FF9800;
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-hover);
     font-weight: 600;
   }
 
   :global(.dark) .style-filter-chip.active {
-    background: rgba(255, 152, 0, 0.2);
-    border-color: #FFB74D;
-    color: #FFB74D;
+    color: var(--accent);
   }
 
-  .range-inputs {
-    display: flex;
-    gap: 16px;
+  /* Dual-thumb spice range */
+  .dual-range {
+    position: relative;
+    height: 24px;
+    margin: 4px 2px 0;
   }
 
-  .range-input-group {
-    flex: 1;
-  }
-
-  .range-input-group label {
-    display: block;
-    font-size: 12px;
-    color: #666;
-    margin-bottom: 4px;
-  }
-
-  :global(.dark) .range-input-group label {
-    color: #9ca3af;
-  }
-
-  .range-slider {
-    width: 100%;
+  .dual-track {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    left: 0;
+    right: 0;
     height: 6px;
     border-radius: 3px;
-    background: #e0e0e0;
-    outline: none;
-    cursor: pointer;
+    background: var(--line-1);
   }
 
-  :global(.dark) .range-slider {
-    background: #4b5563;
+  .dual-fill {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 6px;
+    border-radius: 3px;
+    background: var(--accent);
   }
 
-  .range-slider::-webkit-slider-thumb {
+  .dual-range input[type='range'] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    margin: 0;
+    background: none;
+    -webkit-appearance: none;
     appearance: none;
-    width: 16px;
-    height: 16px;
+    /* Only the thumbs are interactive — the two inputs overlap fully */
+    pointer-events: none;
+  }
+
+  .dual-range input[type='range']::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    pointer-events: auto;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
-    background: #FE795D;
+    background: var(--surface-1);
+    border: 2px solid var(--accent);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     cursor: pointer;
   }
 
-  .range-slider::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
+  .dual-range input[type='range']::-moz-range-thumb {
+    pointer-events: auto;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
-    background: #FE795D;
+    background: var(--surface-1);
+    border: 2px solid var(--accent);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     cursor: pointer;
-    border: none;
   }
 
-  .open-now-label {
-    background: #fff;
-    border: 2px solid #e0e0e0;
-    padding: 10px 14px;
-    justify-content: center;
-  }
-
-  :global(.dark) .open-now-label {
-    background: #374151;
-    border-color: #4b5563;
-  }
-
-  .open-now-label:hover {
-    border-color: #FE795D;
-  }
-
-  :global(.dark) .open-now-label:hover {
-    border-color: #FE795D;
-  }
-
-  .open-now-text {
-    font-weight: 600;
-    font-size: 14px;
+  .range-scale {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--ink-3);
+    margin-top: 2px;
   }
 
   .results-counter {
-    margin-top: 16px;
-    padding: 10px;
-    background: #f9f9f9;
+    margin-top: 14px;
+    padding: 8px;
+    background: var(--surface-2);
     border-radius: 6px;
     text-align: center;
     font-size: 13px;
     font-variant-numeric: tabular-nums;
-    color: #666;
-  }
-
-  :global(.dark) .results-counter {
-    background: #374151;
-    color: #9ca3af;
+    color: var(--ink-2);
   }
 
   .results-counter strong {
-    color: #FE795D;
+    color: var(--accent);
     font-weight: 700;
   }
 
   .clear-button {
     width: 100%;
     margin-top: 12px;
-    padding: 10px;
-    background: #f44336;
-    color: white;
-    border: none;
+    padding: 9px;
+    background: transparent;
+    color: var(--error);
+    border: 1px solid var(--error);
     border-radius: 6px;
     font-weight: 600;
+    font-size: 13px;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, color 0.2s;
   }
 
   .clear-button:hover {
-    background: #d32f2f;
+    background: var(--error);
+    color: #fff;
   }
 
   /* Responsive adjustments */

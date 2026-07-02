@@ -14,9 +14,11 @@
 	import Card from '../components/Card.svelte';
 	import { filterPanelOpen, mobileNavOpen } from '../lib/uiStore.js';
 	import 'mapbox-gl/dist/mapbox-gl.css';
-	import { updateMarkers, resetListeners, updateTrailLayers, updateTrailRoute, clearTrailLayers, flyToSite } from '../lib/mapping.js';
+	import { updateMarkers, resetListeners, updateTrailLayers, updateTrailRoute, clearTrailLayers, flyToSite, applyLens } from '../lib/mapping.js';
 	import { mapInstance } from '../lib/mapStore.js';
+	import { mapLens } from '../lib/mapLensStore.js';
 	import FilterBar from '../components/FilterBar.svelte';
+	import MapLensPicker from '../components/MapLensPicker.svelte';
 	import TrailTray from '../components/TrailTray.svelte';
 	import ComparisonTray from '../components/ComparisonTray.svelte';
 	import { comparisonActive, addToComparison } from '../lib/comparisonStore.js';
@@ -197,6 +199,9 @@
 		}
 	}
 
+	// Switch marker styling when the map lens changes
+	$: if (map && mapLoaded && $mapLens) applyLens(map, $mapLens);
+
 	// Re-draw numbered stop markers when trail stops change (only while trail mode is active)
 	$: if (map && mapLoaded && $trailModeActive) updateTrailLayers(map, $trailStops);
 
@@ -309,9 +314,10 @@
 	{/if}
 </div>
 
-<!-- Filter Bar + Trail Tray + Comparison Tray -->
+<!-- Filter Bar + Lens Picker + Trail Tray + Comparison Tray -->
 {#if !$isLoading && !$hasError}
 	<FilterBar />
+	<MapLensPicker />
 	<TrailTray />
 	<ComparisonTray cardOpen={$isMobile && !!$selectedSite} />
 {/if}

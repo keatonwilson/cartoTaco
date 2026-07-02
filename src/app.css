@@ -1,6 +1,6 @@
 /* Self-hosted variable fonts (F2) */
 @import '@fontsource-variable/inter';
-@import '@fontsource-variable/bricolage-grotesque';
+@import '@fontsource-variable/outfit';
 
 @tailwind base;
 @tailwind components;
@@ -14,7 +14,7 @@
    ───────────────────────────────────────────────────────────────────────── */
 :root {
 	/* Type */
-	--font-display: 'Bricolage Grotesque Variable', 'Inter Variable', system-ui, sans-serif;
+	--font-display: 'Outfit Variable', 'Inter Variable', system-ui, sans-serif;
 	--font-text: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
 	/* Surfaces (page → recessed) */

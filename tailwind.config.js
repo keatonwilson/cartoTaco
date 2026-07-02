@@ -9,7 +9,7 @@ export default {
 				// UI/body face — token-backed so components and Tailwind agree
 				sans: ['Inter Variable', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
 				// Headings, spot names, hero numbers
-				display: ['Bricolage Grotesque Variable', 'Inter Variable', 'system-ui', 'sans-serif']
+				display: ['Outfit Variable', 'Inter Variable', 'system-ui', 'sans-serif']
 			},
 			colors: {
 				// Brand coral scale (kept literal — it's the source the CSS tokens mirror)
