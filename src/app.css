@@ -1,38 +1,105 @@
+/* Self-hosted variable fonts (F2) */
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/bricolage-grotesque';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* CSS Variables for Dark Mode */
+/* ─────────────────────────────────────────────────────────────────────────
+   Design tokens (F1)
+   Components should consume these (or the Tailwind mappings in
+   tailwind.config.js) instead of hardcoded hex values. Dark mode flips the
+   tokens here — new components should not need their own .dark overrides.
+   ───────────────────────────────────────────────────────────────────────── */
 :root {
-	/* Light mode colors (default) */
-	--bg-primary: #ffffff;
-	--bg-secondary: #f9fafb;
-	--bg-tertiary: #f3f4f6;
-	--text-primary: #111827;
-	--text-secondary: #6b7280;
-	--text-tertiary: #9ca3af;
-	--border-color: #e5e7eb;
-	--border-color-strong: #d1d5db;
-	--accent-primary: #fe795d;
-	--accent-hover: #fe6a4a;
+	/* Type */
+	--font-display: 'Bricolage Grotesque Variable', 'Inter Variable', system-ui, sans-serif;
+	--font-text: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+	/* Surfaces (page → recessed) */
+	--surface-1: #ffffff;
+	--surface-2: #f9fafb;
+	--surface-3: #f3f4f6;
+
+	/* Ink (primary → muted) */
+	--ink-1: #111827;
+	--ink-2: #6b7280;
+	--ink-3: #9ca3af;
+
+	/* Hairlines */
+	--line-1: #e5e7eb;
+	--line-2: #d1d5db;
+
+	/* Accent — brand coral (mirrors the Tailwind `primary` scale) */
+	--accent: #fe795d;
+	--accent-hover: #ef562f;
+	--accent-soft: rgba(254, 121, 93, 0.12);
+	--accent-contrast: #ffffff;
+
+	/* Status — reserved for state, never chart series */
 	--success: #10b981;
 	--error: #ef4444;
+
+	/* Chart tokens (consumed by src/lib/chartTheme.js) */
+	--chart-grid: rgba(0, 0, 0, 0.08);
+	--chart-ink: #6b7280;
+	--chart-tooltip-bg: #ffffff;
+	--chart-tooltip-border: #e5e7eb;
+
+	/* Legacy aliases — older components reference these names */
+	--bg-primary: var(--surface-1);
+	--bg-secondary: var(--surface-2);
+	--bg-tertiary: var(--surface-3);
+	--text-primary: var(--ink-1);
+	--text-secondary: var(--ink-2);
+	--text-tertiary: var(--ink-3);
+	--border-color: var(--line-1);
+	--border-color-strong: var(--line-2);
+	--accent-primary: var(--accent);
 }
 
 :root.dark {
-	/* Dark mode colors */
-	--bg-primary: #1f2937;
-	--bg-secondary: #111827;
-	--bg-tertiary: #0f172a;
-	--text-primary: #f9fafb;
-	--text-secondary: #d1d5db;
-	--text-tertiary: #9ca3af;
-	--border-color: #374151;
-	--border-color-strong: #4b5563;
-	--accent-primary: #fe795d;
+	--surface-1: #1f2937;
+	--surface-2: #111827;
+	--surface-3: #0f172a;
+
+	--ink-1: #f9fafb;
+	--ink-2: #d1d5db;
+	--ink-3: #9ca3af;
+
+	--line-1: #374151;
+	--line-2: #4b5563;
+
+	--accent: #fe795d;
 	--accent-hover: #fe6a4a;
-	--success: #10b981;
-	--error: #ef4444;
+	--accent-soft: rgba(254, 121, 93, 0.18);
+
+	--chart-grid: rgba(255, 255, 255, 0.1);
+	--chart-ink: #9ca3af;
+	--chart-tooltip-bg: #1f2937;
+	--chart-tooltip-border: #374151;
+}
+
+/* ─── Base typography (F2) ─── */
+@layer base {
+	body {
+		font-family: var(--font-text);
+		color: var(--ink-1);
+	}
+
+	h1,
+	h2,
+	h3 {
+		font-family: var(--font-display);
+	}
+}
+
+/* Hero-number treatment: big stats wear the display face with lining,
+   tabular figures so columns of numbers align. */
+.stat-number {
+	font-family: var(--font-display);
+	font-variant-numeric: tabular-nums;
 }
 
 /* Smooth transitions for theme changes */
@@ -43,4 +110,35 @@
 /* Prevent transition on page load */
 .no-transition * {
 	transition: none !important;
+}
+
+/* ─── Dark mode Mapbox controls (global map chrome) ─── */
+.dark .mapboxgl-ctrl-group {
+	background: rgba(17, 24, 39, 0.88);
+	box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.dark .mapboxgl-ctrl-group button {
+	background-color: transparent;
+}
+
+.dark .mapboxgl-ctrl-group button:hover {
+	background-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .mapboxgl-ctrl-group button + button {
+	border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .mapboxgl-ctrl-icon {
+	filter: invert(1) brightness(0.8);
+}
+
+.dark .mapboxgl-ctrl-attrib {
+	background: rgba(10, 14, 26, 0.75);
+	color: #6b7280;
+}
+
+.dark .mapboxgl-ctrl-attrib a {
+	color: #9ca3af;
 }

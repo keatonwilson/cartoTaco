@@ -1,7 +1,6 @@
 <script>
   import { onMount } from "svelte";
   import * as echarts from "echarts";
-  import { redirect } from "@sveltejs/kit";
 
   export let spiceValue = 0;
 

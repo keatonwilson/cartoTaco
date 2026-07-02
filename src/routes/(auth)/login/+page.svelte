@@ -2,8 +2,9 @@
   import { signIn } from '$lib/authStore';
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
-  import { EnvelopeOutline, EyeOutline, EyeSlashOutline } from 'flowbite-svelte-icons';
-
+  import Envelope from 'phosphor-svelte/lib/Envelope';
+  import Eye from 'phosphor-svelte/lib/Eye';
+  import EyeSlash from 'phosphor-svelte/lib/EyeSlash';
   let email = '';
   let password = '';
   let showPassword = false;
@@ -120,9 +121,9 @@
           >
             {#if browser}
               {#if showPassword}
-                <EyeSlashOutline size="sm" />
+                <EyeSlash size={16} />
               {:else}
-                <EyeOutline size="sm" />
+                <Eye size={16} />
               {/if}
             {/if}
           </button>

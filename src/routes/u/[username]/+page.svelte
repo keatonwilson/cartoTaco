@@ -1,7 +1,7 @@
 <script>
   import { browser } from '$app/environment';
-  import { UserCircleOutline, CalendarMonthOutline } from 'flowbite-svelte-icons';
-
+  import UserCircle from 'phosphor-svelte/lib/UserCircle';
+  import CalendarBlank from 'phosphor-svelte/lib/CalendarBlank';
   export let data;
   $: profile = data.profile;
 
@@ -25,7 +25,7 @@
         {#if profile.avatar_url}
           <img src={profile.avatar_url} alt="{profile.display_name || profile.username}'s avatar" class="avatar-image" />
         {:else if browser}
-          <UserCircleOutline class="profile-icon" size="xl" />
+          <UserCircle class="profile-icon" size={32} />
         {/if}
       </div>
       <h1 class="display-name">{profile.display_name || profile.username}</h1>
@@ -35,7 +35,7 @@
       {/if}
       {#if signupDate}
         <div class="meta">
-          {#if browser}<CalendarMonthOutline class="meta-icon" />{/if}
+          {#if browser}<CalendarBlank size={20} class="meta-icon" />{/if}
           <span>Member since {signupDate}</span>
         </div>
       {/if}

@@ -2,7 +2,10 @@
 	import { isAuthenticated, currentUser, signOut } from '$lib/authStore';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
-	import { BarsOutline, CloseOutline, UserCircleOutline, QuestionCircleOutline } from 'flowbite-svelte-icons';
+	import List from 'phosphor-svelte/lib/List';
+	import X from 'phosphor-svelte/lib/X';
+	import UserCircle from 'phosphor-svelte/lib/UserCircle';
+	import Question from 'phosphor-svelte/lib/Question';
 	import Ranking from 'phosphor-svelte/lib/Ranking';
 	import ThemeToggle from './ThemeToggle.svelte';
 	import NewSpotsBadge from './NewSpotsBadge.svelte';
@@ -49,7 +52,7 @@
 			<ThemeToggle />
 			<NewSpotsBadge on:spotSelected={closeMobileMenu} on:panelOpened={closeMobileMenu} />
 			<button class="help-button" on:click={startTour} title="Take a tour" aria-label="Take a tour">
-				{#if browser}<QuestionCircleOutline size="sm" />{/if}
+				{#if browser}<Question size={16} />{/if}
 			</button>
       <button
         class="nav-link summit-link"
@@ -64,7 +67,7 @@
       {#if $isAuthenticated}
         <div class="user-info">
           {#if browser}
-            <UserCircleOutline class="user-icon" />
+            <UserCircle size={20} class="user-icon" />
           {/if}
           <span class="user-email">{$currentUser?.email}</span>
         </div>
@@ -123,7 +126,7 @@
       <ThemeToggle />
       <NewSpotsBadge on:spotSelected={closeMobileMenu} />
       <button class="help-button" on:click={startTour} title="Take a tour" aria-label="Take a tour">
-        {#if browser}<QuestionCircleOutline size="sm" />{/if}
+        {#if browser}<Question size={16} />{/if}
       </button>
     </div>
 
@@ -135,9 +138,9 @@
     >
       {#if browser}
         {#if $mobileNavOpen}
-          <CloseOutline size="lg" />
+          <X size={24} />
         {:else}
-          <BarsOutline size="lg" />
+          <List size={24} />
         {/if}
       {/if}
     </button>
@@ -156,7 +159,7 @@
       {#if $isAuthenticated}
         <div class="mobile-user-info">
           {#if browser}
-            <UserCircleOutline class="user-icon" />
+            <UserCircle size={20} class="user-icon" />
           {/if}
           <span class="user-email">{$currentUser?.email}</span>
         </div>
@@ -282,8 +285,8 @@
     color: #d1d5db;
   }
 
-  .user-icon {
-    color: #FE795D;
+  .user-info :global(.user-icon) {
+    color: var(--accent);
   }
 
   .user-email {

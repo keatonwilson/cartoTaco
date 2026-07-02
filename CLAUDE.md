@@ -219,6 +219,7 @@ Located in src/lib/dataWrangling.js:
 - `src/lib/submissions.js` - Location submission handling and DB persistence
 - `src/lib/validation.js` - Form validation functions for submissions/auth forms
 - `src/lib/theme.js` - Dark/light mode management
+- `src/lib/chartTheme.js` - Shared chart styling: validated categorical palettes (light/dark), sequential coral ramp, ink/grid/tooltip helpers, `CHART_FONT`. All ECharts components build their options from these. Design tokens live as CSS variables in `src/app.css` (surfaces, inks, hairlines, accent, chart tokens) and map into Tailwind as `surface-*`/`ink-*`/`line-*`/`accent-*`; dark mode flips the tokens, so new components should not need `:global(.dark)` overrides. Typography: Bricolage Grotesque Variable (display/headings) + Inter Variable (UI/body), self-hosted via `@fontsource-variable`.
 - `src/lib/deviceDetection.js` - Responsive device type detection (mobile/tablet/desktop)
 - `src/lib/supabaseBrowser.js` - Browser-side Supabase client using `@supabase/ssr` `createBrowserClient` with cookie support; exports `supabaseBrowser` client and `getAuthenticatedUser()` helper
 - `src/lib/profiles.js` - Profiles CRUD: `getOwnProfile()`, `getProfileByUsername()`, `updateProfile()`, `uploadAvatar()`. Public reads use only safe columns (no email). Avatar uploads write to `avatars/<user_id>/avatar.{ext}` and bust browser cache via `?t=` query param.

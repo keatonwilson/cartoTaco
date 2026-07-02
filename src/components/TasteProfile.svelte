@@ -4,7 +4,8 @@
   import { isAuthenticated } from '$lib/authStore';
   import { effectiveTheme } from '$lib/theme';
   import { goto } from '$app/navigation';
-  import { Chart } from 'chart.js/auto';
+  import * as echarts from 'echarts';
+  import { seriesColors, withAlpha, chartInk, tooltipStyle, baseTextStyle, STAR_PATH } from '$lib/chartTheme';
   import RadarChart from './RadarChart.svelte';
   import SpiceGauge from './SpiceGauge.svelte';
 
@@ -22,156 +23,147 @@
     return Math.round(val * 100) + '%';
   }
 
-  // ─── k-NN Scatter Chart ───────────────────────────────────────────────────
-  let scatterCanvas;
+  // ─── k-NN Scatter Chart (ECharts, shared chart theme) ────────────────────
+  let scatterContainer;
   let scatterChart;
+  let scatterResizeObserver;
 
   $: isDark = $effectiveTheme === 'dark';
-  $: gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)';
-  $: labelColor = isDark ? '#9ca3af' : '#6b7280';
-  $: tooltipBg = isDark ? '#1f2937' : '#fff';
-  $: tooltipBorder = isDark ? '#374151' : '#e5e7eb';
 
-  function buildScatterDatasets(profile) {
-    if (!profile) return [];
+  function toPoint(p) {
+    return { value: [p.heat, p.salsa], name: p.name, similarity: p.similarity };
+  }
+
+  function buildScatterOption(profile) {
+    const ink = chartInk(isDark);
+    // Fixed categorical slots: 1 coral = recommendations, 4 indigo = favorites
+    const [coral, , , indigo] = seriesColors(isDark);
 
     const bgPoints = profile.scatterPoints.filter(p => !p.isFav && !p.isRec);
     const recPoints = profile.scatterPoints.filter(p => p.isRec);
     const favPoints = profile.scatterPoints.filter(p => p.isFav);
 
-    return [
-      // All other spots — gray background
-      {
-        label: 'Other spots',
-        data: bgPoints.map(p => ({ x: p.heat, y: p.salsa, name: p.name })),
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        backgroundColor: isDark ? 'rgba(156,163,175,0.25)' : 'rgba(156,163,175,0.35)',
-        borderColor: isDark ? 'rgba(156,163,175,0.4)' : 'rgba(156,163,175,0.5)',
-        borderWidth: 1,
-        pointStyle: 'circle',
-      },
-      // Favorited spots — blue
-      {
-        label: 'Your favorites',
-        data: favPoints.map(p => ({ x: p.heat, y: p.salsa, name: p.name })),
-        pointRadius: 7,
-        pointHoverRadius: 9,
-        backgroundColor: 'rgba(99,102,241,0.7)',
-        borderColor: 'rgba(99,102,241,1)',
-        borderWidth: 2,
-        pointStyle: 'circle',
-      },
-      // Recommended spots — orange
-      {
-        label: 'Recommended for you',
-        data: recPoints.map(p => ({ x: p.heat, y: p.salsa, name: p.name, similarity: p.similarity })),
-        pointRadius: 8,
-        pointHoverRadius: 10,
-        backgroundColor: 'rgba(254,121,93,0.8)',
-        borderColor: '#FE795D',
-        borderWidth: 2,
-        pointStyle: 'rectRounded',
-      },
-      // User taste centroid — star
-      {
-        label: 'Your taste',
-        data: [{ x: profile.userHeat, y: profile.userSalsa, name: 'Your Taste' }],
-        pointRadius: 12,
-        pointHoverRadius: 14,
-        backgroundColor: 'rgba(254,200,93,0.9)',
-        borderColor: '#e5a000',
-        borderWidth: 2,
-        pointStyle: 'star',
-      },
-    ];
-  }
+    const axisCommon = {
+      nameLocation: 'middle',
+      nameTextStyle: { ...baseTextStyle(isDark) },
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { lineStyle: { color: ink.grid } },
+      axisLabel: { ...baseTextStyle(isDark), fontSize: 10 }
+    };
 
-  function createChart(profile) {
-    if (!scatterCanvas || !profile) return;
-    if (scatterChart) {
-      scatterChart.destroy();
-      scatterChart = null;
-    }
-
-    scatterChart = new Chart(scatterCanvas, {
-      type: 'scatter',
-      data: { datasets: buildScatterDatasets(profile) },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: { duration: 400 },
-        plugins: {
-          legend: {
-            display: true,
-            position: 'bottom',
-            labels: {
-              boxWidth: 12,
-              padding: 14,
-              font: { size: 11 },
-              color: labelColor,
-              usePointStyle: true,
-            }
-          },
-          tooltip: {
-            backgroundColor: tooltipBg,
-            borderColor: tooltipBorder,
-            borderWidth: 1,
-            titleColor: isDark ? '#f9fafb' : '#111827',
-            bodyColor: labelColor,
-            padding: 10,
-            callbacks: {
-              label(ctx) {
-                const { name, similarity } = ctx.raw;
-                let line = name ? `${name}` : '';
-                if (typeof similarity === 'number') line += ` — ${similarity}% match`;
-                return line;
-              },
-              title() { return ''; }
-            }
+    return {
+      backgroundColor: 'transparent',
+      animationDuration: 400,
+      legend: {
+        bottom: 0,
+        itemWidth: 12,
+        itemHeight: 12,
+        textStyle: { ...baseTextStyle(isDark) },
+        icon: 'circle'
+      },
+      tooltip: {
+        ...tooltipStyle(isDark),
+        trigger: 'item',
+        confine: true,
+        formatter: (params) => {
+          const { name, similarity } = params.data;
+          let line = name ? `<b>${name}</b>` : '';
+          if (typeof similarity === 'number') line += ` — ${similarity}% match`;
+          return line;
+        }
+      },
+      grid: { left: 44, right: 16, top: 12, bottom: 64 },
+      xAxis: {
+        ...axisCommon,
+        type: 'value',
+        name: 'Spice Level (0–10)',
+        nameGap: 24,
+        min: 0,
+        max: 10,
+        interval: 2
+      },
+      yAxis: {
+        ...axisCommon,
+        type: 'value',
+        name: 'Salsa Count',
+        nameGap: 30,
+        min: 0
+      },
+      series: [
+        {
+          name: 'Other spots',
+          type: 'scatter',
+          data: bgPoints.map(toPoint),
+          symbolSize: 8,
+          itemStyle: {
+            color: withAlpha('#9ca3af', isDark ? 0.25 : 0.35),
+            borderColor: withAlpha('#9ca3af', isDark ? 0.4 : 0.5),
+            borderWidth: 1
           }
         },
-        scales: {
-          x: {
-            title: { display: true, text: 'Spice Level (0–10)', color: labelColor, font: { size: 11 } },
-            min: 0,
-            max: 10,
-            grid: { color: gridColor },
-            ticks: { color: labelColor, stepSize: 2, font: { size: 10 } }
-          },
-          y: {
-            title: { display: true, text: 'Salsa Count', color: labelColor, font: { size: 11 } },
-            min: 0,
-            grid: { color: gridColor },
-            ticks: { color: labelColor, font: { size: 10 } }
+        {
+          name: 'Your favorites',
+          type: 'scatter',
+          data: favPoints.map(toPoint),
+          symbolSize: 13,
+          itemStyle: {
+            color: withAlpha(indigo, 0.7),
+            borderColor: indigo,
+            borderWidth: 2
+          }
+        },
+        {
+          name: 'Recommended for you',
+          type: 'scatter',
+          data: recPoints.map(toPoint),
+          symbol: 'roundRect',
+          symbolSize: 15,
+          itemStyle: {
+            color: withAlpha(coral, 0.8),
+            borderColor: coral,
+            borderWidth: 2
+          }
+        },
+        {
+          name: 'Your taste',
+          type: 'scatter',
+          data: [{ value: [profile.userHeat, profile.userSalsa], name: 'Your Taste' }],
+          symbol: STAR_PATH,
+          symbolSize: 24,
+          itemStyle: {
+            color: withAlpha('#fec85d', 0.9),
+            borderColor: '#e5a000',
+            borderWidth: 2
           }
         }
-      }
-    });
+      ]
+    };
   }
 
   onMount(() => {
-    if ($tasteProfile && scatterCanvas) createChart($tasteProfile);
-    return () => { if (scatterChart) scatterChart.destroy(); };
+    if (!scatterContainer) return;
+
+    scatterChart = echarts.init(scatterContainer);
+    if ($tasteProfile) scatterChart.setOption(buildScatterOption($tasteProfile));
+
+    scatterResizeObserver = new ResizeObserver(() => {
+      if (scatterChart) scatterChart.resize();
+    });
+    scatterResizeObserver.observe(scatterContainer);
+
+    return () => {
+      if (scatterResizeObserver) scatterResizeObserver.disconnect();
+      if (scatterChart) {
+        scatterChart.dispose();
+        scatterChart = null;
+      }
+    };
   });
 
   // Rebuild chart when profile data or theme changes
-  $: if (scatterCanvas && $tasteProfile) {
-    createChart($tasteProfile);
-  }
-
-  $: if (scatterChart) {
-    scatterChart.data.datasets = buildScatterDatasets($tasteProfile);
-    scatterChart.options.plugins.legend.labels.color = labelColor;
-    scatterChart.options.plugins.tooltip.backgroundColor = tooltipBg;
-    scatterChart.options.plugins.tooltip.borderColor = tooltipBorder;
-    scatterChart.options.scales.x.grid.color = gridColor;
-    scatterChart.options.scales.x.ticks.color = labelColor;
-    scatterChart.options.scales.x.title.color = labelColor;
-    scatterChart.options.scales.y.grid.color = gridColor;
-    scatterChart.options.scales.y.ticks.color = labelColor;
-    scatterChart.options.scales.y.title.color = labelColor;
-    scatterChart.update();
+  $: if (scatterChart && $tasteProfile && (isDark === true || isDark === false)) {
+    scatterChart.setOption(buildScatterOption($tasteProfile), { notMerge: true });
   }
 </script>
 
@@ -270,9 +262,7 @@
     <div class="profile-section">
       <h3 class="section-title">Taste Map</h3>
       <p class="section-subtitle">Where your taste lands in spice &amp; salsa space. Recommended spots are nearest neighbors.</p>
-      <div class="scatter-container">
-        <canvas bind:this={scatterCanvas}></canvas>
-      </div>
+      <div class="scatter-container" bind:this={scatterContainer}></div>
     </div>
 
     <!-- Recommendations -->
@@ -546,7 +536,7 @@
   }
 
   .type-fill {
-    background: #FF9800;
+    background: var(--accent-hover);
   }
 
   .protein-pct,
@@ -578,9 +568,11 @@
   }
 
   .salsa-number {
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
     font-size: 2rem;
     font-weight: 800;
-    color: #FE795D;
+    color: var(--accent);
     line-height: 1;
   }
 

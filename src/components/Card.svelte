@@ -477,29 +477,27 @@
     font-size: 11px;
     font-weight: 700;
     text-transform: capitalize;
-    color: #FF9800;
+    color: var(--accent-hover);
     min-width: 52px;
     flex-shrink: 0;
   }
 
   :global(.dark) .protein-label {
-    color: #FFB74D;
+    color: var(--accent);
   }
 
   .style-chip {
     font-size: 11px;
     padding: 2px 8px;
     border-radius: 10px;
-    border: 1px solid #FF9800;
-    color: #FF9800;
-    background: rgba(255, 152, 0, 0.08);
+    border: 1px solid var(--accent);
+    color: var(--accent-hover);
+    background: var(--accent-soft);
     white-space: nowrap;
   }
 
   :global(.dark) .style-chip {
-    background: rgba(255, 152, 0, 0.15);
-    color: #FFB74D;
-    border-color: #FFB74D;
+    color: var(--accent);
   }
 
   .salsa-container {

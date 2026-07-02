@@ -1,7 +1,10 @@
 <script>
   import { filterConfig, filteredTacoData, processedTacoData, flyToTarget } from '../lib/stores';
   import { isAuthenticated } from '$lib/authStore';
-  import { SearchOutline, ChevronDownOutline, ChevronUpOutline, HeartSolid } from 'flowbite-svelte-icons';
+  import MagnifyingGlass from 'phosphor-svelte/lib/MagnifyingGlass';
+  import CaretDown from 'phosphor-svelte/lib/CaretDown';
+  import CaretUp from 'phosphor-svelte/lib/CaretUp';
+  import Heart from 'phosphor-svelte/lib/Heart';
   import MagicWand from 'phosphor-svelte/lib/MagicWand';
   import { browser } from '$app/environment';
   import { trailModeActive, enterTrailMode, exitTrailMode } from '../lib/trailStore.js';
@@ -105,7 +108,7 @@
   <!-- Compact Search Bar (Always Visible) -->
   <div class="filter-header">
     <div class="search-input-wrapper" data-tour="search">
-      <SearchOutline class="search-icon" size="sm" />
+      <MagnifyingGlass class="search-icon" size={16} />
       <input
         type="text"
         placeholder="Search by name, menu item, type..."
@@ -150,9 +153,9 @@
       aria-label={$filterPanelOpen ? 'Collapse filters' : 'Expand filters'}
     >
       {#if $filterPanelOpen}
-        <ChevronUpOutline size="sm" />
+        <CaretUp size={16} />
       {:else}
-        <ChevronDownOutline size="sm" />
+        <CaretDown size={16} />
       {/if}
       <span class="filter-text">Filters</span>
       {#if hasActiveFilters && !$filterPanelOpen}
@@ -171,7 +174,7 @@
             <input type="checkbox" bind:checked={$filterConfig.showFavoritesOnly} />
             <span class="favorites-label">
               {#if browser}
-                <HeartSolid size="sm" class="heart-icon" />
+                <Heart weight="fill" size={16} class="heart-icon" />
               {/if}
               Show Favorites Only
             </span>
@@ -763,6 +766,7 @@
     border-radius: 6px;
     text-align: center;
     font-size: 13px;
+    font-variant-numeric: tabular-nums;
     color: #666;
   }
 

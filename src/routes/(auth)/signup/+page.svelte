@@ -2,8 +2,10 @@
   import { signUp } from '$lib/authStore';
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
-  import { EnvelopeOutline, EyeOutline, EyeSlashOutline, CheckCircleOutline } from 'flowbite-svelte-icons';
-
+  import Envelope from 'phosphor-svelte/lib/Envelope';
+  import Eye from 'phosphor-svelte/lib/Eye';
+  import EyeSlash from 'phosphor-svelte/lib/EyeSlash';
+  import CheckCircle from 'phosphor-svelte/lib/CheckCircle';
   let email = '';
   let password = '';
   let confirmPassword = '';
@@ -96,7 +98,7 @@
     {#if confirmEmailSent}
       <div class="success-message">
         {#if browser}
-          <CheckCircleOutline class="success-icon" />
+          <CheckCircle size={20} class="success-icon" />
         {/if}
         <div>
           <p class="success-title">Check your email!</p>
@@ -108,7 +110,7 @@
     {#if success}
       <div class="success-message">
         {#if browser}
-          <CheckCircleOutline class="success-icon" />
+          <CheckCircle size={20} class="success-icon" />
         {/if}
         <div>
           <p class="success-title">Account created successfully!</p>
@@ -166,9 +168,9 @@
             >
               {#if browser}
                 {#if showPassword}
-                  <EyeSlashOutline size="sm" />
+                  <EyeSlash size={16} />
                 {:else}
-                  <EyeOutline size="sm" />
+                  <Eye size={16} />
                 {/if}
               {/if}
             </button>
@@ -209,9 +211,9 @@
             >
               {#if browser}
                 {#if showConfirmPassword}
-                  <EyeSlashOutline size="sm" />
+                  <EyeSlash size={16} />
                 {:else}
-                  <EyeOutline size="sm" />
+                  <Eye size={16} />
                 {/if}
               {/if}
             </button>

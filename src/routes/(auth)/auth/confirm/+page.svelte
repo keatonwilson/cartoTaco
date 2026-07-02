@@ -4,8 +4,8 @@
   import { page } from '$app/stores';
   import { browser } from '$app/environment';
   import { supabaseBrowser } from '$lib/supabaseBrowser';
-  import { CheckCircleOutline, CloseCircleOutline } from 'flowbite-svelte-icons';
-
+  import CheckCircle from 'phosphor-svelte/lib/CheckCircle';
+  import XCircle from 'phosphor-svelte/lib/XCircle';
   let status = 'loading'; // loading, success, error
   let errorMessage = '';
 
@@ -60,7 +60,7 @@
     {:else if status === 'success'}
       <div class="status-content">
         {#if browser}
-          <CheckCircleOutline class="success-icon" size="xl" />
+          <CheckCircle class="success-icon" size={32} />
         {/if}
         <h1 class="title">Email confirmed!</h1>
         <p class="subtitle">Your email has been successfully verified.</p>
@@ -69,7 +69,7 @@
     {:else if status === 'error'}
       <div class="status-content">
         {#if browser}
-          <CloseCircleOutline class="error-icon" size="xl" />
+          <XCircle class="error-icon" size={32} />
         {/if}
         <h1 class="title">Confirmation failed</h1>
         <p class="subtitle">{errorMessage}</p>
@@ -124,11 +124,12 @@
     }
   }
 
-  .success-icon {
+  /* Classes land on the icon component's <svg>, outside Svelte's scoping */
+  .status-content :global(.success-icon) {
     color: #059669;
   }
 
-  .error-icon {
+  .status-content :global(.error-icon) {
     color: #DC2626;
   }
 

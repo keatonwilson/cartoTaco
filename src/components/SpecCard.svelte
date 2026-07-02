@@ -1,5 +1,4 @@
 <script>
-  import { Card } from 'flowbite-svelte';
   import { isMobile } from '$lib/deviceDetection';
   import { effectiveTheme } from '$lib/theme';
 

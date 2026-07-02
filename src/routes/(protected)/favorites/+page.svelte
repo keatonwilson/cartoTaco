@@ -2,7 +2,8 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
-	import { HeartSolid, MapPinAltSolid } from 'flowbite-svelte-icons';
+	import Heart from 'phosphor-svelte/lib/Heart';
+	import MapPin from 'phosphor-svelte/lib/MapPin';
 	import HeartBreak from 'phosphor-svelte/lib/HeartBreak';
 	import { favoriteIds, loadFavorites } from '$lib/favoritesStore';
 	import { processedTacoData } from '$lib/stores';
@@ -43,7 +44,7 @@
 		<!-- Header -->
 		<div class="favorites-header">
 			{#if browser}
-				<HeartSolid class="header-icon" size="xl" />
+				<Heart weight="fill" class="header-icon" size={32} />
 			{/if}
 			<h1 class="favorites-title">My Favorite Taco Spots</h1>
 			<p class="favorites-subtitle">
@@ -88,7 +89,7 @@
 							{#if site.site?.address}
 								<div class="card-detail">
 									{#if browser}
-										<MapPinAltSolid size="xs" class="detail-icon" />
+										<MapPin weight="fill" size={12} class="detail-icon" />
 									{/if}
 									<span class="detail-value address">{site.site.address}</span>
 								</div>
@@ -161,8 +162,9 @@
 		margin-bottom: 2rem;
 	}
 
-	.header-icon {
-		color: #FE795D;
+	/* Class lands on the icon component's <svg>, outside Svelte's scoping */
+	.favorites-header :global(.header-icon) {
+		color: var(--accent);
 		margin-bottom: 1rem;
 	}
 
@@ -363,8 +365,8 @@
 		line-height: 1.4;
 	}
 
-	.detail-icon {
-		color: #FE795D;
+	.card-detail :global(.detail-icon) {
+		color: var(--accent);
 		flex-shrink: 0;
 	}
 

@@ -1,120 +1,103 @@
 <script>
     import { onMount } from "svelte";
-    import { Chart, registerables } from "chart.js/auto";
-    import ChartAnnotation from "chartjs-plugin-annotation";
-    Chart.register(ChartAnnotation);
-  
+    import * as echarts from "echarts";
+    import { effectiveTheme } from '$lib/theme';
+    import { accent, chartInk, tooltipStyle } from '$lib/chartTheme';
+
     export let value;
     export let meanValue;
     export let maxValue;
-  
-    let canvas;
-    let chartInstance;
-  
-    onMount(() => {
-      if (canvas) {
-  
-        chartInstance = new Chart(canvas, {
-          type: "bar",
-          data: {
-            labels: ["Salsa Count"],
-            datasets: [
-              {
-                data: [maxValue],
-                backgroundColor: "rgba(211, 211, 211, 0.5)", // Gray background
-                barPercentage: 0.2, // Adjust bar height
-                categoryPercentage: 0.8, // Adjust bar height
-                order: 2,
-                label: "Max Value",
-              },
-              {
-                data: [value],
-                backgroundColor: "rgb(204, 85, 0)",
-                barPercentage: 0.2, // Adjust bar height
-                categoryPercentage: 0.8, // Adjust bar height
-                order: 1,
-                label: "Value",
-              },
-            ],
-          },
-          options: {
-            indexAxis: "y",
-            scales: {
-              x: {
-                display: false,
-                max: maxValue,
-                stacked: true,
-              },
-              y: {
-                display: false,
-                stacked: true,
-              },
+
+    let container;
+    let chart;
+    let resizeObserver;
+
+    $: isDark = $effectiveTheme === 'dark';
+
+    function buildOption() {
+      const ink = chartInk(isDark);
+      const brand = accent(isDark);
+
+      return {
+        backgroundColor: 'transparent',
+        grid: { left: 2, right: 8, top: 6, bottom: 6 },
+        tooltip: {
+          ...tooltipStyle(isDark),
+          trigger: 'item',
+          confine: true,
+          formatter: () =>
+            `Salsas: <b>${value}</b><br/>City average: <b>${Math.round(meanValue)}</b><br/>City max: <b>${maxValue}</b>`
+        },
+        xAxis: {
+          type: 'value',
+          min: 0,
+          max: maxValue,
+          show: false
+        },
+        yAxis: {
+          type: 'category',
+          data: ['Salsa Count'],
+          show: false
+        },
+        series: [
+          {
+            type: 'bar',
+            data: [value],
+            barWidth: 14,
+            itemStyle: {
+              color: brand,
+              borderRadius: [0, 4, 4, 0]
             },
-            plugins: {
-              legend: {
-                display: false,
-              },
-              tooltip: {
-                mode: 'nearest',
-                intersect: false, 
-                position: 'nearest',
-                enabled: true,
-                callbacks: {
-                  label: function (context) {
-                    let label = context.dataset.label || "";
-                    if (label) {
-                      label += ": ";
-                    }
-                    if (context.parsed.x !== null) {
-                      label += context.parsed.x;
-                    }
-                    return label;
-                  },
-                },
-              },
-              annotation: {
-                annotations: {
-                  line1: {
-                    type: "line",
-                    xMin: meanValue,
-                    xMax: meanValue,
-                    borderColor: "lightgrey",
-                    borderWidth: 3,
-                    label: {
-                      enabled: true,
-                      content: "Mean",
-                      position: "center",
-                      backgroundColor: "rgba(0,0,0,0.8)",
-                      color: "white",
-                      font: {
-                        size: 10,
-                      },
-                    },
-                  },
-                },
-              },
+            // Gray track spanning the full axis (city max)
+            showBackground: true,
+            backgroundStyle: {
+              color: ink.grid,
+              borderRadius: 4
             },
-            elements: {
-              bar: {
-                borderRadius: 10, // Set this value to control the roundness of the corners
-              },
-            },
-          },
-        });
-  
-        return () => {
-          if (chartInstance) {
-            chartInstance.destroy();
+            // City-average tick — the stats row below carries its label
+            markLine: {
+              silent: true,
+              symbol: 'none',
+              lineStyle: { color: ink.label, width: 2, type: 'solid' },
+              label: { show: false },
+              data: [{ xAxis: meanValue }]
+            }
           }
-        };
-      }
+        ]
+      };
+    }
+
+    onMount(() => {
+      if (!container) return;
+
+      chart = echarts.init(container);
+      chart.setOption(buildOption());
+
+      // Card layouts mount this at 0×0 — resize when dimensions appear
+      resizeObserver = new ResizeObserver(() => {
+        if (chart) chart.resize();
+      });
+      resizeObserver.observe(container);
+
+      return () => {
+        if (resizeObserver) resizeObserver.disconnect();
+        if (chart) {
+          chart.dispose();
+          chart = null;
+        }
+      };
     });
+
+    // Rebuild when values or theme change
+    $: if (chart && (isDark === true || isDark === false) && value !== undefined) {
+      chart.setOption(buildOption(), { notMerge: true });
+    }
   </script>
-  
+
   <div class="salsa-wrapper">
     <div class="chart-container">
       <div class="chart-label">Salsa Count</div>
-      <canvas bind:this={canvas}></canvas>
+      <div class="bar-chart" bind:this={container}></div>
     </div>
     <div class="salsa-stats">
       <span class="stat-item"><strong>{value}</strong> salsas</span>
@@ -155,12 +138,19 @@
       color: #f9fafb;
     }
 
+    .bar-chart {
+      flex: 1;
+      height: 44px;
+      min-width: 0;
+    }
+
     .salsa-stats {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
       font-size: 12px;
+      font-variant-numeric: tabular-nums;
       color: #555;
       margin-top: 2px;
     }
@@ -170,7 +160,7 @@
     }
 
     .stat-item strong {
-      color: #FE795D;
+      color: var(--accent);
       font-weight: 700;
     }
 
@@ -195,4 +185,3 @@
       color: #9ca3af;
     }
   </style>
-  
