@@ -736,7 +736,10 @@
     display: flex;
     justify-content: center;
     width: 100%;
-    height: 140px;
+    /* Radar size is bound by container height (ECharts uses the smaller
+       dimension) — grow with the viewport so tall screens get full-bodied
+       charts while short laptops keep the no-scroll card fit */
+    height: clamp(150px, 24vh, 260px);
     position: relative;
     overflow: visible;
   }

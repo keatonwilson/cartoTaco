@@ -62,9 +62,9 @@
       },
       radar: {
         indicator: (labels || []).map((name) => ({ name, max, min: 0 })),
-        // Modest radius leaves room for axis labels — ECharts doesn't auto-fit
-        // them into the container the way Chart.js did
-        radius: multiSeries ? '52%' : '58%',
+        // Fill the container — the wrap/nameGap settings below keep axis
+        // labels inside even at this radius (ECharts doesn't auto-fit them)
+        radius: multiSeries ? '58%' : '66%',
         center: ['50%', multiSeries ? '48%' : '52%'],
         nameGap: 8,
         axisName: {
