@@ -556,6 +556,14 @@
     background: white;
   }
 
+  /* fr tracks bottom out at min-content: without this, a chart canvas that
+     initializes before layout settles can lock a column wide (see the census
+     page for the full story) */
+  .comparison-grid > *,
+  .comparison-head > * {
+    min-width: 0;
+  }
+
   :global(.dark) .comparison-grid {
     border-color: #374151;
     background: #111827;
@@ -642,6 +650,7 @@
   .overlay-cell :global(.chart-wrapper) {
     flex: 1;
     min-height: 0;
+    min-width: 0;
   }
 
   .overlay-styles {

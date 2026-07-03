@@ -410,6 +410,13 @@
     overflow-x: clip;
   }
 
+  /* Every grid/flex descendant needs min-width: 0 — fr tracks and flex items
+     default to a min-content minimum, so an ECharts canvas that initializes
+     before first layout settles (cold-cache fonts/CSS racing the data fetch)
+     can otherwise lock a column wide, and the ResizeObserver never fires to
+     shrink it back. */
+  .census-grid > *,
+  .census-col > *,
   .census-section,
   .chart {
     min-width: 0;
