@@ -1,5 +1,7 @@
 <script>
-  import { GlobeOutline, PhoneOutline, MapPinAltSolid } from 'flowbite-svelte-icons';
+  import Globe from 'phosphor-svelte/lib/Globe';
+  import Phone from 'phosphor-svelte/lib/Phone';
+  import MapPin from 'phosphor-svelte/lib/MapPin';
   import DirectionsButton from './DirectionsButton.svelte';
 
   export let phone = null;
@@ -31,7 +33,7 @@
     <div class="contact-compact">
       {#if address}
         <div class="contact-compact-address">
-          <MapPinAltSolid size="xs" class="icon" />
+          <MapPin weight="fill" size={12} class="icon" />
           <span>{address}</span>
         </div>
       {/if}
@@ -47,7 +49,7 @@
             title="Call {phone}"
             aria-label="Call {phone}"
           >
-            <PhoneOutline size="sm" class="action-svg" />
+            <Phone size={16} class="action-svg" />
           </a>
         {/if}
 
@@ -60,7 +62,7 @@
             title="Website"
             aria-label="Website"
           >
-            <GlobeOutline size="sm" class="action-svg" />
+            <Globe size={16} class="action-svg" />
           </a>
         {/if}
 
@@ -103,7 +105,7 @@
       <!-- Address -->
       {#if address}
         <div class="contact-item">
-          <MapPinAltSolid size="xs" class="icon" />
+          <MapPin weight="fill" size={12} class="icon" />
           <span class="contact-text">{address}</span>
         </div>
       {/if}
@@ -111,7 +113,7 @@
       <!-- Phone -->
       {#if phone}
         <div class="contact-item">
-          <PhoneOutline size="xs" class="icon" />
+          <Phone size={12} class="icon" />
           <a href="tel:{formatPhoneForLink(phone)}" class="contact-link">
             {phone}
           </a>
@@ -121,7 +123,7 @@
       <!-- Website -->
       {#if website}
         <div class="contact-item">
-          <GlobeOutline size="xs" class="icon" />
+          <Globe size={12} class="icon" />
           <a href={website} target="_blank" rel="noopener noreferrer" class="contact-link">
             Website
           </a>

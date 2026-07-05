@@ -14,9 +14,11 @@
 	import Card from '../components/Card.svelte';
 	import { filterPanelOpen, mobileNavOpen } from '../lib/uiStore.js';
 	import 'mapbox-gl/dist/mapbox-gl.css';
-	import { updateMarkers, resetListeners, updateTrailLayers, updateTrailRoute, clearTrailLayers, flyToSite } from '../lib/mapping.js';
+	import { updateMarkers, resetListeners, updateTrailLayers, updateTrailRoute, clearTrailLayers, flyToSite, applyLens } from '../lib/mapping.js';
 	import { mapInstance } from '../lib/mapStore.js';
+	import { mapLens } from '../lib/mapLensStore.js';
 	import FilterBar from '../components/FilterBar.svelte';
+	import LoadingState from '../components/LoadingState.svelte';
 	import TrailTray from '../components/TrailTray.svelte';
 	import ComparisonTray from '../components/ComparisonTray.svelte';
 	import { comparisonActive, addToComparison } from '../lib/comparisonStore.js';
@@ -197,6 +199,9 @@
 		}
 	}
 
+	// Switch marker styling when the map lens changes
+	$: if (map && mapLoaded && $mapLens) applyLens(map, $mapLens);
+
 	// Re-draw numbered stop markers when trail stops change (only while trail mode is active)
 	$: if (map && mapLoaded && $trailModeActive) updateTrailLayers(map, $trailStops);
 
@@ -235,6 +240,8 @@
 			const modeParam = params.get('mode');
 			if (modeParam === 'drive') {
 				trailTransportMode.set('driving');
+			} else if (modeParam === 'bike') {
+				trailTransportMode.set('cycling');
 			}
 			const sites = ids.map((id) => $processedTacoData.find((s) => s.est_id === id)).filter(Boolean);
 			if (sites.length > 0) {
@@ -295,8 +302,7 @@
 
 	{#if $isLoading}
 		<div class="loading-container">
-			<div class="loading-spinner"></div>
-			<p>Loading taco data...</p>
+			<LoadingState message="Mapping Tucson's tacos…" />
 		</div>
 	{/if}
 
@@ -309,7 +315,7 @@
 	{/if}
 </div>
 
-<!-- Filter Bar + Trail Tray + Comparison Tray -->
+<!-- Filter Bar (with attached lens strip) + Trail Tray + Comparison Tray -->
 {#if !$isLoading && !$hasError}
 	<FilterBar />
 	<TrailTray />
@@ -475,21 +481,6 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     text-align: center;
     z-index: 10;
-  }
-  
-  .loading-spinner {
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #3498db;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 16px auto;
-  }
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
   }
   
   .retry-button {

@@ -3,7 +3,10 @@
   import { signOut } from '$lib/authStore';
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
-  import { UserCircleOutline, EnvelopeOutline, CalendarMonthOutline, HeartSolid } from 'flowbite-svelte-icons';
+  import UserCircle from 'phosphor-svelte/lib/UserCircle';
+  import Envelope from 'phosphor-svelte/lib/Envelope';
+  import CalendarBlank from 'phosphor-svelte/lib/CalendarBlank';
+  import Heart from 'phosphor-svelte/lib/Heart';
   import UploadSimple from 'phosphor-svelte/lib/UploadSimple';
   import LinkSimple from 'phosphor-svelte/lib/LinkSimple';
   import { favoritesCount, loadFavorites } from '$lib/favoritesStore';
@@ -124,7 +127,7 @@
         {#if avatarUrl}
           <img src={avatarUrl} alt="Avatar" class="avatar-image" />
         {:else if browser}
-          <UserCircleOutline class="profile-icon" size="xl" />
+          <UserCircle class="profile-icon" size={32} />
         {/if}
         <button
           class="avatar-edit-button"
@@ -226,7 +229,7 @@
 
         <div class="info-item">
           <div class="info-label">
-            {#if browser}<EnvelopeOutline class="info-icon" />{/if}
+            {#if browser}<Envelope size={20} class="info-icon" />{/if}
             <span>Email</span>
           </div>
           <div class="info-value">{user.email}</div>
@@ -234,7 +237,7 @@
 
         <div class="info-item">
           <div class="info-label">
-            {#if browser}<CalendarMonthOutline class="info-icon" />{/if}
+            {#if browser}<CalendarBlank size={20} class="info-icon" />{/if}
             <span>Member Since</span>
           </div>
           <div class="info-value">{signupDate}</div>
@@ -242,7 +245,7 @@
 
         <button class="info-item clickable" on:click={() => goto('/favorites')}>
           <div class="info-label">
-            {#if browser}<HeartSolid class="info-icon" />{/if}
+            {#if browser}<Heart weight="fill" size={20} class="info-icon" />{/if}
             <span>Favorite Locations</span>
           </div>
           <div class="info-value">{$favoritesCount}</div>

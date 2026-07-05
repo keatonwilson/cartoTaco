@@ -11,8 +11,12 @@
   import CollapsibleSection from "./CollapsibleSection.svelte";
   import FavoriteButton from "./FavoriteButton.svelte";
   import VibeVotes from "./VibeVotes.svelte";
+  import VibeFingerprint from "./VibeFingerprint.svelte";
   import HandmadeBadge from "./HandmadeBadge.svelte";
-  import { selectedSite, summaryStats } from "$lib/stores";
+  import SalsaLineup from "./SalsaLineup.svelte";
+  import ContextStrip from "./ContextStrip.svelte";
+  import { selectedSite, summaryStats, distributionStats, processedTacoData } from "$lib/stores";
+  import { radarMax } from "$lib/chartTheme";
   import { isMobile } from "$lib/deviceDetection";
   import {
     comparisonSites,
@@ -27,6 +31,22 @@
   // Comparison state for this card
   $: isInComparison = $comparisonSites.some(s => s.est_id === $selectedSite?.est_id);
   $: comparisonFull = $comparisonCount >= 3 && !isInComparison;
+
+  // City-percentile context for the heat ladder and salsa bullet
+  $: heatPercentile = $selectedSite
+    ? $distributionStats.get($selectedSite.est_id)?.heatPercentile ?? null
+    : null;
+  $: salsaPercentile = $selectedSite
+    ? $distributionStats.get($selectedSite.est_id)?.salsaPercentile ?? null
+    : null;
+
+  // City heat distribution for the mobile context strip
+  $: cityHeats = $processedTacoData.map((s) => s.heatOverall || 0);
+
+  // Radar scales fit this spot's own values so the polygon fills the plot;
+  // cross-spot comparison happens on /compare, which shares a scale there
+  $: menuRadarMax = radarMax($selectedSite?.topFiveMenuValues);
+  $: proteinRadarMax = radarMax($selectedSite?.topFiveProteinValues);
 
   async function toggleComparison() {
     if (!$selectedSite) return;
@@ -123,12 +143,16 @@
           <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Vibe Check</h2>
           <p class="vibe-subtitle">Tap any chip to vote on what this spot does well. Your vote, plus everyone else's, builds a vibe fingerprint — no stars, no essays.</p>
           <VibeVotes estId={$selectedSite.est_id} />
+          <div class="vibe-fingerprint-wrap">
+            <VibeFingerprint estId={$selectedSite.est_id} />
+          </div>
         </div>
         <CollapsibleSection title="Menu Summary" defaultOpen={false}>
           <div class="radar-chart-container">
             <RadarChart
               labels={$selectedSite.topFiveMenuItems || []}
               data={$selectedSite.topFiveMenuValues || []}
+              max={menuRadarMax}
             />
           </div>
         </CollapsibleSection>
@@ -139,6 +163,7 @@
             <RadarChart
               labels={$selectedSite.topFiveProteinItems || []}
               data={$selectedSite.topFiveProteinValues || []}
+              max={proteinRadarMax}
             />
           </div>
           {#if $selectedSite.proteinStyles && Object.keys($selectedSite.proteinStyles).length > 0}
@@ -160,7 +185,14 @@
         <CollapsibleSection title="Spiciness & Details" defaultOpen={true}>
           <div class="right-box">
             <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1" id="spicy-label">Spiciness</h2>
-            <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
+            <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} percentile={heatPercentile} />
+            <ContextStrip
+              values={cityHeats}
+              value={$selectedSite.heatOverall || 0}
+              min={0}
+              max={10}
+              label="Every Tucson spot's heat — this one highlighted"
+            />
             <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Tortilla Type</h2>
             <div class="tortilla-row">
               <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
@@ -174,8 +206,14 @@
               value={$selectedSite.salsaCount || 0}
               meanValue={$summaryStats.avgSalsaNum || 0}
               maxValue={$summaryStats.maxSalsaNum || 0}
+              percentile={salsaPercentile}
             />
           </div>
+          <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Salsa Lineup</h2>
+          <SalsaLineup
+            salsaVarieties={$selectedSite.salsaVarieties || []}
+            otherSalsas={$selectedSite.otherSalsas || []}
+          />
         </CollapsibleSection>
 
         <div class="specialties-section">
@@ -253,10 +291,11 @@
         </div>
       </div>
 
-      <!-- Row 4: Vibe votes (anti-review), centered -->
+      <!-- Row 4: Vibe votes (anti-review) + aggregate fingerprint, centered -->
       <div class="desktop-vibe-row">
         <span class="desktop-vibe-label">Vibe Check:</span>
         <VibeVotes estId={$selectedSite.est_id} compact={true} />
+        <VibeFingerprint estId={$selectedSite.est_id} />
       </div>
 
       <!-- Row 5: Two radar charts side by side. Protein prep styles sit
@@ -270,6 +309,7 @@
               <RadarChart
                 labels={$selectedSite.topFiveMenuItems || []}
                 data={$selectedSite.topFiveMenuValues || []}
+                max={menuRadarMax}
               />
             </div>
           </div>
@@ -280,6 +320,7 @@
             <RadarChart
               labels={$selectedSite.topFiveProteinItems || []}
               data={$selectedSite.topFiveProteinValues || []}
+              max={proteinRadarMax}
             />
           </div>
           {#if $selectedSite.proteinStyles && Object.keys($selectedSite.proteinStyles).length > 0}
@@ -302,7 +343,7 @@
       <!-- Row 6: Spice + Tortilla + Salsa in one compact strip -->
       <div class="desktop-stats-row">
         <div class="desktop-stat-item">
-          <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} />
+          <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} percentile={heatPercentile} />
         </div>
         <div class="desktop-stat-item desktop-tortilla-item">
           <h2 class="text-xs font-semibold text-gray-800 dark:text-gray-100 mb-1">Tortilla</h2>
@@ -316,11 +357,21 @@
             value={$selectedSite.salsaCount || 0}
             meanValue={$summaryStats.avgSalsaNum || 0}
             maxValue={$summaryStats.maxSalsaNum || 0}
+            percentile={salsaPercentile}
           />
         </div>
       </div>
 
-      <!-- Row 7: Specialties -->
+      <!-- Row 7: Salsa lineup (per-salsa data from the salsa table) -->
+      <div class="desktop-salsa-lineup">
+        <span class="desktop-lineup-label">Salsas:</span>
+        <SalsaLineup
+          salsaVarieties={$selectedSite.salsaVarieties || []}
+          otherSalsas={$selectedSite.otherSalsas || []}
+        />
+      </div>
+
+      <!-- Row 8: Specialties -->
       <div class="desktop-specialties">
         <h2 class="text-xs font-semibold text-gray-800 dark:text-gray-100 mb-1">Specialties</h2>
         {#if $selectedSite.specialties && $selectedSite.specialties.length > 0}
@@ -477,29 +528,27 @@
     font-size: 11px;
     font-weight: 700;
     text-transform: capitalize;
-    color: #FF9800;
+    color: var(--accent-hover);
     min-width: 52px;
     flex-shrink: 0;
   }
 
   :global(.dark) .protein-label {
-    color: #FFB74D;
+    color: var(--accent);
   }
 
   .style-chip {
     font-size: 11px;
     padding: 2px 8px;
     border-radius: 10px;
-    border: 1px solid #FF9800;
-    color: #FF9800;
-    background: rgba(255, 152, 0, 0.08);
+    border: 1px solid var(--accent);
+    color: var(--accent-hover);
+    background: var(--accent-soft);
     white-space: nowrap;
   }
 
   :global(.dark) .style-chip {
-    background: rgba(255, 152, 0, 0.15);
-    color: #FFB74D;
-    border-color: #FFB74D;
+    color: var(--accent);
   }
 
   .salsa-container {
@@ -542,6 +591,10 @@
     line-height: 1.35;
     color: #6b7280;
     margin: 0 0 6px 0;
+  }
+
+  .vibe-fingerprint-wrap {
+    margin-top: 6px;
   }
 
   :global(.dark) .vibe-subtitle {
@@ -683,7 +736,10 @@
     display: flex;
     justify-content: center;
     width: 100%;
-    height: 140px;
+    /* Radar size is bound by container height (ECharts uses the smaller
+       dimension) — grow with the viewport so tall screens get full-bodied
+       charts while short laptops keep the no-scroll card fit */
+    height: clamp(150px, 24vh, 260px);
     position: relative;
     overflow: visible;
   }
@@ -741,24 +797,32 @@
     min-width: 0;
   }
 
-  .desktop-stat-item :global(.gauge-container) {
-    width: 64px !important;
-    height: 64px !important;
-    max-width: 64px !important;
-    max-height: 64px !important;
+  .desktop-stat-item :global(.gauge-wrapper) {
+    gap: 2px;
   }
 
-  .desktop-stat-item :global(.gauge-wrapper) {
-    gap: 0;
+  .desktop-stat-item :global(.hero-number) {
+    font-size: 20px;
   }
 
   .desktop-stat-item :global(.spice-description) {
     font-size: 11px;
-    margin-top: -2px;
   }
 
-  .desktop-stat-item :global(.spice-explanation) {
-    display: none;
+  /* Salsa lineup row */
+  .desktop-salsa-lineup {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 5px 0 2px;
+  }
+
+  .desktop-lineup-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-2);
+    flex-shrink: 0;
+    padding-top: 3px;
   }
 
   .desktop-tortilla-item :global(.icons) {
@@ -778,7 +842,7 @@
   }
 
   .desktop-salsa-item :global(.salsa-explanation) {
-    display: none;
+    font-size: 9px;
   }
 
   /* Row 7: Specialties */

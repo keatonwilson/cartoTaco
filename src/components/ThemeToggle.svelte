@@ -1,12 +1,14 @@
 <script>
 	import { themePreference } from '$lib/theme.js';
 	import { browser } from '$app/environment';
-	import { SunOutline, MoonOutline, ClockOutline } from 'flowbite-svelte-icons';
+	import Sun from 'phosphor-svelte/lib/Sun';
+	import Moon from 'phosphor-svelte/lib/Moon';
+	import Clock from 'phosphor-svelte/lib/Clock';
 
 	const themes = [
-		{ value: 'light', label: 'Light', icon: SunOutline },
-		{ value: 'auto', label: 'Auto', icon: ClockOutline },
-		{ value: 'dark', label: 'Dark', icon: MoonOutline }
+		{ value: 'light', label: 'Light', icon: Sun },
+		{ value: 'auto', label: 'Auto', icon: Clock },
+		{ value: 'dark', label: 'Dark', icon: Moon }
 	];
 
 	function setTheme(value) {
@@ -24,7 +26,7 @@
 			aria-label="Set {theme.label} theme"
 		>
 			{#if browser}
-				<svelte:component this={theme.icon} size="sm" />
+				<svelte:component this={theme.icon} size={16} />
 			{/if}
 			<span class="theme-label">{theme.label}</span>
 		</button>

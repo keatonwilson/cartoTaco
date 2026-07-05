@@ -4,6 +4,8 @@ import { selectedSite } from './stores';
 import { deviceType } from './deviceDetection';
 import { get } from 'svelte/store';
 import { trailModeActive, trailStops, addStop, removeStop } from './trailStore';
+import { mapLens } from './mapLensStore';
+import { SEQUENTIAL } from './chartTheme';
 
 // Keep track of active popup and its associated Svelte component
 let currentPopup = null;
@@ -54,6 +56,54 @@ export const resetListeners = (map) => {
   clearTrailLayers(map);
 };
 
+/**
+ * Register the establishment-type glyphs as map images (U3). Drawn on an
+ * offscreen canvas — no sprite files needed. White marks sit on the coral
+ * marker circle. Re-run after style switches (setStyle clears images).
+ */
+function ensureTypeGlyphs(map) {
+  if (typeof document === 'undefined') return;
+
+  const GLYPHS = {
+    'glyph-restaurant': (ctx) => {
+      // Storefront: awning + body with a door notch
+      ctx.fillRect(5, 9, 22, 5);
+      ctx.fillRect(7, 16, 18, 11);
+      ctx.clearRect(13, 20, 6, 7);
+    },
+    'glyph-stand': (ctx) => {
+      // Market stand: tent roof + pole
+      ctx.beginPath();
+      ctx.moveTo(16, 6);
+      ctx.lineTo(28, 18);
+      ctx.lineTo(4, 18);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillRect(14.5, 18, 3, 9);
+    },
+    'glyph-truck': (ctx) => {
+      // Food truck: box + cab + wheels
+      ctx.fillRect(4, 10, 15, 12);
+      ctx.fillRect(19, 14, 8, 8);
+      ctx.beginPath();
+      ctx.arc(10, 24, 3, 0, Math.PI * 2);
+      ctx.arc(22, 24, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+
+  for (const [name, draw] of Object.entries(GLYPHS)) {
+    if (map.hasImage && map.hasImage(name)) continue;
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    draw(ctx);
+    map.addImage(name, ctx.getImageData(0, 0, 32, 32), { pixelRatio: 2 });
+  }
+}
+
 // Convert processed sites to GeoJSON format
 function sitesToGeoJSON(processedSites) {
   return {
@@ -71,6 +121,9 @@ function sitesToGeoJSON(processedSites) {
           est_id: site.est_id,
           name: site.name,
           type: site.type,
+          // Scalar fields for data-driven lens styling
+          heat: site.heatOverall || 0,
+          salsas: site.salsaCount || 0,
           // Store the full site data as a stringified JSON for retrieval
           // (Mapbox properties don't support nested objects well)
           siteData: JSON.stringify(site)
@@ -100,6 +153,9 @@ export const updateMarkers = (processedSites, map) => {
   // Check if source exists, if so update it
   if (map.getSource('taco-sites')) {
     map.getSource('taco-sites').setData(geojson);
+    if (map.getSource('taco-sites-all')) {
+      map.getSource('taco-sites-all').setData(geojson);
+    }
     return;
   }
 
@@ -112,6 +168,13 @@ export const updateMarkers = (processedSites, map) => {
     clusterRadius: 50 // Radius of each cluster when clustering points
   });
 
+  // Unclustered twin source for the data lenses (heat / salsa / density),
+  // where every spot must render individually at any zoom
+  map.addSource('taco-sites-all', {
+    type: 'geojson',
+    data: geojson
+  });
+
   // Add cluster circles layer
   map.addLayer({
     id: 'clusters',
@@ -119,15 +182,15 @@ export const updateMarkers = (processedSites, map) => {
     source: 'taco-sites',
     filter: ['has', 'point_count'],
     paint: {
-      // Use step expressions to create graduated circle sizes
+      // Graduated sizes/colors from the brand's sequential ramp
       'circle-color': [
         'step',
         ['get', 'point_count'],
-        '#FE795D', // Orange for small clusters (2-10 points)
+        SEQUENTIAL[4], // brand coral for small clusters (2-10 points)
         10,
-        '#F4511E', // Darker orange for medium clusters (10-20 points)
+        SEQUENTIAL[6], // deeper for medium clusters (10-20 points)
         20,
-        '#BF360C'  // Dark red for large clusters (20+ points)
+        SEQUENTIAL[8]  // deepest for large clusters (20+ points)
       ],
       'circle-radius': [
         'step',
@@ -158,6 +221,9 @@ export const updateMarkers = (processedSites, map) => {
       'text-color': '#ffffff'
     }
   });
+
+  // Register type glyph images (idempotent; re-adds after style switches)
+  ensureTypeGlyphs(map);
 
   // Add unclustered points layer with hover effects
   map.addLayer({
@@ -190,6 +256,27 @@ export const updateMarkers = (processedSites, map) => {
     }
   });
 
+  // Type glyph on top of each marker circle (restaurant / stand / truck)
+  map.addLayer({
+    id: 'unclustered-point-glyph',
+    type: 'symbol',
+    source: 'taco-sites',
+    filter: ['!', ['has', 'point_count']],
+    layout: {
+      'icon-image': [
+        'match',
+        ['get', 'type'],
+        'Brick and Mortar', 'glyph-restaurant',
+        'Stand', 'glyph-stand',
+        'Truck', 'glyph-truck',
+        'glyph-restaurant'
+      ],
+      'icon-size': 0.85,
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true
+    }
+  });
+
   // Add labels for unclustered points
   map.addLayer({
     id: 'unclustered-point-label',
@@ -209,6 +296,70 @@ export const updateMarkers = (processedSites, map) => {
       'text-halo-width': 2
     }
   });
+
+  // ─── Lens layers (hidden until a data lens is active) ───
+
+  // Individual points for the heat/salsa lenses — unclustered at every zoom
+  map.addLayer({
+    id: 'lens-points',
+    type: 'circle',
+    source: 'taco-sites-all',
+    layout: { visibility: 'none' },
+    paint: {
+      'circle-color': SEQUENTIAL[4],
+      'circle-radius': 11,
+      'circle-stroke-width': 2,
+      'circle-stroke-color': '#fff',
+      'circle-opacity': 0.95
+    }
+  });
+
+  map.addLayer({
+    id: 'lens-points-label',
+    type: 'symbol',
+    source: 'taco-sites-all',
+    layout: {
+      visibility: 'none',
+      'text-field': ['get', 'name'],
+      'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+      'text-size': 11,
+      'text-offset': [0, 1.5],
+      'text-anchor': 'top'
+    },
+    paint: {
+      'text-color': '#333',
+      'text-halo-color': '#fff',
+      'text-halo-width': 2
+    }
+  });
+
+  // Density heatmap lens — brand sequential ramp over transparent
+  map.addLayer({
+    id: 'lens-heatmap',
+    type: 'heatmap',
+    source: 'taco-sites-all',
+    layout: { visibility: 'none' },
+    paint: {
+      'heatmap-weight': 1,
+      'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 8, 1, 15, 3],
+      'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 8, 20, 15, 60],
+      'heatmap-color': [
+        'interpolate',
+        ['linear'],
+        ['heatmap-density'],
+        0, 'rgba(255, 241, 238, 0)',
+        0.2, SEQUENTIAL[2],
+        0.4, SEQUENTIAL[3],
+        0.6, SEQUENTIAL[4],
+        0.8, SEQUENTIAL[6],
+        1, SEQUENTIAL[8]
+      ],
+      'heatmap-opacity': 0.8
+    }
+  });
+
+  // Restore whichever lens is active (updateMarkers re-runs after style changes)
+  applyLens(map, get(mapLens));
 
   // Attach event listeners whenever we have a new map instance
   if (listenersMap !== map) {
@@ -296,6 +447,20 @@ export const updateMarkers = (processedSites, map) => {
     };
     map.on('click', 'unclustered-point', handlers['click::unclustered-point']);
 
+    // Lens points open the same popup/sheet as regular markers
+    handlers['click::lens-points'] = handlers['click::unclustered-point'];
+    map.on('click', 'lens-points', handlers['click::lens-points']);
+
+    handlers['mouseenter::lens-points'] = () => {
+      map.getCanvas().style.cursor = 'pointer';
+    };
+    map.on('mouseenter', 'lens-points', handlers['mouseenter::lens-points']);
+
+    handlers['mouseleave::lens-points'] = () => {
+      map.getCanvas().style.cursor = '';
+    };
+    map.on('mouseleave', 'lens-points', handlers['mouseleave::lens-points']);
+
     // Change cursor on hover over clusters
     handlers['mouseenter::clusters'] = () => {
       map.getCanvas().style.cursor = 'pointer';
@@ -346,6 +511,59 @@ export const updateMarkers = (processedSites, map) => {
     map.on('mouseleave', 'unclustered-point', handlers['mouseleave::unclustered-point']);
   }
 };
+
+// Layer groups toggled by the lenses
+const SPOTS_LAYERS = [
+  'clusters',
+  'cluster-count',
+  'unclustered-point',
+  'unclustered-point-glyph',
+  'unclustered-point-label'
+];
+const LENS_POINT_LAYERS = ['lens-points', 'lens-points-label'];
+
+/**
+ * Switch the active map lens (N3). Pure layer-visibility + paint changes on
+ * layers created by updateMarkers; safe to call any time (no-ops until the
+ * lens layers exist).
+ * @param {object} map - Mapbox GL map instance
+ * @param {'spots'|'heat'|'salsa'|'density'} lensId
+ */
+export function applyLens(map, lensId) {
+  if (!map || !map.getLayer || !map.getLayer('lens-points')) return;
+
+  const setVisible = (ids, on) =>
+    ids.forEach((id) => {
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
+    });
+
+  setVisible(SPOTS_LAYERS, lensId === 'spots');
+  setVisible(LENS_POINT_LAYERS, lensId === 'heat' || lensId === 'salsa');
+  setVisible(['lens-heatmap'], lensId === 'density');
+
+  if (lensId === 'heat') {
+    // Sequential coral ramp keyed to heat_overall
+    map.setPaintProperty('lens-points', 'circle-color', [
+      'interpolate',
+      ['linear'],
+      ['get', 'heat'],
+      0, SEQUENTIAL[1],
+      5, SEQUENTIAL[4],
+      10, SEQUENTIAL[8]
+    ]);
+    map.setPaintProperty('lens-points', 'circle-radius', 11);
+  } else if (lensId === 'salsa') {
+    // Constant brand color; radius carries the salsa count
+    map.setPaintProperty('lens-points', 'circle-color', SEQUENTIAL[4]);
+    map.setPaintProperty('lens-points', 'circle-radius', [
+      'interpolate',
+      ['linear'],
+      ['get', 'salsas'],
+      0, 5,
+      12, 24
+    ]);
+  }
+}
 
 function createPopupContent(siteId) {
   try {

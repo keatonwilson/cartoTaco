@@ -2,11 +2,13 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
-	import { HeartSolid, MapPinAltSolid } from 'flowbite-svelte-icons';
-	import HeartBreak from 'phosphor-svelte/lib/HeartBreak';
+	import Heart from 'phosphor-svelte/lib/Heart';
+	import MapPin from 'phosphor-svelte/lib/MapPin';
 	import { favoriteIds, loadFavorites } from '$lib/favoritesStore';
 	import { processedTacoData } from '$lib/stores';
 	import FavoriteButton from '../../../components/FavoriteButton.svelte';
+	import EmptyState from '../../../components/EmptyState.svelte';
+	import LoadingState from '../../../components/LoadingState.svelte';
 
 	export let data;
 
@@ -43,7 +45,7 @@
 		<!-- Header -->
 		<div class="favorites-header">
 			{#if browser}
-				<HeartSolid class="header-icon" size="xl" />
+				<Heart weight="fill" class="header-icon" size={32} />
 			{/if}
 			<h1 class="favorites-title">My Favorite Taco Spots</h1>
 			<p class="favorites-subtitle">
@@ -53,19 +55,16 @@
 
 		<!-- Loading State -->
 		{#if loading}
-			<div class="loading-state">
-				<div class="loading-spinner"></div>
-				<p>Loading your favorites...</p>
-			</div>
+			<LoadingState message="Fetching your favorites…" />
 		{:else if favoriteLocations.length === 0}
-			<!-- Empty State -->
-			<div class="empty-state">
-				<div class="empty-icon"><HeartBreak size={64} weight="duotone" /></div>
-				<h2>No favorites yet</h2>
-				<p>Start exploring the map and save your favorite taco spots!</p>
-				<button class="explore-button" on:click={() => goto('/')}>
-					Explore Map
-				</button>
+			<div class="empty-card">
+				<EmptyState
+					emoji="💔"
+					title="No favorites yet"
+					message="Start exploring the map and save your favorite taco spots!"
+					ctaLabel="Explore Map"
+					onCta={() => goto('/')}
+				/>
 			</div>
 		{:else}
 			<!-- Favorites Grid -->
@@ -88,7 +87,7 @@
 							{#if site.site?.address}
 								<div class="card-detail">
 									{#if browser}
-										<MapPinAltSolid size="xs" class="detail-icon" />
+										<MapPin weight="fill" size={12} class="detail-icon" />
 									{/if}
 									<span class="detail-value address">{site.site.address}</span>
 								</div>
@@ -161,8 +160,9 @@
 		margin-bottom: 2rem;
 	}
 
-	.header-icon {
-		color: #FE795D;
+	/* Class lands on the icon component's <svg>, outside Svelte's scoping */
+	.favorites-header :global(.header-icon) {
+		color: var(--accent);
 		margin-bottom: 1rem;
 	}
 
@@ -186,93 +186,11 @@
 		color: #9ca3af;
 	}
 
-	/* Loading State */
-	.loading-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: 4rem 2rem;
-		color: #6B7280;
-	}
-
-	:global(.dark) .loading-state {
-		color: #9ca3af;
-	}
-
-	.loading-spinner {
-		border: 4px solid #f3f3f3;
-		border-top: 4px solid #FE795D;
-		border-radius: 50%;
-		width: 40px;
-		height: 40px;
-		animation: spin 1s linear infinite;
-		margin-bottom: 1rem;
-	}
-
-	@keyframes spin {
-		0% { transform: rotate(0deg); }
-		100% { transform: rotate(360deg); }
-	}
-
-	/* Empty State */
-	.empty-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: 4rem 2rem;
-		background: white;
+	/* Empty state card surface */
+	.empty-card {
+		background: var(--surface-1);
 		border-radius: 0.75rem;
 		box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-	}
-
-	:global(.dark) .empty-state {
-		background: #1f2937;
-		box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-	}
-
-	.empty-icon {
-		margin-bottom: 1rem;
-		color: #fe795d;
-	}
-
-	.empty-state h2 {
-		font-size: 1.5rem;
-		font-weight: 700;
-		color: #111827;
-		margin-bottom: 0.5rem;
-	}
-
-	:global(.dark) .empty-state h2 {
-		color: #f9fafb;
-	}
-
-	.empty-state p {
-		color: #6B7280;
-		margin-bottom: 1.5rem;
-	}
-
-	:global(.dark) .empty-state p {
-		color: #9ca3af;
-	}
-
-	.explore-button {
-		padding: 0.75rem 2rem;
-		background: #FE795D;
-		color: white;
-		border: none;
-		border-radius: 0.375rem;
-		font-size: 1rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all 0.2s;
-	}
-
-	.explore-button:hover {
-		background: #d66548;
-		transform: translateY(-1px);
-		box-shadow: 0 4px 8px rgba(254, 121, 93, 0.3);
 	}
 
 	/* Favorites Grid */
@@ -363,8 +281,8 @@
 		line-height: 1.4;
 	}
 
-	.detail-icon {
-		color: #FE795D;
+	.card-detail :global(.detail-icon) {
+		color: var(--accent);
 		flex-shrink: 0;
 	}
 

@@ -13,6 +13,7 @@
     addLocationStop
   } from '../lib/trailStore.js';
   import PersonSimpleWalk from 'phosphor-svelte/lib/PersonSimpleWalk';
+  import PersonSimpleBike from 'phosphor-svelte/lib/PersonSimpleBike';
   import CarProfile from 'phosphor-svelte/lib/CarProfile';
   import MapPin from 'phosphor-svelte/lib/MapPin';
   import SpinnerGap from 'phosphor-svelte/lib/SpinnerGap';
@@ -80,12 +81,15 @@
   }
   $: scheduleFetch($trailStops, $trailTransportMode);
 
+  // Short mode tokens for shareable URLs
+  const MODE_TO_PARAM = { walking: 'walk', cycling: 'bike', driving: 'drive' };
+
   // Update URL whenever stops or mode change while trail is active
   $: if ($trailModeActive && typeof window !== 'undefined') {
     const params = new URLSearchParams();
     if ($trailStops.length > 0) {
       params.set('trail', $trailStops.map((s) => s.est_id).join(','));
-      params.set('mode', $trailTransportMode === 'driving' ? 'drive' : 'walk');
+      params.set('mode', MODE_TO_PARAM[$trailTransportMode] || 'walk');
       history.replaceState({}, '', `?${params}`);
     }
   }
@@ -109,7 +113,7 @@
             .map((s) => `${s.latitude},${s.longitude}`)
             .join('|')
         : '';
-    const travelmode = mode === 'driving' ? 'driving' : 'walking';
+    const travelmode = mode === 'driving' ? 'driving' : mode === 'cycling' ? 'bicycling' : 'walking';
     let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=${travelmode}`;
     if (waypoints) url += `&waypoints=${waypoints}`;
     return url;
@@ -154,6 +158,15 @@
         title="Walking"
       >
         <PersonSimpleWalk size={15} weight="bold" /> Walk
+      </button>
+      <button
+        class="mode-btn"
+        class:active={$trailTransportMode === 'cycling'}
+        on:click={() => trailTransportMode.set('cycling')}
+        aria-label="Biking mode"
+        title="Biking"
+      >
+        <PersonSimpleBike size={15} weight="bold" /> Bike
       </button>
       <button
         class="mode-btn"

@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
   import { processedTacoData, isLoading, summaryStats } from '$lib/stores';
+  import { radarMax } from '$lib/chartTheme';
   import { isMobile } from '$lib/deviceDetection';
   import RadarChart from '../../components/RadarChart.svelte';
   import SpiceGauge from '../../components/SpiceGauge.svelte';
@@ -10,6 +11,9 @@
   import HoursOpen from '../../components/HoursOpen.svelte';
   import IconHighlight from '../../components/IconHighlight.svelte';
   import SpecCarousel from '../../components/SpecCarousel.svelte';
+  import LoadingState from '../../components/LoadingState.svelte';
+  import EmptyState from '../../components/EmptyState.svelte';
+  import VibeFingerprint from '../../components/VibeFingerprint.svelte';
 
   // Parse IDs from URL
   $: ids = ($page.url.searchParams.get('ids') || '').split(',').map(Number).filter(Boolean);
@@ -26,12 +30,90 @@
 
   $: salsaWinners = getWinners(sites, s => s.salsaCount);
   $: spiceWinners = getWinners(sites, s => s.heatOverall);
-  $: menuWinners = getWinners(sites, s => (s.topFiveMenuItems || []).length);
-  $: proteinWinners = getWinners(sites, s => (s.topFiveProteinItems || []).length);
+
+  // ── Overlay radar data: shared axes so shapes are directly comparable ──
+  const PROTEIN_AXES = ['chicken', 'beef', 'pork', 'fish', 'veg'];
+
+  function capitalize(s) {
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  // Union of the compared sites' top menu items (capped so labels stay legible)
+  $: menuAxes = (() => {
+    const seen = [];
+    for (const site of sites) {
+      for (const item of site.topFiveMenuItems || []) {
+        if (!seen.includes(item)) seen.push(item);
+      }
+    }
+    return seen.slice(0, 8);
+  })();
+
+  function menuValueFor(site, item) {
+    const entry = (site.menuItems || []).find(([k]) => k === `${item}_perc`);
+    const v = entry ? parseFloat(entry[1]) : 0;
+    return isNaN(v) ? 0 : Math.round(v * 100);
+  }
+
+  function proteinValueFor(site, p) {
+    const v = parseFloat(site.rawData?.protein?.[`${p}_perc`]);
+    return isNaN(v) ? 0 : Math.round(v * 100);
+  }
+
+  $: menuSeries = sites.map(site => ({
+    name: site.name,
+    values: menuAxes.map(a => menuValueFor(site, a))
+  }));
+
+  $: proteinSeries = sites.map(site => ({
+    name: site.name,
+    values: PROTEIN_AXES.map(p => proteinValueFor(site, p))
+  }));
+
+  // One scale across the spots being compared (not the whole city), shared by
+  // the desktop overlays and the mobile per-spot radars alike
+  $: comparedMenuMax = radarMax(
+    ...menuSeries.map(s => s.values),
+    ...sites.map(s => s.topFiveMenuValues || [])
+  );
+  $: comparedProteinMax = radarMax(
+    ...proteinSeries.map(s => s.values),
+    ...sites.map(s => s.topFiveProteinValues || [])
+  );
 
   // Mobile: active card index
   let activeCardIndex = 0;
   $: activeSite = sites[activeCardIndex] || null;
+
+  // "At a glance" verdicts: leader per metric with its margin over second place
+  function menuBreadth(site) {
+    return Object.entries(site.rawData?.menu || {}).filter(
+      ([k, v]) => k.endsWith('_yes') && v === true
+    ).length;
+  }
+
+  $: verdicts = sites.length >= 2
+    ? [
+        { label: 'Spiciest', accessor: (s) => s.heatOverall || 0, unit: '/10' },
+        { label: 'Most salsas', accessor: (s) => s.salsaCount || 0, unit: ' salsas' },
+        { label: 'Biggest menu', accessor: (s) => menuBreadth(s), unit: ' items' }
+      ]
+        .map(({ label, accessor, unit }) => {
+          const ranked = [...sites].sort((a, b) => accessor(b) - accessor(a));
+          const lead = accessor(ranked[0]);
+          if (lead === 0) return null;
+          const second = accessor(ranked[1]);
+          const tie = lead === second;
+          const margin = Math.round((lead - second) * 10) / 10;
+          return {
+            label,
+            name: tie ? 'Tie' : ranked[0].name,
+            value: `${lead}${unit}`,
+            margin: tie ? null : `+${margin}`
+          };
+        })
+        .filter(Boolean)
+    : [];
 
   let copied = false;
   async function shareComparison() {
@@ -46,38 +128,60 @@
 </script>
 
 <div class="comparison-page">
-  <!-- Header -->
-  <div class="page-header">
-    <button class="back-btn" on:click={() => goto('/')}>
-      &larr; Back to Map
-    </button>
-    <h1 class="page-title">Spot Comparison</h1>
-    <button class="share-btn" on:click={shareComparison} disabled={sites.length < 2}>
-      {copied ? 'Copied!' : 'Share'}
-    </button>
+  <!-- Sticky command bar: page actions (+ spot tabs on mobile) stay reachable
+       at any scroll depth -->
+  <div class="sticky-zone">
+    <div class="page-header">
+      <button class="back-btn" on:click={() => goto('/')}>
+        &larr; Back to Map
+      </button>
+      <h1 class="page-title">Spot Comparison</h1>
+      <button class="share-btn" on:click={shareComparison} disabled={sites.length < 2}>
+        {copied ? 'Copied!' : 'Share'}
+      </button>
+    </div>
+    {#if browser && !$isLoading && $isMobile && sites.length >= 2}
+      <div class="mobile-tabs">
+        {#each sites as site, i}
+          <button
+            class="mobile-tab"
+            class:tab-active={activeCardIndex === i}
+            on:click={() => { activeCardIndex = i; }}
+          >
+            {site.name}
+          </button>
+        {/each}
+      </div>
+    {/if}
   </div>
 
   {#if $isLoading || !browser}
-    <div class="status-message">Loading data...</div>
+    <LoadingState message="Lining up the contenders…" />
   {:else if sites.length < 2}
-    <div class="status-message">
-      <p>Select 2–3 spots from the map to compare them.</p>
-      <button class="back-link" on:click={() => goto('/')}>Go to Map</button>
-    </div>
-  {:else if $isMobile}
-    <!-- MOBILE: tab navigation -->
-    <div class="mobile-tabs">
-      {#each sites as site, i}
-        <button
-          class="mobile-tab"
-          class:tab-active={activeCardIndex === i}
-          on:click={() => { activeCardIndex = i; }}
-        >
-          {site.name}
-        </button>
-      {/each}
-    </div>
+    <EmptyState
+      emoji="⚖️"
+      title="Nothing to compare yet"
+      message="Pick 2–3 spots from the map with the + Compare button and they'll face off here."
+      ctaLabel="Go to Map"
+      onCta={() => goto('/')}
+    />
+  {:else}
+    <!-- At a glance: the verdict before any scrolling -->
+    {#if verdicts.length > 0}
+      <div class="verdict-strip">
+        {#each verdicts as v}
+          <div class="verdict">
+            <span class="verdict-label">{v.label}</span>
+            <span class="verdict-name">{v.name}</span>
+            <span class="verdict-value">
+              {v.value}{#if v.margin}&nbsp;<em>({v.margin})</em>{/if}
+            </span>
+          </div>
+        {/each}
+      </div>
+    {/if}
 
+    {#if $isMobile}
     {#if activeSite}
       <div class="mobile-card">
         {#key activeCardIndex}
@@ -89,14 +193,22 @@
           <div class="card-section">
             <h3 class="section-label">Menu</h3>
             <div class="chart-container">
-              <RadarChart labels={activeSite.topFiveMenuItems || []} data={activeSite.topFiveMenuValues || []} />
+              <RadarChart
+                labels={activeSite.topFiveMenuItems || []}
+                data={activeSite.topFiveMenuValues || []}
+                max={comparedMenuMax}
+              />
             </div>
           </div>
 
           <div class="card-section">
             <h3 class="section-label">Protein</h3>
             <div class="chart-container">
-              <RadarChart labels={activeSite.topFiveProteinItems || []} data={activeSite.topFiveProteinValues || []} />
+              <RadarChart
+                labels={activeSite.topFiveProteinItems || []}
+                data={activeSite.topFiveProteinValues || []}
+                max={comparedProteinMax}
+              />
             </div>
             {#if activeSite.proteinStyles && Object.keys(activeSite.proteinStyles).length > 0}
               <div class="protein-styles">
@@ -145,9 +257,11 @@
       </div>
     {/if}
   {:else}
-    <!-- DESKTOP: side-by-side grid -->
-    <div class="comparison-grid" style="grid-template-columns: 130px repeat({sites.length}, 1fr);">
-      <!-- Row: Spot names -->
+    <!-- DESKTOP: sticky spot-name header row + side-by-side grid.
+         The header lives in its own grid: sticky can't work on items inside
+         .comparison-grid (its overflow:hidden makes a clipping box, and grid
+         items can only stick within their own row track anyway). -->
+    <div class="comparison-head" style="grid-template-columns: 130px repeat({sites.length}, 1fr);">
       <div class="row-label">Spot</div>
       {#each sites as site}
         <div class="col-header">
@@ -155,36 +269,35 @@
           <IconHighlight type="siteType" data={site.type || 'unknown'} />
         </div>
       {/each}
-
-      <!-- Row: Menu radar -->
+    </div>
+    <div class="comparison-grid" style="grid-template-columns: 130px repeat({sites.length}, 1fr);">
+      <!-- Row: Menu radar — one overlay, shared axes, one series per spot -->
       <div class="row-label">Menu</div>
-      {#each sites as site}
-        <div class="chart-cell" class:winner={menuWinners.includes(site.est_id)}>
-          <RadarChart labels={site.topFiveMenuItems || []} data={site.topFiveMenuValues || []} />
-        </div>
-      {/each}
+      <div class="chart-cell overlay-cell" style="grid-column: 2 / -1;">
+        <RadarChart labels={menuAxes} seriesList={menuSeries} max={comparedMenuMax} />
+      </div>
 
-      <!-- Row: Protein radar -->
+      <!-- Row: Protein radar — fixed 5 axes so shapes compare honestly -->
       <div class="row-label">Protein</div>
-      {#each sites as site}
-        <div class="chart-cell" class:winner={proteinWinners.includes(site.est_id)}>
-          <RadarChart labels={site.topFiveProteinItems || []} data={site.topFiveProteinValues || []} />
-          {#if site.proteinStyles && Object.keys(site.proteinStyles).length > 0}
-            <div class="protein-styles">
-              {#each Object.entries(site.proteinStyles) as [protein, styles]}
-                <div class="protein-style-row">
-                  <span class="protein-label">{protein}</span>
-                  <div class="style-chips">
+      <div class="chart-cell overlay-cell" style="grid-column: 2 / -1;">
+        <RadarChart labels={PROTEIN_AXES.map(capitalize)} seriesList={proteinSeries} max={comparedProteinMax} />
+        <div class="overlay-styles">
+          {#each sites as site}
+            {#if site.proteinStyles && Object.keys(site.proteinStyles).length > 0}
+              <div class="protein-style-row">
+                <span class="protein-label">{site.name}</span>
+                <div class="style-chips">
+                  {#each Object.entries(site.proteinStyles) as [protein, styles]}
                     {#each styles as style}
-                      <span class="style-chip">{style}</span>
+                      <span class="style-chip">{protein} · {style}</span>
                     {/each}
-                  </div>
+                  {/each}
                 </div>
-              {/each}
-            </div>
-          {/if}
+              </div>
+            {/if}
+          {/each}
         </div>
-      {/each}
+      </div>
 
       <!-- Row: Spice gauge -->
       <div class="row-label">Spiciness</div>
@@ -203,6 +316,14 @@
             meanValue={$summaryStats.avgSalsaNum || 0}
             maxValue={$summaryStats.maxSalsaNum || 0}
           />
+        </div>
+      {/each}
+
+      <!-- Row: Vibe fingerprint (anti-review aggregate) -->
+      <div class="row-label">Vibes</div>
+      {#each sites as site}
+        <div class="stat-cell">
+          <VibeFingerprint estId={site.est_id} showEmpty={true} />
         </div>
       {/each}
 
@@ -228,6 +349,7 @@
         </div>
       {/each}
     </div>
+    {/if}
   {/if}
 </div>
 
@@ -240,7 +362,9 @@
     padding: 1rem;
     padding-top: 80px;
     min-height: 100vh;
-    overflow-x: hidden;
+    /* clip, not hidden: hidden creates a scrollport that breaks
+       position: sticky for every descendant */
+    overflow-x: clip;
   }
 
   @media (max-width: 640px) {
@@ -271,11 +395,81 @@
   }
 
   /* Header */
+  /* Sticky command bar: pins below the app header (~64px) so page actions
+     and the mobile spot tabs stay reachable at any scroll depth */
+  .sticky-zone {
+    position: sticky;
+    top: 81px; /* app header height */
+    z-index: 60;
+    background: var(--surface-1);
+    margin: 0 -1rem 1rem;
+    padding: 4px 1rem 8px;
+    border-bottom: 1px solid var(--line-1);
+  }
+
+  :global(.dark) .sticky-zone {
+    background: var(--surface-3);
+  }
+
   .page-header {
     display: flex;
     align-items: center;
     gap: 1rem;
-    margin-bottom: 1.5rem;
+  }
+
+  /* At-a-glance verdicts */
+  .verdict-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 1rem;
+  }
+
+  .verdict {
+    flex: 1;
+    min-width: 150px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 10px 14px;
+    border: 1px solid var(--line-1);
+    border-radius: 10px;
+    background: var(--surface-2);
+  }
+
+  .verdict-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--ink-3);
+  }
+
+  .verdict-name {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink-1);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .verdict-value {
+    font-size: 12px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent-hover);
+  }
+
+  :global(.dark) .verdict-value {
+    color: var(--accent);
+  }
+
+  .verdict-value em {
+    font-style: normal;
+    color: var(--ink-3);
+    font-weight: 500;
   }
 
   .page-title {
@@ -335,44 +529,39 @@
     cursor: not-allowed;
   }
 
-  .status-message {
-    text-align: center;
-    padding: 4rem 2rem;
-    color: #6b7280;
-    font-size: 1rem;
-  }
-
-  :global(.dark) .status-message {
-    color: #9ca3af;
-  }
-
-  .back-link {
-    margin-top: 1rem;
-    padding: 10px 24px;
-    border: none;
-    border-radius: 8px;
-    background: #FE795D;
-    color: white;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    display: block;
-    width: fit-content;
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  .back-link:hover {
-    background: #e55a3c;
-  }
-
   /* ===== DESKTOP GRID ===== */
+  /* Sticky spot-name header: its own grid so it can pin below the command bar */
+  .comparison-head {
+    display: grid;
+    position: sticky;
+    top: 133px; /* app header + command bar */
+    z-index: 45;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px 12px 0 0;
+    overflow: hidden;
+    background: white;
+  }
+
+  :global(.dark) .comparison-head {
+    border-color: #374151;
+    background: #111827;
+  }
+
   .comparison-grid {
     display: grid;
     border: 1px solid #e5e7eb;
-    border-radius: 12px;
+    border-top: none;
+    border-radius: 0 0 12px 12px;
     overflow: hidden;
     background: white;
+  }
+
+  /* fr tracks bottom out at min-content: without this, a chart canvas that
+     initializes before layout settles can lock a column wide (see the census
+     page for the full story) */
+  .comparison-grid > *,
+  .comparison-head > * {
+    min-width: 0;
   }
 
   :global(.dark) .comparison-grid {
@@ -412,6 +601,14 @@
     background: #f9fafb;
   }
 
+  .comparison-head .col-header {
+    border-bottom: none;
+  }
+
+  .comparison-head .row-label {
+    border-bottom: none;
+  }
+
   .col-header:last-child {
     border-right: none;
   }
@@ -443,6 +640,25 @@
     flex-direction: column;
     align-items: center;
     position: relative;
+  }
+
+  /* Overlay cell: one radar spanning all spot columns, taller for the legend */
+  .overlay-cell {
+    height: 300px;
+  }
+
+  .overlay-cell :global(.chart-wrapper) {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+  }
+
+  .overlay-styles {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 100%;
+    padding-top: 4px;
   }
 
   .chart-cell:last-child {
@@ -554,36 +770,34 @@
     font-size: 11px;
     font-weight: 700;
     text-transform: capitalize;
-    color: #FF9800;
+    color: var(--accent-hover);
     min-width: 44px;
     flex-shrink: 0;
   }
 
   :global(.dark) .protein-label {
-    color: #FFB74D;
+    color: var(--accent);
   }
 
   .style-chip {
     font-size: 10px;
     padding: 2px 7px;
     border-radius: 10px;
-    border: 1px solid #FF9800;
-    color: #FF9800;
-    background: rgba(255, 152, 0, 0.08);
+    border: 1px solid var(--accent);
+    color: var(--accent-hover);
+    background: var(--accent-soft);
     white-space: nowrap;
   }
 
   :global(.dark) .style-chip {
-    background: rgba(255, 152, 0, 0.15);
-    color: #FFB74D;
-    border-color: #FFB74D;
+    color: var(--accent);
   }
 
   /* ===== MOBILE ===== */
   .mobile-tabs {
     display: flex;
     gap: 4px;
-    margin-bottom: 1rem;
+    margin-top: 8px;
     width: 100%;
   }
 
