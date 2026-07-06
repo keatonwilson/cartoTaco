@@ -88,6 +88,7 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 - `processedTacoData` - Transforms raw site data into component-ready format with pre-computed values (top 5 menu items, proteins, percentages, and specialty items embedded from view)
 - `filteredTacoData` - Filters `processedTacoData` based on `filterConfig` (search, protein type, establishment type, spice level, open hours, favorites)
 - `summaryStats` - Computed from `processedTacoData` `{ maxSalsaNum, avgSalsaNum, maxHeatLevel, avgHeatLevel }`
+- `distributionStats` - `Map<est_id, { heatPercentile, salsaPercentile }>` percentile ranks within the city distribution (powers "Hotter than X% of Tucson spots" context lines)
 - `recentlyAddedSites` - Spots added in the last 30 days, sorted newest first (used by NewSpotsBadge)
 
 ### UI State Stores
@@ -118,7 +119,7 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 ### Trail Store (src/lib/trailStore.js)
 - `trailModeActive` - Whether trail building mode is active
 - `trailStops` - Ordered array of trail stop site objects
-- `trailTransportMode` - `'walking'` | `'driving'` for routing
+- `trailTransportMode` - `'walking'` | `'cycling'` | `'driving'` for routing (Mapbox Directions profiles; share URLs use `mode=walk|bike|drive`)
 - `trailRoute` - GeoJSON LineString from Mapbox Directions API
 - `trailStopCount` (derived)
 - Functions: `enterTrailMode()`, `exitTrailMode()`, `addStop(site)`, `addLocationStop(site, position)`, `removeStop(estId)`, `moveStop(fromIndex, toIndex)`, `clearStops()`, `fetchRoute(stops, mode)`
@@ -156,6 +157,10 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 - Functions: `startTour()`, `endTour()`, `nextStep()`, `prevStep()`, `shouldAutoStart()`
 - Persistence: localStorage key `cartoTaco_tourCompleted`
 
+### Map Lens Store (src/lib/mapLensStore.js)
+- `mapLens` - Active map lens: `'spots'` (default clustered markers) | `'heat'` (points colored by heat on the sequential ramp) | `'salsa'` (points sized by salsa count) | `'density'` (Mapbox heatmap)
+- `LENSES` - Lens definitions with labels and legend text
+
 ### UI Store (src/lib/uiStore.js)
 - `filterPanelOpen` - Whether the FilterBar filter panel is expanded
 - `mobileNavOpen` - Whether the mobile navigation menu is open
@@ -177,12 +182,15 @@ The map implementation (src/lib/mapping.js) uses Mapbox GL with clustering:
 2. `cluster-count` - Cluster count labels
 3. `unclustered-point` - Individual site markers with hover effects
 4. `unclustered-point-label` - Site name labels
-5. `trail-stop-circles` - Numbered orange circles for trail stops
-6. `trail-stop-numbers` - Stop number labels (1, 2, 3…)
-7. `trail-route-line` - Dashed route line connecting trail stops
+5. `lens-points` / `lens-points-label` - Unclustered points for the heat/salsa lenses (from the non-clustered `taco-sites-all` twin source, hidden in spots lens)
+6. `lens-heatmap` - Density heatmap lens layer
+7. `trail-stop-circles` - Numbered orange circles for trail stops
+8. `trail-stop-numbers` - Stop number labels (1, 2, 3…)
+9. `trail-route-line` - Dashed route line connecting trail stops
 
 ### Key Functions
 - `updateMarkers(processedSites, map)` - Add/update clusters and markers, attach event listeners
+- `applyLens(map, lensId)` - Switch marker styling for the active map lens (visibility + data-driven paint on `heat`/`salsas` feature properties)
 - `resetListeners(map)` - Clean up all event handlers
 - `sitesToGeoJSON(processedSites)` - Convert sites to GeoJSON with embedded properties
 - `flyToSite(map, site)` - Animate to location and open popup
@@ -219,6 +227,7 @@ Located in src/lib/dataWrangling.js:
 - `src/lib/submissions.js` - Location submission handling and DB persistence
 - `src/lib/validation.js` - Form validation functions for submissions/auth forms
 - `src/lib/theme.js` - Dark/light mode management
+- `src/lib/chartTheme.js` - Shared chart styling: validated categorical palettes (light/dark), sequential coral ramp, ink/grid/tooltip helpers, `CHART_FONT`. All ECharts components build their options from these. Design tokens live as CSS variables in `src/app.css` (surfaces, inks, hairlines, accent, chart tokens) and map into Tailwind as `surface-*`/`ink-*`/`line-*`/`accent-*`; dark mode flips the tokens, so new components should not need `:global(.dark)` overrides. Typography: Outfit Variable (display/headings) + Inter Variable (UI/body), self-hosted via `@fontsource-variable`.
 - `src/lib/deviceDetection.js` - Responsive device type detection (mobile/tablet/desktop)
 - `src/lib/supabaseBrowser.js` - Browser-side Supabase client using `@supabase/ssr` `createBrowserClient` with cookie support; exports `supabaseBrowser` client and `getAuthenticatedUser()` helper
 - `src/lib/profiles.js` - Profiles CRUD: `getOwnProfile()`, `getProfileByUsername()`, `updateProfile()`, `uploadAvatar()`. Public reads use only safe columns (no email). Avatar uploads write to `avatars/<user_id>/avatar.{ext}` and bust browser cache via `?t=` query param.
@@ -232,18 +241,21 @@ Located in src/lib/dataWrangling.js:
 - `ContactInfo.svelte` - Displays contact links (phone, website, Instagram, Facebook)
 - `DirectionsButton.svelte` - Opens Google Maps directions to an establishment
 - `FavoriteButton.svelte` - Heart button for toggling favorites (requires auth)
-- `FilterBar.svelte` - Search and filter controls
-- `Header.svelte` - Main application header with auth state and navigation
+- `FilterBar.svelte` - Search and filter controls: toggle chips with live city-composition counts (proteins, types, Open Now), dual-thumb spice range slider, and a removable active-filters chip row visible even when the panel is collapsed
+- `Header.svelte` - Main application header; authenticated desktop nav consolidates account actions (Submit/Favorites/Profile/Sign Out) into a user dropdown menu
+- `LoadingState.svelte` - Shared loading indicator (bobbing taco + pulsing dots + message), reduced-motion aware; used by Map, census, and compare
 - `HoursInput.svelte` - Input component for hours data (used in submission form)
-- `HoursOpen.svelte` - Operating hours display
+- `HoursOpen.svelte` - Week Rhythm strip: 7 day pills with mini open-span bars on a shared 24h scale, today ring, calm open/closed status dot; overnight hours wrap
 - `IconHighlight.svelte` - Icon-based feature highlights
 - `LocationPicker.svelte` - Map-based location selection component
 - `MapStylePicker.svelte` - Switches between Mapbox map styles
+- `MapLensPicker.svelte` - Map lens switcher (Spots / Heat / Salsas / Density) with inline legends; drives `mapLens` store
 - `NewSpotsBadge.svelte` - Badge showing count of recently added establishments
-- `RadarChart.svelte` - Visualizes menu and protein distributions using ECharts
-- `SalsaCount.svelte` - Salsa variety count with context
+- `RadarChart.svelte` - Menu/protein radar (ECharts) with a fixed 0–100 scale so shapes compare across spots; supports multi-series overlays via `seriesList` prop (categorical palette + legend), used by `/compare` and TasteProfile
+- `SalsaCount.svelte` - Salsa count bullet bar (ECharts): value bar over city-max track with an average tick
+- `SalsaLineup.svelte` - Per-salsa chip row: named varieties (Verde, Rojo, …) plus the spot's "other" house salsas with individual heat dots and tap-to-reveal descriptions. Data comes from `salsaVarieties`/`otherSalsas` on `processedTacoData`
 - `SpecCarousel.svelte` & `SpecCard.svelte` - Specialty item displays
-- `SpiceGauge.svelte` - Heat level visualization
+- `SpiceGauge.svelte` - Heat Ladder: 10-notch sequential-coral meter with hero number and optional city-percentile context line (pure Svelte/CSS, no chart lib)
 - `ThemeToggle.svelte` - Dark/light mode toggle button
 - `TrailTray.svelte` - Taco trail builder interface (stop list, reordering, transport mode, route display)
 - `ComparisonTray.svelte` - Floating tray for selecting up to 3 spots for side-by-side comparison
@@ -251,6 +263,9 @@ Located in src/lib/dataWrangling.js:
 - `TourOverlay.svelte` - Multi-step onboarding tour with targeted tooltips, step highlighting, and next/prev/skip navigation
 - `SummitResults.svelte` - Taco Summit results view: ECharts stacked horizontal bar showing rank distribution per spot (orange gradient), winner callout, dark-mode reactive, optional PNG card download
 - `VibeVotes.svelte` - Anti-review chip row on each Card: 🔥 Heat Legit · 🌮 Authentic · 💸 Value · 🎭 Vibe. Click toggles your vote (anonymous users redirected to login); displays aggregate counts. Accepts `compact` prop for tight desktop layouts.
+- `VibeFingerprint.svelte` - Compact 4-bar profile of a spot's vibe votes (normalized to its own total) so vibe shapes compare across spots; hidden with no votes unless `showEmpty`. On Card beside the chips and as a `/compare` row.
+- `ContextStrip.svelte` - City-distribution dot strip: every spot as a faint dot on a shared scale with this spot highlighted (used under the mobile Card's heat ladder).
+- `EmptyState.svelte` - Shared empty state (emoji + headline + message + optional CTA); used by favorites, compare, and census.
 - `ToastHost.svelte` - Renders the `toasts` store as a stack of dismissable notifications, mounted once in `+layout.svelte`. Uses Phosphor `CheckCircle/WarningCircle/Info/X` icons.
 
 ### Routes
@@ -261,7 +276,8 @@ Located in src/lib/dataWrangling.js:
 - `src/routes/Map.svelte` - Map component with filter integration and trail mode support
 
 #### Public Routes
-- `src/routes/compare/+page.svelte` - Side-by-side comparison of up to 3 spots (shareable via `?ids=1,2,3` query params)
+- `src/routes/census/+page.svelte` - Tucson Taco Census: public city-wide stats dashboard (hero tiles, menu prevalence, protein leaderboard, heat histogram, tortilla split, 7×24 open-hours grid, growth timeline), all client-side from `censusStats` (`src/lib/censusStore.js`)
+- `src/routes/compare/+page.svelte` - Side-by-side comparison of up to 3 spots (shareable via `?ids=1,2,3` query params). Desktop renders Menu/Protein as single overlaid radars with shared axes. Sticky command bar (+ mobile spot tabs) and a sticky spot-name header row keep navigation reachable at any scroll depth; an "at a glance" verdict strip (leader per metric with margin) sits above the grid. NOTE: `overflow-x` on these pages must stay `clip`, never `hidden` — hidden creates a scrollport that silently breaks the sticky positioning
 - `src/routes/compare/+page.js` - Route config for comparison page
 - `src/routes/vote/new/+page.svelte` - Taco Summit creation: pick 2–6 spots, set a title, creates a `group_sessions` row and redirects to the voting page
 - `src/routes/vote/[session_id]/+page.svelte` - Taco Summit voting/results page; states: ranked-choice ballot entry, post-vote waiting with live preview, locked results with `SummitResults`; uses Supabase Realtime for live vote counts and session lock detection; anonymous via `voter_token` UUID in localStorage; creator identified by `creator_token` in localStorage

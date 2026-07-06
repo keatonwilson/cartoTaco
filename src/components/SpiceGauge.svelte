@@ -1,12 +1,13 @@
 <script>
-  import { onMount } from "svelte";
-  import * as echarts from "echarts";
-  import { redirect } from "@sveltejs/kit";
+  // Heat Ladder — a 10-notch meter with hero number and optional city-percentile
+  // context. Replaces the old ECharts needle gauge (V2 of the UI refresh).
+  import { SEQUENTIAL } from '$lib/chartTheme';
 
   export let spiceValue = 0;
-
-  let gaugeContainer;
-  let chart;
+  /** 0–100 share of spots this one is hotter than; null hides the line */
+  export let percentile = null;
+  /** Context line shown when no percentile is provided */
+  export let explanation = 'Overall heat level across all salsas';
 
   // Helper function to get spice level description
   function getSpiceDescription(value) {
@@ -19,100 +20,46 @@
   }
 
   $: spiceDescription = getSpiceDescription(spiceValue);
+  $: filled = Math.max(0, Math.min(10, Math.round(spiceValue)));
 
-  onMount(() => {
-    function initializeChart() {
-      // Check if gaugeContainer is null
-      if (!gaugeContainer) {
-        requestAnimationFrame(initializeChart);
-        return;
-      }
-
-      // Check if gaugeContainer has dimensions
-      if (gaugeContainer.clientWidth === 0 || gaugeContainer.clientHeight === 0) {
-        requestAnimationFrame(initializeChart);
-        return;
-      }
-
-      chart = echarts.init(gaugeContainer);
-
-      const option = {
-        series: [
-          {
-            type: "gauge",
-            min: 0,
-            max: 10,
-            splitNumber: 5, // Fewer ticks
-            center: ["50%", "50%"], // Center the gauge vertically
-            radius: "85%",
-            axisLine: {
-              lineStyle: {
-                width: 3,
-                color: [
-                  [0.3, "#FFD700"],
-                  [0.7, "#FF6E76"],
-                  [1, "#CC5500"],
-                ],
-              },
-            },
-            pointer: {
-              width: 2,
-              length: '55%',
-              itemStyle: {
-                color: "auto",
-              },
-            },
-            axisTick: {
-              show: false,
-            },
-            splitLine: {
-              length: 4,
-              lineStyle: {
-                width: 1,
-                color: "auto",
-              },
-            },
-            axisLabel: {
-              show: false,
-            },
-            detail: {
-              formatter: "{value}",
-              fontSize: 12,
-              offsetCenter: [0, "65%"],
-            },
-            data: [{ value: spiceValue }],
-          },
-        ],
-      };
-
-      chart.setOption(option);
-
-      return () => {
-        if (chart) {
-          chart.dispose();
-        }
-      };
-    }
-
-    // Ensure chart initializes when DOM is ready
-    initializeChart();
-  });
-
-  $: if (chart) {
-    chart.setOption({
-      series: [
-        {
-          data: [{ value: spiceValue }],
-        },
-      ],
-    });
+  // Notch i (0-based) wears its own step of the sequential coral ramp, so the
+  // filled ladder reads light→dark up to the value. The two near-white steps
+  // are dropped — they vanish on light surfaces and glare on dark ones.
+  const RAMP = SEQUENTIAL.slice(2);
+  function notchColor(i) {
+    return RAMP[Math.round((i / 9) * (RAMP.length - 1))];
   }
 </script>
 
 <div class="gauge-wrapper">
-  <div bind:this={gaugeContainer} class="gauge-container"></div>
+  <div class="hero-row">
+    <span class="hero-number">{spiceValue}</span>
+    <span class="hero-denom">/10</span>
+  </div>
+  <div
+    class="ladder"
+    role="meter"
+    aria-valuemin="0"
+    aria-valuemax="10"
+    aria-valuenow={spiceValue}
+    aria-label={`Heat level ${spiceValue} out of 10 — ${spiceDescription}`}
+  >
+    {#each Array(10) as _, i}
+      <span
+        class="notch"
+        class:filled={i < filled}
+        style={i < filled ? `background:${notchColor(i)}` : ''}
+      ></span>
+    {/each}
+  </div>
   <div class="spice-description">{spiceDescription}</div>
-  <div class="spice-explanation">Overall heat level across all salsas</div>
+  <div class="spice-explanation">
+    {#if percentile !== null}
+      Hotter than {percentile}% of Tucson spots
+    {:else}
+      {explanation}
+    {/if}
+  </div>
 </div>
 
 <style>
@@ -121,37 +68,55 @@
     flex-direction: column;
     align-items: center;
     width: 100%;
+    gap: 3px;
   }
 
-  .gauge-container {
+  .hero-row {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    line-height: 1;
+  }
+
+  .hero-number {
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--ink-1);
+  }
+
+  .hero-denom {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-3);
+  }
+
+  .ladder {
+    display: flex;
+    gap: 3px;
     width: 100%;
-    height: 120px;
-    max-width: 120px;
-    max-height: 120px;
+    max-width: 130px;
+  }
+
+  .notch {
+    flex: 1;
+    height: 9px;
+    border-radius: 2px;
+    background: var(--line-1);
   }
 
   .spice-description {
     font-size: 13px;
     font-weight: 700;
-    color: #333;
-    margin-top: -8px;
-    margin-bottom: 2px;
-  }
-
-  :global(.dark) .spice-description {
-    color: #f9fafb;
+    color: var(--ink-1);
   }
 
   .spice-explanation {
     font-size: 10px;
-    color: #666;
+    color: var(--ink-2);
     text-align: center;
-    font-style: italic;
-    max-width: 130px;
+    max-width: 150px;
     line-height: 1.3;
-  }
-
-  :global(.dark) .spice-explanation {
-    color: #9ca3af;
   }
 </style>

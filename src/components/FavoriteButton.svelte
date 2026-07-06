@@ -1,5 +1,5 @@
 <script>
-	import { HeartSolid, HeartOutline } from 'flowbite-svelte-icons';
+	import Heart from 'phosphor-svelte/lib/Heart';
 	import { favoriteIds, toggleFavorite } from '$lib/favoritesStore';
 	import { isAuthenticated } from '$lib/authStore';
 	import { goto } from '$app/navigation';
@@ -41,13 +41,13 @@
 		}
 	}
 
-	// Size mappings
+	// Size mappings (px)
 	const sizeMap = {
-		sm: 'sm',
-		md: 'md',
-		lg: 'lg'
+		sm: 16,
+		md: 20,
+		lg: 24
 	};
-	$: iconSize = sizeMap[size] || 'md';
+	$: iconSize = sizeMap[size] || 20;
 </script>
 
 <button
@@ -61,11 +61,7 @@
 	aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
 >
 	{#if browser}
-		{#if isFavorited}
-			<HeartSolid size={iconSize} class="heart-icon" />
-		{:else}
-			<HeartOutline size={iconSize} class="heart-icon" />
-		{/if}
+		<Heart size={iconSize} weight={isFavorited ? 'fill' : 'regular'} class="heart-icon" />
 	{/if}
 	<span class="button-text">
 		{#if isFavorited}

@@ -2,7 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { BellOutline } from 'flowbite-svelte-icons';
+  import Bell from 'phosphor-svelte/lib/Bell';
   import { recentlyAddedSites } from '$lib/stores';
   import { unseenNewSpotsCount, markNewSpotsAsSeen } from '$lib/newSpotsStore';
   import { mapInstance } from '$lib/mapStore';
@@ -89,7 +89,7 @@
     aria-label="New establishments"
     title={$unseenNewSpotsCount > 0 ? `${$unseenNewSpotsCount} new spot${$unseenNewSpotsCount !== 1 ? 's' : ''}` : 'No new spots'}
   >
-    <BellOutline size="lg" />
+    <Bell size={24} />
     {#if $unseenNewSpotsCount > 0}
       <span class="badge">{$unseenNewSpotsCount}</span>
     {/if}

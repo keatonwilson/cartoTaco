@@ -1,138 +1,134 @@
 <script>
   import { onMount } from "svelte";
-  import { Chart } from "chart.js/auto";
+  import * as echarts from "echarts";
   import { effectiveTheme } from '$lib/theme';
+  import { seriesColors, withAlpha, chartInk, tooltipStyle, baseTextStyle, CHART_FONT } from '$lib/chartTheme';
 
+  /** Axis labels, shared by every series */
   export let labels;
-  export let data;
+  /** Single-series values (legacy API) — ignored when seriesList is given */
+  export let data = null;
+  /**
+   * Multi-series overlay: [{ name, values, dashed? }] — series wear the
+   * categorical palette in fixed slot order and get a legend.
+   */
+  export let seriesList = null;
+  /**
+   * Fixed axis max so radar shapes are comparable across spots/cards.
+   * Values are percentages, so 100 is the honest default.
+   */
+  export let max = 100;
 
-  let canvas;
-  let chartInstance;
+  let container;
+  let chart;
+  let resizeObserver;
 
-  // Calculate dynamic max value based on data
-  $: maxDataValue = data && data.length > 0 ? Math.max(...data) : 100;
-  $: dynamicMax = maxDataValue < 50 ? 50 : 75;
+  $: isDark = $effectiveTheme === 'dark';
+  $: resolvedSeries = seriesList || (data ? [{ name: 'Distribution', values: data }] : []);
+  $: multiSeries = resolvedSeries.length > 1;
 
-  // Theme-reactive colors
-  $: gridColor = $effectiveTheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-  $: labelColor = $effectiveTheme === 'dark' ? '#f9fafb' : '#333';
+  function buildOption() {
+    const ink = chartInk(isDark);
+    const colors = seriesColors(isDark, Math.max(resolvedSeries.length, 1));
+
+    return {
+      backgroundColor: 'transparent',
+      legend: multiSeries
+        ? {
+            bottom: 0,
+            itemWidth: 10,
+            itemHeight: 10,
+            icon: 'circle',
+            textStyle: { ...baseTextStyle(isDark) }
+          }
+        : undefined,
+      tooltip: {
+        ...tooltipStyle(isDark),
+        trigger: 'item',
+        confine: true,
+        formatter: (params) => {
+          const series = resolvedSeries[params.dataIndex ?? 0] || resolvedSeries[0];
+          const header = multiSeries ? `<b>${params.name}</b><br/>` : '';
+          return (
+            header +
+            (labels || [])
+              .map((label, i) => {
+                const value = Math.round(params.value?.[i] ?? series?.values?.[i] ?? 0);
+                return `${label}: <b>${value}%</b>`;
+              })
+              .join('<br/>')
+          );
+        }
+      },
+      radar: {
+        indicator: (labels || []).map((name) => ({ name, max, min: 0 })),
+        // Fill the container — the wrap/nameGap settings below keep axis
+        // labels inside even at this radius (ECharts doesn't auto-fit them)
+        radius: multiSeries ? '58%' : '66%',
+        center: ['50%', multiSeries ? '48%' : '52%'],
+        nameGap: 8,
+        axisName: {
+          color: ink.strong,
+          fontFamily: CHART_FONT,
+          fontSize: 10,
+          fontWeight: 600,
+          // Wrap long labels instead of letting them clip at the container edge
+          overflow: 'break',
+          width: 58
+        },
+        axisLine: { lineStyle: { color: ink.grid } },
+        splitLine: { lineStyle: { color: ink.grid } },
+        splitArea: { show: false }
+      },
+      series: [
+        {
+          type: 'radar',
+          data: resolvedSeries.map((s, i) => ({
+            value: s.values || [],
+            name: s.name,
+            symbol: 'circle',
+            symbolSize: multiSeries ? 4 : 6,
+            lineStyle: {
+              width: 2,
+              color: colors[i],
+              type: s.dashed ? 'dashed' : 'solid'
+            },
+            itemStyle: { color: colors[i], borderColor: '#fff', borderWidth: 1 },
+            areaStyle: { color: withAlpha(colors[i], s.dashed ? 0.06 : multiSeries ? 0.12 : 0.18) }
+          }))
+        }
+      ]
+    };
+  }
 
   onMount(() => {
-    if (canvas) {
-      chartInstance = new Chart(canvas, {
-        type: "radar",
-        data: {
-          labels: labels,
-          datasets: [
-            {
-              label: 'Menu Distribution',
-              data: data,
-              fill: true,
-              backgroundColor: "rgba(254, 121, 93, 0.2)", // Orange theme
-              borderColor: "rgb(254, 121, 93)",
-              pointBackgroundColor: "rgb(254, 121, 93)",
-              pointBorderColor: "#fff",
-              pointHoverBackgroundColor: "#fff",
-              pointHoverBorderColor: "rgb(254, 121, 93)",
-              pointRadius: 4,
-              pointHoverRadius: 6,
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          elements: {
-            line: {
-              borderWidth: 2,
-            },
-          },
-          plugins: {
-            legend: {
-              display: false,
-            },
-            tooltip: {
-              enabled: true,
-              backgroundColor: 'rgba(0, 0, 0, 0.8)',
-              titleFont: {
-                size: 12,
-                weight: 'bold'
-              },
-              bodyFont: {
-                size: 11
-              },
-              padding: 8,
-              displayColors: false,
-              callbacks: {
-                title: function(context) {
-                  return context[0].label;
-                },
-                label: function(context) {
-                  const value = context.parsed.r;
-                  const percentage = Math.round(value);
-                  return `${percentage}% of menu`;
-                }
-              }
-            }
-          },
-          layout: {
-            padding: 2
-          },
-          scales: {
-            r: {
-              angleLines: {
-                display: true,
-                color: gridColor
-              },
-              grid: {
-                color: gridColor
-              },
-              pointLabels: {
-                display: true,
-                font: {
-                  size: 10,
-                  weight: '600'
-                },
-                color: labelColor
-              },
-              ticks: {
-                display: false,
-              },
-              min: 0,
-              max: dynamicMax,
-            },
-          },
-        },
-      });
-    }
+    if (!container) return;
+
+    chart = echarts.init(container);
+    chart.setOption(buildOption());
+
+    // Popups/collapsibles can mount this at 0×0 — resize when dimensions appear
+    resizeObserver = new ResizeObserver(() => {
+      if (chart) chart.resize();
+    });
+    resizeObserver.observe(container);
 
     return () => {
-      if (chartInstance) {
-        chartInstance.destroy();
+      if (resizeObserver) resizeObserver.disconnect();
+      if (chart) {
+        chart.dispose();
+        chart = null;
       }
     };
   });
 
-  // Update chart when data or max changes
-  $: if (chartInstance && labels && data) {
-    chartInstance.data.labels = labels;
-    chartInstance.data.datasets[0].data = data;
-    chartInstance.options.scales.r.max = dynamicMax;
-    chartInstance.update();
-  }
-
-  // Update chart when theme changes
-  $: if (chartInstance && $effectiveTheme) {
-    chartInstance.options.scales.r.angleLines.color = gridColor;
-    chartInstance.options.scales.r.grid.color = gridColor;
-    chartInstance.options.scales.r.pointLabels.color = labelColor;
-    chartInstance.update();
+  // Rebuild when data, labels, or theme change
+  $: if (chart && labels && resolvedSeries.length > 0 && (isDark === true || isDark === false)) {
+    chart.setOption(buildOption(), { notMerge: true });
   }
 </script>
 
-<div class="chart-wrapper">
-  <canvas bind:this={canvas}></canvas>
-</div>
+<div class="chart-wrapper" bind:this={container}></div>
 
 <style>
   .chart-wrapper {

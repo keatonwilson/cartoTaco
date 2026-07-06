@@ -27,6 +27,25 @@ function createDataStore() {
 // Create stores with loading and error states
 export const tacoStore = createDataStore();
 
+// Legacy data uses the literal string 'NA' as a null marker
+function cleanNA(value) {
+  if (value == null) return null;
+  const s = String(value).trim();
+  return s === '' || s.toUpperCase() === 'NA' ? null : value;
+}
+
+// Named salsa varieties tracked as boolean columns on the salsa table
+const SALSA_VARIETIES = [
+  { key: 'verde', label: 'Verde' },
+  { key: 'rojo', label: 'Rojo' },
+  { key: 'pico', label: 'Pico' },
+  { key: 'pickles', label: 'Pickles' },
+  { key: 'chipotle', label: 'Chipotle' },
+  { key: 'avo', label: 'Avocado' },
+  { key: 'molcajete', label: 'Molcajete' },
+  { key: 'macha', label: 'Macha' }
+];
+
 // Derived store for overall loading state
 export const isLoading = derived(
   tacoStore,
@@ -132,6 +151,19 @@ export const processedTacoData = derived(
           salsaCount: site.salsa.total_num,
           heatOverall: site.salsa.heat_overall,
 
+          // Per-salsa lineup: named varieties served + up to 3 "other" salsas
+          // (each with its own name, heat, and description) from the salsa table.
+          // Legacy rows use the literal string 'NA' as a null marker.
+          salsaVarieties: SALSA_VARIETIES.filter(v => site.salsa[`${v.key}_yes`] === true)
+            .map(v => ({ name: v.label })),
+          otherSalsas: [1, 2, 3]
+            .map(n => ({
+              name: cleanNA(site.salsa[`other_${n}_name`]),
+              heat: cleanNA(site.salsa[`other_${n}_heat`]),
+              description: cleanNA(site.salsa[`other_${n}_descrip`])
+            }))
+            .filter(s => s.name),
+
           // Other details
           tortillaType: site.menu.flour_corn,
           handmadeTortilla: site.menu.handmade_tortilla ?? false,
@@ -177,6 +209,33 @@ export const summaryStats = derived(
       maxHeatLevel: Math.max(...heatLevels),
       avgHeatLevel: heatLevels.reduce((a, b) => a + b, 0) / heatLevels.length
     };
+  }
+);
+
+// Derived store for per-spot percentile ranks within the city distribution
+// (powers "Hotter than X% of Tucson spots" context lines).
+// Percentile = share of all spots with a strictly lower value.
+export const distributionStats = derived(
+  processedTacoData,
+  ($processedTacoData) => {
+    const stats = new Map();
+    if (!$processedTacoData || $processedTacoData.length < 2) {
+      return stats;
+    }
+
+    const heats = $processedTacoData.map(s => s.heatOverall || 0);
+    const salsas = $processedTacoData.map(s => s.salsaCount || 0);
+
+    const percentile = (values, v) =>
+      Math.round((values.filter(x => x < v).length / values.length) * 100);
+
+    for (const site of $processedTacoData) {
+      stats.set(site.est_id, {
+        heatPercentile: percentile(heats, site.heatOverall || 0),
+        salsaPercentile: percentile(salsas, site.salsaCount || 0)
+      });
+    }
+    return stats;
   }
 );
 
