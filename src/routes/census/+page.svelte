@@ -313,6 +313,13 @@
           <span class="tile-label">newest spot</span>
         </div>
       {/if}
+      {#if stats.pendingCount > 0}
+        <!-- Scouting report: makes the pending exclusion visible, not silent -->
+        <div class="tile tile-pending">
+          <span class="tile-number stat-number">{stats.pendingCount}</span>
+          <span class="tile-label">scouted, awaiting vetting — not counted above</span>
+        </div>
+      {/if}
     </div>
 
     <div class="census-grid">
@@ -496,6 +503,17 @@
 
   .tile-name {
     font-size: 18px;
+  }
+
+  /* Scouting report tile — pending spots are excluded from every census
+     figure; this tile says so instead of hiding them silently */
+  .tile-pending {
+    border-style: dashed;
+    border-color: var(--pending);
+  }
+
+  .tile-pending .tile-number {
+    color: var(--pending);
   }
 
   .tile-label {

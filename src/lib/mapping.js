@@ -1,11 +1,12 @@
 import PopupContent from '../components/Card.svelte';
+import PendingPopupContent from '../components/PendingSpotCard.svelte';
 import mapboxgl from 'mapbox-gl';
 import { selectedSite } from './stores';
 import { deviceType } from './deviceDetection';
 import { get } from 'svelte/store';
 import { trailModeActive, trailStops, addStop, removeStop } from './trailStore';
 import { mapLens } from './mapLensStore';
-import { SEQUENTIAL } from './chartTheme';
+import { SEQUENTIAL, PENDING } from './chartTheme';
 
 // Keep track of active popup and its associated Svelte component
 let currentPopup = null;
@@ -89,6 +90,14 @@ function ensureTypeGlyphs(map) {
       ctx.arc(10, 24, 3, 0, Math.PI * 2);
       ctx.arc(22, 24, 3, 0, Math.PI * 2);
       ctx.fill();
+    },
+    'glyph-pending': (ctx) => {
+      // Question mark: unvetted spot — outranks the type glyph so
+      // "not verified yet" is readable without relying on color
+      ctx.font = 'bold 26px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('?', 16, 17);
     }
   };
 
@@ -121,6 +130,11 @@ function sitesToGeoJSON(processedSites) {
           est_id: site.est_id,
           name: site.name,
           type: site.type,
+          // Flat flag for data-driven pending styling and lens filters
+          vetting_status: site.vettingStatus || 'vetted',
+          // Label carries a dotted-circle prefix for pending spots so the
+          // distinction doesn't rely on marker color alone
+          label: site.isPending ? `◌ ${site.name}` : site.name,
           // Scalar fields for data-driven lens styling
           heat: site.heatOverall || 0,
           salsas: site.salsaCount || 0,
@@ -232,7 +246,12 @@ export const updateMarkers = (processedSites, map) => {
     source: 'taco-sites',
     filter: ['!', ['has', 'point_count']],
     paint: {
-      'circle-color': '#FE795D',
+      // Muted slate for pending (unvetted) spots, brand coral for vetted
+      'circle-color': [
+        'case',
+        ['==', ['get', 'vetting_status'], 'pending'], PENDING.light,
+        '#FE795D'
+      ],
       'circle-radius': [
         'case',
         ['boolean', ['feature-state', 'hover'], false],
@@ -250,13 +269,14 @@ export const updateMarkers = (processedSites, map) => {
         'case',
         ['boolean', ['feature-state', 'hover'], false],
         1,   // Full opacity on hover
-        0.9  // Slightly transparent by default
+        ['case', ['==', ['get', 'vetting_status'], 'pending'], 0.7, 0.9]
       ],
       'circle-stroke-opacity': 1
     }
   });
 
-  // Type glyph on top of each marker circle (restaurant / stand / truck)
+  // Type glyph on top of each marker circle (restaurant / stand / truck).
+  // Pending spots show a ? instead — "not verified" outranks "it's a truck"
   map.addLayer({
     id: 'unclustered-point-glyph',
     type: 'symbol',
@@ -264,12 +284,14 @@ export const updateMarkers = (processedSites, map) => {
     filter: ['!', ['has', 'point_count']],
     layout: {
       'icon-image': [
-        'match',
-        ['get', 'type'],
-        'Brick and Mortar', 'glyph-restaurant',
-        'Stand', 'glyph-stand',
-        'Truck', 'glyph-truck',
-        'glyph-restaurant'
+        'case',
+        ['==', ['get', 'vetting_status'], 'pending'], 'glyph-pending',
+        ['match',
+          ['get', 'type'],
+          'Brick and Mortar', 'glyph-restaurant',
+          'Stand', 'glyph-stand',
+          'Truck', 'glyph-truck',
+          'glyph-restaurant']
       ],
       'icon-size': 0.85,
       'icon-allow-overlap': true,
@@ -277,33 +299,40 @@ export const updateMarkers = (processedSites, map) => {
     }
   });
 
-  // Add labels for unclustered points
+  // Add labels for unclustered points (pending labels are prefixed ◌ and grayed)
   map.addLayer({
     id: 'unclustered-point-label',
     type: 'symbol',
     source: 'taco-sites',
     filter: ['!', ['has', 'point_count']],
     layout: {
-      'text-field': ['get', 'name'],
+      'text-field': ['get', 'label'],
       'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
       'text-size': 12,
       'text-offset': [0, 1.5],
       'text-anchor': 'top'
     },
     paint: {
-      'text-color': '#333',
+      'text-color': [
+        'case',
+        ['==', ['get', 'vetting_status'], 'pending'], '#64748B',
+        '#333'
+      ],
       'text-halo-color': '#fff',
       'text-halo-width': 2
     }
   });
 
   // ─── Lens layers (hidden until a data lens is active) ───
+  // All three exclude pending (unvetted) spots: they carry no measurements,
+  // and their implicit zeros would render as the lightest ramp step and lie.
 
   // Individual points for the heat/salsa lenses — unclustered at every zoom
   map.addLayer({
     id: 'lens-points',
     type: 'circle',
     source: 'taco-sites-all',
+    filter: ['!=', ['get', 'vetting_status'], 'pending'],
     layout: { visibility: 'none' },
     paint: {
       'circle-color': SEQUENTIAL[4],
@@ -318,6 +347,7 @@ export const updateMarkers = (processedSites, map) => {
     id: 'lens-points-label',
     type: 'symbol',
     source: 'taco-sites-all',
+    filter: ['!=', ['get', 'vetting_status'], 'pending'],
     layout: {
       visibility: 'none',
       'text-field': ['get', 'name'],
@@ -333,11 +363,13 @@ export const updateMarkers = (processedSites, map) => {
     }
   });
 
-  // Density heatmap lens — brand sequential ramp over transparent
+  // Density heatmap lens — brand sequential ramp over transparent.
+  // Claims "where the taco spots concentrate"; unverified spots don't thicken it
   map.addLayer({
     id: 'lens-heatmap',
     type: 'heatmap',
     source: 'taco-sites-all',
+    filter: ['!=', ['get', 'vetting_status'], 'pending'],
     layout: { visibility: 'none' },
     paint: {
       'heatmap-weight': 1,
@@ -568,7 +600,11 @@ export function applyLens(map, lensId) {
 function createPopupContent(siteId) {
   try {
     const popupElement = document.createElement('div');
-    currentPopupComponent = new PopupContent({
+    // Pending (unvetted) spots get the lightweight preliminary card
+    const CardComponent = get(selectedSite)?.isPending
+      ? PendingPopupContent
+      : PopupContent;
+    currentPopupComponent = new CardComponent({
       target: popupElement,
       props: { siteId }
     });

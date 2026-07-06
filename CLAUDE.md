@@ -69,6 +69,8 @@ Migrations must be run in this order:
 27. `migrations/027_create_vibe_votes.sql` - Creates `vibe_votes` table for the anti-review feature (binary emoji votes across four dimensions: heat_legit, authentic, value, vibe). Public SELECT for aggregate counts; INSERT/DELETE gated on `auth.uid() = user_id`
 28. `migrations/028_extend_profiles.sql` - Adds `username` (UNIQUE slug, `[a-z0-9_]{3,20}`) and `bio` (≤280 chars) to `profiles`; updates the signup trigger to auto-generate a unique username from the email local-part; backfills existing rows; opens SELECT to anon/authenticated for `/u/[username]` browsing
 29. `migrations/029_create_avatars_bucket.sql` - Creates the `avatars` Storage bucket (public-read, 1 MB cap, image/* mime types) and RLS on `storage.objects` so users can only write to their own folder (`avatars/<user_id>/`)
+30. `migrations/030_add_vetting_status_to_sites.sql` - Adds `vetting_status` ('vetted'/'pending'), `source`, `source_url`, `scraped_at`, `vetted_at` to `sites` for the unvetted-spots feature; adds ON DELETE CASCADE FKs from `user_favorites`/`vibe_votes` to `sites` (with orphan cleanup) so retracting a pending spot is safe
+31. `migrations/031_add_vetting_status_to_view.sql` - Rebuilds `sites_complete` view exposing `vetting_status`/`source`/`source_url` in the site jsonb
 
 ### Schema Management
 - **`schema/sites_complete_view.sql`** is the single source of truth for the `sites_complete` view definition
@@ -85,15 +87,15 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 ### Derived Stores
 - `isLoading` - Loading state from tacoStore
 - `hasError` - Error state from tacoStore
-- `processedTacoData` - Transforms raw site data into component-ready format with pre-computed values (top 5 menu items, proteins, percentages, and specialty items embedded from view)
-- `filteredTacoData` - Filters `processedTacoData` based on `filterConfig` (search, protein type, establishment type, spice level, open hours, favorites)
-- `summaryStats` - Computed from `processedTacoData` `{ maxSalsaNum, avgSalsaNum, maxHeatLevel, avgHeatLevel }`
-- `distributionStats` - `Map<est_id, { heatPercentile, salsaPercentile }>` percentile ranks within the city distribution (powers "Hotter than X% of Tucson spots" context lines)
+- `processedTacoData` - Transforms raw site data into component-ready format with pre-computed values (top 5 menu items, proteins, percentages, and specialty items embedded from view). Each site carries `vettingStatus`/`isPending`/`sourceUrl`; pending (unvetted, web-scraped) spots skip the menu/protein/salsa pre-computation and get empty arrays
+- `filteredTacoData` - Filters `processedTacoData` based on `filterConfig` (search, protein type, establishment type, spice level, open hours, favorites, pending visibility)
+- `summaryStats` - Computed from `processedTacoData` `{ maxSalsaNum, avgSalsaNum, maxHeatLevel, avgHeatLevel }` (vetted spots only)
+- `distributionStats` - `Map<est_id, { heatPercentile, salsaPercentile }>` percentile ranks within the city distribution (powers "Hotter than X% of Tucson spots" context lines); pending spots get no entry and don't affect the pools
 - `recentlyAddedSites` - Spots added in the last 30 days, sorted newest first (used by NewSpotsBadge)
 
 ### UI State Stores
 - `selectedSite` - Currently selected establishment (for popup)
-- `filterConfig` - User's active filters: `{ searchText, proteins, types, spiceLevel, openNow, showFavoritesOnly }`
+- `filterConfig` - User's active filters: `{ searchText, proteins, types, spiceLevel, openNow, showFavoritesOnly, showPending }`
 
 ### Authentication Store (src/lib/authStore.js)
 - `authStore` - User, session, loading, and error state
@@ -249,8 +251,10 @@ Located in src/lib/dataWrangling.js:
 - `IconHighlight.svelte` - Icon-based feature highlights
 - `LocationPicker.svelte` - Map-based location selection component
 - `MapStylePicker.svelte` - Switches between Mapbox map styles
-- `MapLensPicker.svelte` - Map lens switcher (Spots / Heat / Salsas / Density) with inline legends; drives `mapLens` store
-- `NewSpotsBadge.svelte` - Badge showing count of recently added establishments
+- `MapLensPicker.svelte` - Map lens switcher (Spots / Heat / Salsas / Density) with inline legends; drives `mapLens` store. Data lenses exclude pending spots (no measurements)
+- `MapLegend.svelte` - Small floating `● Vetted / ◌ Pending` legend; only shown in the Spots lens when pending spots exist
+- `NewSpotsBadge.svelte` - Badge showing count of recently added establishments (pending entries get a `◌ Pending` chip)
+- `PendingSpotCard.svelte` - Lightweight preliminary card for pending (unvetted) spots: pending badge, info panel, scraped hours/contact if present, source link, vetting CTA. Dashed `--pending` border; no radar/heat/salsa/vibe/compare
 - `RadarChart.svelte` - Menu/protein radar (ECharts) with a fixed 0–100 scale so shapes compare across spots; supports multi-series overlays via `seriesList` prop (categorical palette + legend), used by `/compare` and TasteProfile
 - `SalsaCount.svelte` - Salsa count bullet bar (ECharts): value bar over city-max track with an average tick
 - `SalsaLineup.svelte` - Per-salsa chip row: named varieties (Verde, Rojo, …) plus the spot's "other" house salsas with individual heat dots and tap-to-reveal descriptions. Data comes from `salsaVarieties`/`otherSalsas` on `processedTacoData`
@@ -312,6 +316,7 @@ The filter system works through reactive updates:
 - Spice level range (0-10)
 - Open now (based on current time/day)
 - Show favorites only (requires auth)
+- Pending spots toggle (default on; chip only renders when pending spots exist)
 
 ## Performance Considerations
 

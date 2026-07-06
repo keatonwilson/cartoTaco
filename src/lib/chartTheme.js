@@ -37,6 +37,13 @@ export const SEQUENTIAL = [
 	'#A5371B' // 900
 ];
 
+/**
+ * Muted marker color for unvetted (pending) spots — deliberately outside both
+ * the categorical palette and the sequential ramp so a pending marker can
+ * never be misread as a data encoding. Slate-400 / slate-500.
+ */
+export const PENDING = { light: '#94A3B8', dark: '#64748B' };
+
 /** Brand accent (categorical slot 1 / sequential mid) per mode. */
 export function accent(isDark) {
 	return isDark ? CATEGORICAL.dark[0] : CATEGORICAL.light[0];
