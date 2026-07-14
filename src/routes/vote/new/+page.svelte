@@ -13,8 +13,10 @@
   let creating = false;
   let errorMsg = '';
 
-  // Filter spots by search text
+  // Filter spots by search text. Pending (unvetted) spots are excluded —
+  // voting on a spot with no data makes no sense.
   $: filtered = $processedTacoData.filter(s => {
+    if (s.isPending) return false;
     if (!searchText.trim()) return true;
     return s.name.toLowerCase().includes(searchText.toLowerCase());
   });

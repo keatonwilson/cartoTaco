@@ -74,32 +74,43 @@ export const processedTacoData = derived(
       }
 
       try {
+        // Pending (unvetted) spots are web-scraped: they have no menu/protein/
+        // salsa rows yet, so skip that pre-computation and give them empty
+        // component-ready values. Hours/contact may exist from scraping.
+        const isPending = site.site.vetting_status === 'pending';
+
         // Pre-compute values used by components
         const menuPercs = filterObjectByKeySubstring(site.menu, "perc");
         const proteinPercs = filterObjectByKeySubstring(site.protein, "perc");
         const startHours = filterObjectByKeySubstring(site.hours, "start");
         const endHours = filterObjectByKeySubstring(site.hours, "end");
 
-        // Filter to items the establishment actually serves (_yes = true) before ranking,
-        // so the radar only shows offered items rather than cutting off real ones
-        // due to global top-5 competition with the full 16-item pool.
-        const activeMenuPercs = menuPercs.filter(([key]) => {
-          const yesKey = key.replace('_perc', '_yes');
-          return site.menu[yesKey] === true;
-        });
+        let menuArray = [];
+        let proteinArray = [];
+        if (!isPending) {
+          // Filter to items the establishment actually serves (_yes = true) before ranking,
+          // so the radar only shows offered items rather than cutting off real ones
+          // due to global top-5 competition with the full 16-item pool.
+          const activeMenuPercs = menuPercs.filter(([key]) => {
+            const yesKey = key.replace('_perc', '_yes');
+            return site.menu[yesKey] === true;
+          });
 
-        // Pre-compute top five menu items and proteins
-        const menuArray = getTopFive(activeMenuPercs, 7);
+          // Pre-compute top five menu items and proteins
+          menuArray = getTopFive(activeMenuPercs, 7);
 
-        // Pad with inactive items (value=0) so there are always at least 4 radar axes
-        const MIN_RADAR_ITEMS = 4;
-        if (menuArray.length < MIN_RADAR_ITEMS) {
-          const activeKeys = new Set(activeMenuPercs.map(([k]) => k));
-          const inactiveMenuItems = menuPercs
-            .filter(([key]) => !activeKeys.has(key))
-            .slice(0, MIN_RADAR_ITEMS - menuArray.length)
-            .map(([key]) => [key.replace('_perc', ''), 0]);
-          menuArray.push(...inactiveMenuItems);
+          // Pad with inactive items (value=0) so there are always at least 4 radar axes
+          const MIN_RADAR_ITEMS = 4;
+          if (menuArray.length < MIN_RADAR_ITEMS) {
+            const activeKeys = new Set(activeMenuPercs.map(([k]) => k));
+            const inactiveMenuItems = menuPercs
+              .filter(([key]) => !activeKeys.has(key))
+              .slice(0, MIN_RADAR_ITEMS - menuArray.length)
+              .map(([key]) => [key.replace('_perc', ''), 0]);
+            menuArray.push(...inactiveMenuItems);
+          }
+
+          proteinArray = getTopFive(proteinPercs);
         }
 
         const topFiveMenuItems = menuArray.map(subArray => subArray[0]);
@@ -109,14 +120,13 @@ export const processedTacoData = derived(
           return isNaN(value) ? 0 : value * 100;
         });
 
-        const proteinArray = getTopFive(proteinPercs);
         const topFiveProteinItems = proteinArray.map(subArray => subArray[0]);
         // Convert to numbers and multiply by 100 to get percentages
         const topFiveProteinValues = proteinArray.map(subArray => {
           const value = parseFloat(subArray[1]);
           return isNaN(value) ? 0 : value * 100;
         });
-        
+
         // Return processed site data with pre-computed values
         return {
           est_id: site.est_id,
@@ -127,6 +137,12 @@ export const processedTacoData = derived(
           longitude: site.site.lon_1,
           latitude: site.site.lat_1,
           createdAt: site.site.created_at, // Track creation date for "new spots" feature
+
+          // Vetting status ('vetted' | 'pending') — pending spots are
+          // web-scraped preliminary entries awaiting an editorial visit
+          vettingStatus: site.site.vetting_status || 'vetted',
+          isPending,
+          sourceUrl: site.site.source_url || null,
 
           // Descriptions
           shortDescription: site.descriptions.short_descrip,
@@ -154,9 +170,10 @@ export const processedTacoData = derived(
           // Per-salsa lineup: named varieties served + up to 3 "other" salsas
           // (each with its own name, heat, and description) from the salsa table.
           // Legacy rows use the literal string 'NA' as a null marker.
-          salsaVarieties: SALSA_VARIETIES.filter(v => site.salsa[`${v.key}_yes`] === true)
+          salsaVarieties: isPending ? [] : SALSA_VARIETIES
+            .filter(v => site.salsa[`${v.key}_yes`] === true)
             .map(v => ({ name: v.label })),
-          otherSalsas: [1, 2, 3]
+          otherSalsas: isPending ? [] : [1, 2, 3]
             .map(n => ({
               name: cleanNA(site.salsa[`other_${n}_name`]),
               heat: cleanNA(site.salsa[`other_${n}_heat`]),
@@ -191,7 +208,10 @@ export const processedTacoData = derived(
 export const summaryStats = derived(
   processedTacoData,
   ($processedTacoData) => {
-    if (!$processedTacoData || $processedTacoData.length === 0) {
+    // Pending (unvetted) spots have no measurements — exclude them so their
+    // implicit zeros don't drag the city averages down
+    const vettedSites = ($processedTacoData || []).filter(s => !s.isPending);
+    if (vettedSites.length === 0) {
       return {
         maxSalsaNum: 0,
         avgSalsaNum: 0,
@@ -200,8 +220,8 @@ export const summaryStats = derived(
       };
     }
 
-    const salsaCounts = $processedTacoData.map(s => s.salsaCount || 0);
-    const heatLevels = $processedTacoData.map(s => s.heatOverall || 0);
+    const salsaCounts = vettedSites.map(s => s.salsaCount || 0);
+    const heatLevels = vettedSites.map(s => s.heatOverall || 0);
 
     return {
       maxSalsaNum: Math.max(...salsaCounts),
@@ -219,17 +239,20 @@ export const distributionStats = derived(
   processedTacoData,
   ($processedTacoData) => {
     const stats = new Map();
-    if (!$processedTacoData || $processedTacoData.length < 2) {
+    // Pending (unvetted) spots have no measurements: they get no percentile
+    // entry, and their implicit zeros must not inflate everyone else's rank
+    const vettedSites = ($processedTacoData || []).filter(s => !s.isPending);
+    if (vettedSites.length < 2) {
       return stats;
     }
 
-    const heats = $processedTacoData.map(s => s.heatOverall || 0);
-    const salsas = $processedTacoData.map(s => s.salsaCount || 0);
+    const heats = vettedSites.map(s => s.heatOverall || 0);
+    const salsas = vettedSites.map(s => s.salsaCount || 0);
 
     const percentile = (values, v) =>
       Math.round((values.filter(x => x < v).length / values.length) * 100);
 
-    for (const site of $processedTacoData) {
+    for (const site of vettedSites) {
       stats.set(site.est_id, {
         heatPercentile: percentile(heats, site.heatOverall || 0),
         salsaPercentile: percentile(salsas, site.salsaCount || 0)
@@ -290,6 +313,7 @@ export const filterConfig = writable({
   spiceLevel: { min: 0, max: 10 },
   openNow: false,
   showFavoritesOnly: false,
+  showPending: true,
   styleFilters: {
     chicken: [],
     beef: [],
@@ -349,6 +373,13 @@ export const filteredTacoData = derived(
     }
 
     return $processedTacoData.filter(site => {
+      // Pending (unvetted) spots — shown by default, hideable via toggle.
+      // Note: active protein/spice/style filters below also exclude pending
+      // spots, intentionally — we can't verify they meet any requirement.
+      if (!$filterConfig.showPending && site.isPending) {
+        return false;
+      }
+
       // Favorites only filter
       if ($filterConfig.showFavoritesOnly) {
         if (!$favoriteIds.has(site.est_id)) {

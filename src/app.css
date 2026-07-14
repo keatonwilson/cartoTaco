@@ -41,6 +41,10 @@
 	--success: #10b981;
 	--error: #ef4444;
 
+	/* Pending (unvetted spots) — slate, outside all data palettes on purpose */
+	--pending: #94a3b8;
+	--pending-soft: rgba(148, 163, 184, 0.15);
+
 	/* Chart tokens (consumed by src/lib/chartTheme.js) */
 	--chart-grid: rgba(0, 0, 0, 0.08);
 	--chart-ink: #6b7280;
@@ -74,6 +78,9 @@
 	--accent: #fe795d;
 	--accent-hover: #fe6a4a;
 	--accent-soft: rgba(254, 121, 93, 0.18);
+
+	--pending: #64748b;
+	--pending-soft: rgba(100, 116, 139, 0.25);
 
 	--chart-grid: rgba(255, 255, 255, 0.1);
 	--chart-ink: #9ca3af;

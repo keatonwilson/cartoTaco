@@ -46,6 +46,10 @@ export default {
 					hover: 'var(--accent-hover)',
 					soft: 'var(--accent-soft)',
 					contrast: 'var(--accent-contrast)'
+				},
+				pending: {
+					DEFAULT: 'var(--pending)',
+					soft: 'var(--pending-soft)'
 				}
 			}
 		}

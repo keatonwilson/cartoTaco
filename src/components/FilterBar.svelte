@@ -8,6 +8,7 @@
   import Clock from 'phosphor-svelte/lib/Clock';
   import X from 'phosphor-svelte/lib/X';
   import MagicWand from 'phosphor-svelte/lib/MagicWand';
+  import CircleDashed from 'phosphor-svelte/lib/CircleDashed';
   import { browser } from '$app/environment';
   import { scale } from 'svelte/transition';
   import { trailModeActive, enterTrailMode, exitTrailMode } from '../lib/trailStore.js';
@@ -53,6 +54,10 @@
   );
 
   $: openNowCount = $processedTacoData.filter(s => isOpenNow(s.rawData?.hours)).length;
+
+  // Pending (unvetted) spots currently in the dataset — the toggle chip only
+  // renders when there's something to toggle
+  $: pendingCount = $processedTacoData.filter(s => s.isPending).length;
 
   // Aggregate unique styles per protein across all sites
   $: availableStyles = (() => {
@@ -103,6 +108,10 @@
 
   function toggleFavoritesOnly() {
     filterConfig.update(cfg => ({ ...cfg, showFavoritesOnly: !cfg.showFavoritesOnly }));
+  }
+
+  function toggleShowPending() {
+    filterConfig.update(cfg => ({ ...cfg, showPending: !cfg.showPending }));
   }
 
   // Dual-thumb spice slider: clamp so the thumbs can't cross
@@ -164,6 +173,7 @@
       spiceLevel: { min: 0, max: 10 },
       openNow: false,
       showFavoritesOnly: false,
+      showPending: true,
       styleFilters: { chicken: [], beef: [], pork: [], fish: [], veg: [] }
     });
   }
@@ -184,6 +194,7 @@
     $filterConfig.spiceLevel.max < 10 ||
     $filterConfig.openNow ||
     $filterConfig.showFavoritesOnly ||
+    !$filterConfig.showPending ||
     Object.values($filterConfig.styleFilters).some(arr => arr.length > 0);
 
   // Flat list of active filters for the removable-chip row
@@ -220,6 +231,10 @@
     if (cfg.openNow) chips.push({ id: 'open', label: 'Open Now', remove: toggleOpenNow });
     if (cfg.showFavoritesOnly) {
       chips.push({ id: 'favs', label: 'Favorites', remove: toggleFavoritesOnly });
+    }
+    // Inverted sense: the chip appears when the default (shown) is changed
+    if (!cfg.showPending) {
+      chips.push({ id: 'pending', label: 'Hiding pending', remove: toggleShowPending });
     }
     return chips;
   })();
@@ -330,6 +345,19 @@
             >
               {#if browser}<Heart size={13} weight={$filterConfig.showFavoritesOnly ? 'fill' : 'regular'} />{/if}
               Favorites Only
+            </button>
+          {/if}
+          {#if pendingCount > 0}
+            <button
+              class="filter-chip"
+              class:on={$filterConfig.showPending}
+              on:click={toggleShowPending}
+              aria-pressed={$filterConfig.showPending}
+              title="Spots we've found but not vetted yet"
+            >
+              {#if browser}<CircleDashed size={13} />{/if}
+              Pending
+              <span class="chip-count">{pendingCount}</span>
             </button>
           {/if}
         </div>

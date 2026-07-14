@@ -159,7 +159,7 @@ The application uses Supabase with the following main tables:
 
 ### Running Migrations
 
-After setting up your Supabase project, run the 20 migrations in order. See [CLAUDE.md](CLAUDE.md) for the full migration list and [migrations/README.md](migrations/README.md) for detailed instructions.
+After setting up your Supabase project, run the 20 (or so) migrations in order. See [CLAUDE.md](CLAUDE.md) for the full migration list and [migrations/README.md](migrations/README.md) for detailed instructions.
 
 ## 🌟 Roadmap
 

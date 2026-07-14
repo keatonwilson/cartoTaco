@@ -116,6 +116,9 @@
                 <div class="spot-info">
                   <div class="spot-name">{spot.name}</div>
                   <div class="spot-meta">
+                    {#if spot.isPending}
+                      <span class="spot-pending">◌ Pending</span>
+                    {/if}
                     <span class="spot-type">{spot.type}</span>
                     <span class="spot-date">{formatDate(spot.createdAt)}</span>
                   </div>
@@ -162,6 +165,9 @@
                   <div class="spot-info">
                     <div class="spot-name">{spot.name}</div>
                     <div class="spot-meta">
+                      {#if spot.isPending}
+                        <span class="spot-pending">◌ Pending</span>
+                      {/if}
                       <span class="spot-type">{spot.type}</span>
                       <span class="spot-date">{formatDate(spot.createdAt)}</span>
                     </div>
@@ -424,6 +430,16 @@
 
   .spot-date {
     white-space: nowrap;
+  }
+
+  /* Pending (unvetted) chip */
+  .spot-pending {
+    background: var(--pending-soft);
+    color: var(--ink-2);
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.25rem;
+    white-space: nowrap;
+    font-weight: 600;
   }
 
   .arrow {

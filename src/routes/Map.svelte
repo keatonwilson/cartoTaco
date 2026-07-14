@@ -12,6 +12,8 @@
 	} from '../lib/stores';
 	import { isMobile, screenWidth } from '../lib/deviceDetection';
 	import Card from '../components/Card.svelte';
+	import PendingSpotCard from '../components/PendingSpotCard.svelte';
+	import MapLegend from '../components/MapLegend.svelte';
 	import { filterPanelOpen, mobileNavOpen } from '../lib/uiStore.js';
 	import 'mapbox-gl/dist/mapbox-gl.css';
 	import { updateMarkers, resetListeners, updateTrailLayers, updateTrailRoute, clearTrailLayers, flyToSite, applyLens } from '../lib/mapping.js';
@@ -320,6 +322,7 @@
 	<FilterBar />
 	<TrailTray />
 	<ComparisonTray cardOpen={$isMobile && !!$selectedSite} />
+	<MapLegend />
 {/if}
 
 <!-- Mobile Bottom Sheet: replaces Mapbox popup on small screens -->
@@ -342,9 +345,13 @@
 				×
 			</button>
 		</div>
-		<!-- Scrollable card content -->
+		<!-- Scrollable card content: pending spots get the lightweight preliminary card -->
 		<div class="sheet-content" bind:this={sheetContentEl}>
-			<Card />
+			{#if $selectedSite.isPending}
+				<PendingSpotCard />
+			{:else}
+				<Card />
+			{/if}
 		</div>
 	</div>
 {/if}
