@@ -56,14 +56,79 @@
     return { value: [p.heat, p.salsa], name: p.name, similarity: p.similarity };
   }
 
-  function buildScatterOption(profile) {
-    const ink = chartInk(isDark);
-    // Fixed categorical slots: 1 coral = recommendations, 4 indigo = favorites
+  /**
+   * Series identity + styling for the taste map, shared by the chart and the
+   * HTML legend beneath it so a symbol can never drift from its swatch.
+   * Fixed categorical slots: 1 coral = recommendations, 4 indigo = favorites.
+   */
+  function scatterSeriesStyles(isDark) {
     const [coral, , , indigo] = seriesColors(isDark);
+    const grey = '#9ca3af';
+    return [
+      {
+        name: 'Other spots',
+        shape: 'circle',
+        symbol: 'circle',
+        symbolSize: 8,
+        fill: withAlpha(grey, isDark ? 0.25 : 0.35),
+        stroke: withAlpha(grey, isDark ? 0.4 : 0.5)
+      },
+      {
+        name: 'Your favorites',
+        shape: 'circle',
+        symbol: 'circle',
+        symbolSize: 13,
+        fill: withAlpha(indigo, 0.7),
+        stroke: indigo
+      },
+      {
+        name: 'Recommended for you',
+        shape: 'square',
+        symbol: 'roundRect',
+        symbolSize: 15,
+        fill: withAlpha(coral, 0.8),
+        stroke: coral
+      },
+      {
+        name: 'Your taste',
+        shape: 'star',
+        symbol: STAR_PATH,
+        symbolSize: 24,
+        fill: withAlpha('#fec85d', 0.9),
+        stroke: '#e5a000'
+      }
+    ];
+  }
+
+  $: legendItems = scatterSeriesStyles(isDark);
+
+  // Legend lives in the DOM, so series visibility is ours to track rather than
+  // ECharts' (legendToggleSelect needs a legend component to handle it).
+  let hiddenSeries = new Set();
+
+  function toggleSeries(name) {
+    const next = new Set(hiddenSeries);
+    if (next.has(name)) next.delete(name);
+    else next.add(name);
+    hiddenSeries = next;
+  }
+
+  // The star symbol doubles as the legend swatch — strip ECharts' path:// prefix
+  const STAR_D = STAR_PATH.replace('path://', '');
+
+  function buildScatterOption(profile, isDark, hiddenSeries) {
+    const ink = chartInk(isDark);
+    const styles = scatterSeriesStyles(isDark);
 
     const bgPoints = profile.scatterPoints.filter(p => !p.isFav && !p.isRec);
     const recPoints = profile.scatterPoints.filter(p => p.isRec);
     const favPoints = profile.scatterPoints.filter(p => p.isFav);
+    const dataFor = {
+      'Other spots': bgPoints.map(toPoint),
+      'Your favorites': favPoints.map(toPoint),
+      'Recommended for you': recPoints.map(toPoint),
+      'Your taste': [{ value: [profile.userHeat, profile.userSalsa], name: 'Your Taste' }]
+    };
 
     const axisCommon = {
       nameLocation: 'middle',
@@ -77,13 +142,8 @@
     return {
       backgroundColor: 'transparent',
       animationDuration: 400,
-      legend: {
-        bottom: 0,
-        itemWidth: 12,
-        itemHeight: 12,
-        textStyle: { ...baseTextStyle(isDark) },
-        icon: 'circle'
-      },
+      // No canvas legend: it wrapped to two lines on narrow screens and
+      // collided with the x-axis name. The legend is HTML below the chart.
       tooltip: {
         ...tooltipStyle(isDark),
         trigger: 'item',
@@ -95,7 +155,8 @@
           return line;
         }
       },
-      grid: { left: 44, right: 16, top: 12, bottom: 64 },
+      // bottom only has to clear the axis labels + axis name now
+      grid: { left: 44, right: 16, top: 12, bottom: 42 },
       xAxis: {
         ...axisCommon,
         type: 'value',
@@ -112,62 +173,30 @@
         nameGap: 30,
         min: 0
       },
-      series: [
-        {
-          name: 'Other spots',
-          type: 'scatter',
-          data: bgPoints.map(toPoint),
-          symbolSize: 8,
-          itemStyle: {
-            color: withAlpha('#9ca3af', isDark ? 0.25 : 0.35),
-            borderColor: withAlpha('#9ca3af', isDark ? 0.4 : 0.5),
-            borderWidth: 1
-          }
-        },
-        {
-          name: 'Your favorites',
-          type: 'scatter',
-          data: favPoints.map(toPoint),
-          symbolSize: 13,
-          itemStyle: {
-            color: withAlpha(indigo, 0.7),
-            borderColor: indigo,
-            borderWidth: 2
-          }
-        },
-        {
-          name: 'Recommended for you',
-          type: 'scatter',
-          data: recPoints.map(toPoint),
-          symbol: 'roundRect',
-          symbolSize: 15,
-          itemStyle: {
-            color: withAlpha(coral, 0.8),
-            borderColor: coral,
-            borderWidth: 2
-          }
-        },
-        {
-          name: 'Your taste',
-          type: 'scatter',
-          data: [{ value: [profile.userHeat, profile.userSalsa], name: 'Your Taste' }],
-          symbol: STAR_PATH,
-          symbolSize: 24,
-          itemStyle: {
-            color: withAlpha('#fec85d', 0.9),
-            borderColor: '#e5a000',
-            borderWidth: 2
-          }
+      series: styles.map((s) => ({
+        name: s.name,
+        type: 'scatter',
+        data: hiddenSeries.has(s.name) ? [] : dataFor[s.name],
+        symbol: s.symbol,
+        symbolSize: s.symbolSize,
+        itemStyle: {
+          color: s.fill,
+          borderColor: s.stroke,
+          borderWidth: s.name === 'Other spots' ? 1 : 2
         }
-      ]
+      }))
     };
   }
+
+  $: scatterOption = $tasteProfile
+    ? buildScatterOption($tasteProfile, isDark, hiddenSeries)
+    : null;
 
   onMount(() => {
     if (!scatterContainer) return;
 
     scatterChart = echarts.init(scatterContainer);
-    if ($tasteProfile) scatterChart.setOption(buildScatterOption($tasteProfile));
+    if (scatterOption) scatterChart.setOption(scatterOption);
 
     scatterResizeObserver = new ResizeObserver(() => {
       if (scatterChart) scatterChart.resize();
@@ -183,9 +212,9 @@
     };
   });
 
-  // Rebuild chart when profile data or theme changes
-  $: if (scatterChart && $tasteProfile && (isDark === true || isDark === false)) {
-    scatterChart.setOption(buildScatterOption($tasteProfile), { notMerge: true });
+  // Rebuild chart when profile data, theme, or series visibility changes
+  $: if (scatterChart && scatterOption) {
+    scatterChart.setOption(scatterOption, { notMerge: true });
   }
 </script>
 
@@ -286,6 +315,32 @@
       <h3 class="section-title">Taste Map</h3>
       <p class="section-subtitle">Where your taste lands in spice &amp; salsa space. Recommended spots are nearest neighbors.</p>
       <div class="scatter-container" bind:this={scatterContainer}></div>
+      <ul class="scatter-legend">
+        {#each legendItems as item}
+          <li>
+            <button
+              type="button"
+              class="legend-item"
+              class:is-off={hiddenSeries.has(item.name)}
+              aria-pressed={!hiddenSeries.has(item.name)}
+              on:click={() => toggleSeries(item.name)}
+            >
+              {#if item.shape === 'star'}
+                <svg class="legend-swatch" viewBox="0 0 100 100" aria-hidden="true">
+                  <path d={STAR_D} fill={item.fill} stroke={item.stroke} stroke-width="6" />
+                </svg>
+              {:else}
+                <span
+                  class="legend-swatch"
+                  class:square={item.shape === 'square'}
+                  style="background: {item.fill}; border-color: {item.stroke};"
+                ></span>
+              {/if}
+              <span class="legend-label">{item.name}</span>
+            </button>
+          </li>
+        {/each}
+      </ul>
     </div>
 
     <!-- Recommendations -->
@@ -609,6 +664,72 @@
   .scatter-container {
     height: 280px;
     position: relative;
+  }
+
+  /* Legend lives outside the canvas so it wraps instead of colliding with
+     the x-axis name on narrow screens (see issue #48) */
+  .scatter-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px 14px;
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 4px;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 11px;
+    line-height: 1.3;
+    color: var(--chart-ink, #6b7280);
+    transition: opacity 0.15s ease;
+  }
+
+  .legend-item:hover {
+    opacity: 0.75;
+  }
+
+  .legend-item:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .legend-item.is-off {
+    opacity: 0.4;
+  }
+
+  .legend-item.is-off .legend-label {
+    text-decoration: line-through;
+  }
+
+  .legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1.5px solid transparent;
+    flex-shrink: 0;
+  }
+
+  .legend-swatch.square {
+    border-radius: 3px;
+  }
+
+  svg.legend-swatch {
+    border: none;
+    overflow: visible;
+  }
+
+  .legend-label {
+    white-space: nowrap;
   }
 
   /* Recommendations */
