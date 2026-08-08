@@ -89,12 +89,26 @@
       userMenuOpen = false;
     }
   }
+
+  // Publish the real height of the header bar as --header-h so map-page
+  // overlays can sit just below it without hardcoding their own copy of the
+  // number. Only the bar is measured — the expanded mobile menu overlays the
+  // map rather than pushing overlays down.
+  const HEADER_BORDER_PX = 2; // matches .header's border-bottom width
+  let headerBarHeight = 0;
+
+  $: if (browser && headerBarHeight > 0) {
+    document.documentElement.style.setProperty(
+      '--header-h',
+      `${headerBarHeight + HEADER_BORDER_PX}px`
+    );
+  }
 </script>
 
 <svelte:window on:click={handleWindowClick} />
 
 <header class="header">
-  <div class="header-container">
+  <div class="header-container" bind:clientHeight={headerBarHeight}>
     <!-- Logo -->
     <a href="/" class="logo-link" on:click={closeMobileMenu}>
       <img

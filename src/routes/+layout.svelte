@@ -61,7 +61,12 @@
 <style>
   .app {
     position: relative;
+    /* dvh, not vh: on mobile Safari/Chrome 100vh is the *large* viewport
+       (address bar hidden), so a 100vh shell is taller than the visible
+       scrollport and the page scrolls even when nothing overflows. That scroll
+       used to slide the map overlays up under the sticky header. */
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
   }

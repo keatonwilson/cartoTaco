@@ -13,7 +13,7 @@
   import { scale } from 'svelte/transition';
   import { trailModeActive, enterTrailMode, exitTrailMode } from '../lib/trailStore.js';
   import { tourExpandFilters } from '$lib/tourStore.js';
-  import { filterPanelOpen } from '$lib/uiStore.js';
+  import { filterPanelOpen, mobileNavOpen } from '$lib/uiStore.js';
   import { get } from 'svelte/store';
   import MapLensPicker from './MapLensPicker.svelte';
 
@@ -242,7 +242,7 @@
 
 <svelte:window on:click={handleWindowClick} on:keydown={handleKeydown} />
 
-<div class="filter-container" bind:this={containerEl}>
+<div class="filter-container" class:nav-open={$mobileNavOpen} bind:this={containerEl}>
   <!-- Compact Search Bar (Always Visible) -->
   <div class="filter-header">
     <div class="search-input-wrapper" data-tour="search">
@@ -472,8 +472,11 @@
 
 <style>
   .filter-container {
-    position: absolute;
-    top: 86px; /* 66px header + 20px margin */
+    /* fixed, like the other map overlays (TrailTray, ComparisonTray,
+       MapLegend). As an absolutely positioned box it scrolled with the
+       document and slid under the sticky header on mobile. */
+    position: fixed;
+    top: calc(var(--header-h) + 20px);
     right: 60px;
     z-index: 200; /* above the bottom sheet (150) so the panel isn't hidden behind it */
     background: var(--surface-1);
@@ -481,10 +484,25 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     width: 560px;
     max-width: 560px;
+    transition: opacity 0.15s ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .filter-container {
+      transition: none;
+    }
   }
 
   :global(.dark) .filter-container {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+
+  /* The mobile nav menu drops down over this spot and is only lightly frosted,
+     so an untouched filter bar shows through it as a smear. Fade it out for as
+     long as the menu is open. */
+  .filter-container.nav-open {
+    opacity: 0;
+    pointer-events: none;
   }
 
   .filter-header {
@@ -920,7 +938,7 @@
   /* Responsive adjustments */
   @media (max-width: 768px) {
     .filter-container {
-      top: 76px; /* 66px header + 10px margin */
+      top: calc(var(--header-h) + 10px);
       left: 10px;
       right: 60px; /* Leave space for map controls */
       width: auto;

@@ -372,7 +372,7 @@
 
   /* Position map controls below the transparent header */
   :global(.mapboxgl-ctrl-top-right) {
-    top: 76px !important;
+    top: calc(var(--header-h) + 10px) !important;
   }
 
   /* Mobile-first responsive popup styles */

@@ -61,6 +61,12 @@
 	--border-color: var(--line-1);
 	--border-color-strong: var(--line-2);
 	--accent-primary: var(--accent);
+
+	/* Height of the sticky header bar. Seeded with the design value and kept in
+	   sync at runtime by Header.svelte, which measures the real bar. Map-page
+	   overlays (filter bar, Mapbox controls) offset from this instead of
+	   hardcoding a copy of it. */
+	--header-h: 66px;
 }
 
 :root.dark {
