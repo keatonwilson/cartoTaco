@@ -23,6 +23,11 @@ export async function handle({ event, resolve }) {
     event.locals.session = null;
   }
 
+  // ponytail: fallback for Supabase's default email template, which lands on "/?code=..."
+  if (url === '/' && event.url.searchParams.has('code')) {
+    throw redirect(303, `/auth/confirm?code=${event.url.searchParams.get('code')}`);
+  }
+
   const session = event.locals.session;
 
   // Redirect authenticated users away from auth pages

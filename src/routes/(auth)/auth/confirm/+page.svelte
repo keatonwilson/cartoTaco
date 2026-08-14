@@ -10,22 +10,23 @@
   let errorMessage = '';
 
   onMount(async () => {
-    // Get token_hash and type from URL params
+    // Preferred: token_hash from our custom email template.
+    // Fallback: PKCE `code` from Supabase's default template (only works in the
+    // same browser that signed up, since the code verifier is stored locally).
     const tokenHash = $page.url.searchParams.get('token_hash');
     const type = $page.url.searchParams.get('type');
+    const code = $page.url.searchParams.get('code');
 
-    if (!tokenHash || type !== 'email') {
+    if (!code && (!tokenHash || type !== 'email')) {
       status = 'error';
       errorMessage = 'Invalid confirmation link';
       return;
     }
 
     try {
-      // Verify the email confirmation token
-      const { error } = await supabaseBrowser.auth.verifyOtp({
-        token_hash: tokenHash,
-        type: 'email'
-      });
+      const { error } = code
+        ? await supabaseBrowser.auth.exchangeCodeForSession(code)
+        : await supabaseBrowser.auth.verifyOtp({ token_hash: tokenHash, type: 'email' });
 
       if (error) {
         status = 'error';
