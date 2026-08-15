@@ -12,6 +12,16 @@ import { SEQUENTIAL, PENDING } from './chartTheme';
 let currentPopup = null;
 let currentPopupComponent = null;
 
+// Set while we tear a popup down ourselves. Mapbox fires 'close' on remove(),
+// and that handler clears `selectedSite` — which would wipe out the site we
+// just selected for the replacement card (Card renders from the store, so it
+// would fall back to "No location selected").
+let closingPopupProgrammatically = false;
+
+// The moveend listener a pending flyTo is waiting on, so a second fly-to
+// request can cancel the first instead of racing it.
+let pendingFlyToHandler = null;
+
 /**
  * Returns the bottom padding (px) that the map should use to keep a tapped
  * marker visible above the mobile bottom sheet.  Accounts for landscape mode
@@ -34,13 +44,78 @@ let handlers = {};
 
 function destroyCurrentPopup() {
   if (currentPopup) {
-    currentPopup.remove();
+    closingPopupProgrammatically = true;
+    try {
+      currentPopup.remove();
+    } finally {
+      closingPopupProgrammatically = false;
+    }
     currentPopup = null;
   }
   if (currentPopupComponent) {
     try { currentPopupComponent.$destroy(); } catch {}
     currentPopupComponent = null;
   }
+}
+
+// Drop a fly-to that hasn't landed yet (a newer request supersedes it)
+function cancelPendingFlyTo(map) {
+  if (!pendingFlyToHandler) return;
+  try { map.off('moveend', pendingFlyToHandler); } catch {}
+  pendingFlyToHandler = null;
+}
+
+/**
+ * Select a site and show its card — as a Mapbox popup on desktop/tablet, or by
+ * handing off to Map.svelte's bottom sheet on mobile. Shared by marker clicks
+ * and fly-to requests so both follow the same select-then-render order.
+ * @param {object} map - Mapbox GL map instance
+ * @param {object} site - processedSite object
+ * @param {[number, number]} coordinates - [lng, lat] to anchor the popup to
+ */
+function openSiteCard(map, site, coordinates) {
+  // Tear the old popup down *before* selecting the new site: remove() fires
+  // 'close', which clears the selection
+  destroyCurrentPopup();
+
+  selectedSite.set(site);
+
+  if (get(deviceType) === 'mobile') {
+    // Mobile renders a bottom sheet from the store — just keep the marker
+    // visible in the map area above the sheet
+    map.easeTo({
+      center: coordinates,
+      padding: { top: 0, bottom: getSheetPadding(), left: 0, right: 0 },
+      duration: 350
+    });
+    return;
+  }
+
+  const popup = new mapboxgl.Popup({
+    closeButton: true,
+    closeOnClick: true,
+    maxWidth: get(deviceType) === 'tablet' ? '580px' : '650px'
+  })
+    .setLngLat(coordinates)
+    .setDOMContent(createPopupContent(site.est_id))
+    .addTo(map);
+
+  currentPopup = popup;
+
+  popup.on('open', () => {
+    adjustPopupPosition(popup, map);
+  });
+
+  popup.on('close', () => {
+    // Only a user-driven close (X button, click-away) clears the selection
+    if (closingPopupProgrammatically) return;
+    selectedSite.set(null);
+    if (currentPopup === popup) currentPopup = null;
+    if (currentPopupComponent) {
+      try { currentPopupComponent.$destroy(); } catch {}
+      currentPopupComponent = null;
+    }
+  });
 }
 
 // Remove existing event listeners from the map and reset state
@@ -54,6 +129,7 @@ export const resetListeners = (map) => {
   handlers = {};
   listenersMap = null;
   hoveredFeatureId = null;
+  if (map) cancelPendingFlyTo(map);
   clearTrailLayers(map);
 };
 
@@ -433,49 +509,10 @@ export const updateMarkers = (processedSites, map) => {
         return;
       }
 
-      // Close any existing popup (and destroy its Svelte component)
-      destroyCurrentPopup();
+      // A tap wins over any fly-to still in flight
+      cancelPendingFlyTo(map);
 
-      // Set the selected site in the store
-      selectedSite.set(siteData);
-
-      const currentDeviceType = get(deviceType);
-
-      if (currentDeviceType === 'mobile') {
-        // On mobile, Map.svelte renders a bottom sheet instead of a Mapbox popup.
-        // Center the tapped marker in the visible map area above the sheet.
-        map.easeTo({
-          center: coordinates,
-          padding: { top: 0, bottom: getSheetPadding(), left: 0, right: 0 },
-          duration: 350
-        });
-        return;
-      }
-
-      // Desktop/tablet: render card inside a Mapbox popup
-      const popupOptions = {
-        closeButton: true,
-        closeOnClick: true,
-        maxWidth: currentDeviceType === 'tablet' ? '580px' : '650px'
-      };
-
-      currentPopup = new mapboxgl.Popup(popupOptions)
-        .setLngLat(coordinates)
-        .setDOMContent(createPopupContent(properties.est_id))
-        .addTo(map);
-
-      currentPopup.on('open', () => {
-        adjustPopupPosition(currentPopup, map);
-      });
-
-      currentPopup.on('close', () => {
-        selectedSite.set(null);
-        currentPopup = null;
-        if (currentPopupComponent) {
-          try { currentPopupComponent.$destroy(); } catch {}
-          currentPopupComponent = null;
-        }
-      });
+      openSiteCard(map, siteData, coordinates);
     };
     map.on('click', 'unclustered-point', handlers['click::unclustered-point']);
 
@@ -655,14 +692,17 @@ function adjustPopupPosition(popup, map) {
 export function flyToSite(map, site) {
   if (!map || !site) return;
 
-  const currentDeviceType = get(deviceType);
+  const coordinates = [site.longitude, site.latitude];
 
-  if (currentDeviceType === 'mobile') {
+  // A repeat request (e.g. mashing "Surprise Me") supersedes the one in flight
+  cancelPendingFlyTo(map);
+
+  if (get(deviceType) === 'mobile') {
     // On mobile, use the bottom sheet — center marker in visible area above it.
     destroyCurrentPopup();
     selectedSite.set(site);
     map.easeTo({
-      center: [site.longitude, site.latitude],
+      center: coordinates,
       zoom: 15,
       padding: { top: 0, bottom: getSheetPadding(), left: 0, right: 0 },
       duration: 600
@@ -670,42 +710,31 @@ export function flyToSite(map, site) {
     return;
   }
 
-  // Desktop/tablet: fly to location then show popup
+  // Desktop/tablet: drop the old card before travelling, then fly and land on
+  // the new one
+  destroyCurrentPopup();
+
   map.flyTo({
-    center: [site.longitude, site.latitude],
+    center: coordinates,
     zoom: 15,
     duration: 1000
   });
 
-  map.once('moveend', () => {
-    selectedSite.set(site);
+  const openOnArrival = () => {
+    if (pendingFlyToHandler === openOnArrival) pendingFlyToHandler = null;
+    openSiteCard(map, site, coordinates);
+  };
 
-    const popupOptions = {
-      closeButton: true,
-      closeOnClick: true,
-      maxWidth: currentDeviceType === 'tablet' ? '580px' : '650px'
-    };
+  // flyTo resolves synchronously when the camera has nowhere to travel or the
+  // user prefers reduced motion — moveend has already fired by the time we get
+  // here, so waiting for another one would leave the card unopened.
+  if (typeof map.isMoving === 'function' && !map.isMoving()) {
+    openOnArrival();
+    return;
+  }
 
-    destroyCurrentPopup();
-
-    currentPopup = new mapboxgl.Popup(popupOptions)
-      .setLngLat([site.longitude, site.latitude])
-      .setDOMContent(createPopupContent(site.est_id))
-      .addTo(map);
-
-    currentPopup.on('open', () => {
-      adjustPopupPosition(currentPopup, map);
-    });
-
-    currentPopup.on('close', () => {
-      selectedSite.set(null);
-      currentPopup = null;
-      if (currentPopupComponent) {
-        try { currentPopupComponent.$destroy(); } catch {}
-        currentPopupComponent = null;
-      }
-    });
-  });
+  pendingFlyToHandler = openOnArrival;
+  map.once('moveend', openOnArrival);
 }
 
 /**
