@@ -1,5 +1,6 @@
 <script>
   import { signUp } from '$lib/authStore';
+  import { friendlyAuthError } from '$lib/authErrors';
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
   import Envelope from 'phosphor-svelte/lib/Envelope';
@@ -51,7 +52,7 @@
     const result = await signUp(email, password);
 
     if (result.error) {
-      error = result.error.message || 'Failed to create account. Please try again.';
+      error = friendlyAuthError(result.error, 'Failed to create account. Please try again.');
       loading = false;
     } else if (!result.session) {
       // Account created but email confirmation is required before signing in
