@@ -33,6 +33,10 @@
     isOpen = false;
   }
 
+  function handleOverlayClick(event) {
+    if (event.target === event.currentTarget) closeDropdown();
+  }
+
   function handleWindowClick(event) {
     if (isOpen && !$isMobile && containerEl && !containerEl.contains(event.target)) {
       closeDropdown();
@@ -139,15 +143,14 @@
       </div>
     {:else}
       <!-- Mobile: Full-width panel (portalled to body to escape header's backdrop-filter containing block) -->
+      <!-- Decorative backdrop: click-outside closes; keyboard users use Escape (handleKeydown) -->
       <div
         class="mobile-panel-overlay"
         use:portal
-        on:click={closeDropdown}
-        role="button"
-        tabindex="-1"
-        aria-label="Close panel"
+        role="presentation"
+        on:click={handleOverlayClick}
       >
-        <div class="mobile-panel" on:click|stopPropagation>
+        <div class="mobile-panel">
           <div class="panel-header">
             <h3 class="panel-title">New Spots</h3>
             <button class="close-button" on:click={closeDropdown} aria-label="Close">×</button>

@@ -11,7 +11,7 @@
   import { selectedSite } from '$lib/stores';
 
   // Matches the prop mapping.js passes to popup cards; unused (reads selectedSite)
-  export let siteId = null;
+  export const siteId = null;
 
   $: site = $selectedSite;
   $: region = site?.rawData?.descriptions?.region || null;

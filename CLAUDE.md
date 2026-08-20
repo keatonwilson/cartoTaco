@@ -225,6 +225,7 @@ Located in src/lib/dataWrangling.js:
 ## Supporting Utilities
 
 - `src/lib/auth.js` - Additional Supabase auth utilities
+- `src/lib/authErrors.js` - Maps Supabase auth errors to friendly messages (e.g. signup email rate limit)
 - `src/lib/favorites.js` - Favorites database operations (add, remove, fetch)
 - `src/lib/submissions.js` - Location submission handling and DB persistence
 - `src/lib/validation.js` - Form validation functions for submissions/auth forms
@@ -332,6 +333,9 @@ Test files are co-located in src/lib/:
 - `src/lib/dataWrangling.test.js` - Tests for data transformation functions
 - `src/lib/geocoding.test.js` - Tests for geocoding functions
 - `src/lib/validation.test.js` - Tests for form validation functions
+- `src/lib/pendingSpots.test.js` - Tests for pending-spot processing/filtering
+- `src/lib/mapping.test.js` - Tests for map layer/GeoJSON helpers
+- `src/lib/authErrors.test.js` - Tests for auth error message mapping
 
 Run all tests with `pnpm test`.
 
@@ -339,6 +343,8 @@ Run all tests with `pnpm test`.
 
 Detailed feature documentation in docs/:
 - `IMPROVEMENTS.md` - Roadmap and planned features
+- `UI_REFRESH_PLAN.md` - UI & data-viz refresh plan (shipped, PR #46)
+- `UNVETTED_SPOTS_PLAN.md` - Pending/unvetted spots plan (shipped in this repo; scraping pipeline lives in `cartoTacoMenuExtract`)
 - `MARKER_CLUSTERING.md` - Clustering implementation
 - `QUERY_OPTIMIZATION.md` - Database view implementation
 - `SEARCH_FILTER.md` - Filter system details
