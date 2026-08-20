@@ -1,16 +1,12 @@
 # Unvetted Spots — Implementation Plan
 
-Status: **PLAN — not yet implemented**
+Status: **SHIPPED in cartoTaco (phases 1, 2, 4)** — migrations 030/031, pending-aware
+stores/lenses, `PendingSpotCard`, FilterBar chip, `MapLegend`, census scouting tile.
+Phase 3 (scraping pipeline) lives in `cartoTacoMenuExtract`; see that repo for status.
+PR #46 (UI refresh) landed first, as planned.
+
 Scope: `cartoTaco` (SvelteKit app) + `cartoTacoMenuExtract` (Streamlit admin tool)
 Companion doc: `cartoTacoMenuExtract/docs/UNVETTED_SPOTS_PLAN.md` (scraping-pipeline detail)
-
-> **Coordination with PR #46 (UI & data-viz refresh):** this plan is written against
-> the PR #46 branch (`claude/carto-taco-ui-refresh-plan-6h6d03`), not `main`. That PR
-> rewrites every surface this feature touches — `mapping.js` (type glyphs, lens layers,
-> twin unclustered source), `FilterBar.svelte` (chip system + active-chips row),
-> `stores.js` (`distributionStats`), `censusStore.js`, `Card.svelte`, and the design
-> tokens in `app.css`. **Land #46 first, then rebase/branch this work from it.**
-> Phase 1 (DB migrations, §2) has zero overlap with #46 and can proceed in parallel.
 
 ---
 

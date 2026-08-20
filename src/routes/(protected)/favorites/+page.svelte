@@ -10,7 +10,6 @@
 	import EmptyState from '../../../components/EmptyState.svelte';
 	import LoadingState from '../../../components/LoadingState.svelte';
 
-	export let data;
 
 	let favoriteLocations = [];
 	let loading = true;
