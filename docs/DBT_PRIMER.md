@@ -159,19 +159,38 @@ Sources, with the honest version of each (assessed Sept 2026):
    Neighborhood Mode (D2) almost for free.
 5. **The existing `staging_extractions` table** — zero new plumbing. Model your own
    pipeline: where scouted spots die between staging and promotion. Free, do it first.
+6. **Reddit** — the word-of-mouth layer the others can't give you. See below.
 
-**On Instagram and TikTok:** both are rich in exactly this kind of knowledge and both
-are largely closed. Instagram's public-content endpoints need Meta business verification
-and a strict app review aimed at brand monitoring, not restaurant discovery. TikTok's
-open API is for accredited academic research on a non-commercial basis — eligibility
-aside, using it to populate an app isn't what you'd be agreeing to. Scraping is more
-legally defensible than most people assume (courts have held public, logged-out scraping
-isn't a computer-crime violation) but still breaks both platforms' terms and invites
-blocking. The parts worth doing: check the Instagram handles you *already store* for
-signs a spot went quiet, and let ordinary web search mine the local blogs and Reddit
-threads that carry the same word-of-mouth. The thing you actually want from social —
-where a truck is parked today — lives in Stories and isn't minable at all; the Owner
-Portal idea on your roadmap is the better answer to that.
+**On Reddit — the one social source worth prioritizing.** Registry data (licenses,
+permits, OSM) tells you a place *exists*. Reddit tells you whether people keep bringing
+it up, which is the actual under-the-radar signal. Two ways in, and the cheap one is
+better: Reddit threads are heavily indexed, and your scout already uses web search — so
+pointing the discovery prompt at Reddit is a prompt change, not a pipeline. No API, no
+approval, no cost, works today. Do that first.
+
+The official API is worth it only for systematic back-catalog mining (every Tucson food
+thread over years, with scores and dates). Be aware it got much stricter: as of 2026
+every app needs pre-approval including hobby projects, with 2–4 week queues, and the
+terms prohibit training models on Reddit content and require deleting content you no
+longer need. That retention rule is actually a useful constraint to design around —
+land the raw text, extract the facts, drop the bodies — and it's a real pipeline pattern
+most learning projects never touch. If you want the API, apply early; the wait is the
+long pole.
+
+Reddit feeds two things: new candidates, and — more interesting — a **ranked vetting
+queue**, since mention frequency tells you which of your existing pending spots to go
+visit first. That ordering is currently implicit in your head.
+
+**On Instagram and TikTok:** deprioritized behind Reddit. Instagram's public-content
+endpoints need Meta business verification and a strict app review aimed at brand
+monitoring, not restaurant discovery. TikTok's open API is for accredited academic
+research on a non-commercial basis — eligibility aside, using it to populate an app
+isn't what you'd be agreeing to. Scraping is more legally defensible than most people
+assume (courts have held public, logged-out scraping isn't a computer-crime violation)
+but still breaks platform terms and invites blocking. The one piece worth keeping: check
+the Instagram handles you *already store* for signs a spot went quiet. And the thing you
+actually want from social — where a truck is parked today — lives in Stories and isn't
+minable at all; the Owner Portal idea on your roadmap is the better answer to that.
 
 **The interesting architectural move:** the dedup and name-matching logic currently in
 `scraping.py` is set logic and distance math against the database, written in Python.

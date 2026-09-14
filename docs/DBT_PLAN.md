@@ -345,51 +345,120 @@ Both fully feasible today with no external dependency and no legal questions.
 (scouted → approved → promoted → vetted), confidence distributions by field, and where
 rows die. Start here; it is free.
 
-### Social media (Instagram / TikTok) — low feasibility, high temptation
+### Reddit — the strongest word-of-mouth source, best reached without the API
 
-Both platforms are rich in exactly the under-the-radar knowledge CartoTaco wants, and
-both are close to inaccessible through sanctioned channels.
+Reddit is the priority social source, ahead of Instagram and TikTok. It carries the
+under-the-radar knowledge those platforms have, in threaded text that is far easier to
+mine, and — critically — it offers something none of the registry sources do.
 
-**Instagram.** The Basic Display API reached end-of-life 4 Dec 2024. The Graph API
-returns data only for Business/Creator accounts you own or manage. [Hashtag Search][ig]
-exists but requires the *Instagram Public Content Access* feature, which needs Business
-Verification plus a strictly-reviewed App Review, and is capped at 30 unique hashtags
-per 7 days. Meta's stated allowed usages are brand and campaign monitoring — populating
-a restaurant map is not an obvious fit, which matters at review time.
+Business licenses, health permits, and OSM all answer *does this place exist*. Reddit
+answers **is it any good, and do people keep bringing it up**. That is the actual
+"under the radar" signal: a spot named in eight threads across three years with steady
+upvotes is a strong lead even if it never appears in a listicle.
+
+**Two paths, and the unintuitive one is better.**
+
+#### Path A — web search over Reddit (recommended, available today)
+
+Reddit threads are heavily indexed, and `scout_spot()` / `discover_candidates()`
+already use Claude's `web_search` tool. Steering those prompts at Reddit content is a
+**prompt change in `DISCOVER_SYSTEM_PROMPT`, not a pipeline** — no API, no approval, no
+credentials, no retention obligation, no cost.
+
+This should be the first thing tried. It is roughly an afternoon's work and needs no
+new infrastructure whatsoever.
+
+Its limit is depth: web search surfaces the most visible threads, not the full
+back-catalog. For "what are people saying," that is enough.
+
+#### Path B — the Data API (systematic, but a rockier road than it looks)
+
+Worth pursuing only for what Path A cannot do: systematic longitudinal mining — every
+Tucson food thread over years, with scores, comment counts, and dates, so mention
+frequency becomes a real time series.
+
+Current terms (verified September 2026) are materially more restrictive than the
+pre-2023 API:
+
+- **Pre-approval is required for everything.** Reddit's [Responsible Builder
+  Policy][rbp] requires explicit approval before any API access — including personal
+  and hobby projects. Reported queues run 2–4 weeks, and hobby projects are reportedly
+  deprioritized, with some developers concluding it is not worth attempting. Apply
+  early and treat the timeline as unknown.
+- **Free tier is real for non-commercial use:** 100 queries/minute per OAuth client,
+  averaged over a rolling 10-minute window. OAuth is mandatory; unauthenticated
+  requests are rejected. Commercial use requires a hand-reviewed contract at
+  $0.24/1K calls. CartoTaco is free, so the free tier applies — but note that
+  "non-commercial" is a status that could change if the project ever monetizes.
+- **No training on Reddit content.** The Data API terms prohibit using User Content to
+  train ML or AI models without express permission. Passing a post through Claude to
+  *extract* a spot name is inference, not training, and Anthropic's API does not train
+  on API inputs by default — but this is a genuinely gray boundary and worth staying
+  well clear of. Extract facts; do not build datasets.
+- **Retention is limited.** The terms require deleting User Content not required for
+  the approved use case.
+
+That last constraint is an architectural requirement, not a footnote, and it shapes the
+pipeline in a way that happens to be good practice anyway:
+
+> **Land raw → extract facts → discard bodies.** `raw_reddit_mentions` holds post text
+> only long enough for an extraction pass. The durable table stores derived facts —
+> spot name, thread permalink, score, timestamp, extracted sentiment — not the comment
+> text. A scheduled post-hook prunes the raw layer.
+
+This is a genuinely instructive thing to build: it forces a real retention policy, which
+most learning projects never model, and it maps cleanly onto ephemeral models plus a
+pruning post-hook.
+
+#### What Reddit feeds, in dbt terms
+
+Two distinct outputs, and the second is a feature that does not exist yet:
+
+1. **Discovery** — mentioned spots anti-joined against `sites` and
+   `staging_extractions`, feeding `mart_discovery_queue` alongside the registry feeds.
+   A spot corroborated by *both* a health permit and repeated Reddit mentions needs no
+   human checkbox.
+2. **Vetting priority** — for spots *already* in the database as `pending`, mention
+   frequency and score answer "which of these should be visited first?" Right now that
+   ordering is implicit. A `mart_vetting_priority` model makes it explicit and turns
+   the pending backlog into a ranked worklist.
+
+[rbp]: https://support.reddithelp.com/hc/en-us/articles/42728983564564-Responsible-Builder-Policy
+
+### Instagram and TikTok — low feasibility, deprioritized
+
+Both are rich in the same knowledge and close to inaccessible through sanctioned
+channels. Deprioritized behind Reddit; revisit only if Reddit underdelivers.
+
+**Instagram.** Basic Display reached end-of-life 4 Dec 2024. The Graph API returns data
+only for Business/Creator accounts you own or manage. [Hashtag Search][ig] exists but
+requires the *Instagram Public Content Access* feature — Business Verification plus a
+strictly-reviewed App Review — and caps at 30 unique hashtags per 7 days. Meta's stated
+allowed usages are brand and campaign monitoring; populating a restaurant map is not an
+obvious fit, which matters at review time.
 
 **TikTok.** The Research API is free but requires non-profit academic affiliation, a
 defined research proposal, and a commitment to non-commercial public-interest research.
-Academic eligibility may well be attainable — but using research credentials to populate
-a consumer app falls outside the terms one agrees to. Not a route to take.
+Eligibility aside, using research credentials to populate a consumer app falls outside
+the terms one agrees to. Not a route to take.
 
-**Scraping.** The legal picture is more permissive than commonly assumed — *hiQ v.
-LinkedIn* held the CFAA does not cover public data, and in January 2024 Judge Chen
-granted summary judgment to Bright Data, holding Meta's terms do not bar logged-off
-scraping of public data. But ToS still ban automated access, which supports immediate
-blocking and a civil breach-of-contract claim, and both platforms invest heavily in
-anti-bot. Logged-off is the defensible posture; logged-in is not.
+**Scraping.** More legally defensible than commonly assumed — *hiQ v. LinkedIn* held the
+CFAA does not cover public data, and in January 2024 Judge Chen granted summary judgment
+to Bright Data, holding Meta's terms do not bar logged-off scraping of public data. But
+ToS still ban automated access, supporting immediate blocking and a civil
+breach-of-contract claim, and both platforms invest heavily in anti-bot. Logged-off is
+the defensible posture; logged-in is not. Reddit's terms likewise prohibit scraping as
+an API workaround.
 
-**What is actually worth doing, in order:**
+**The one Instagram task still worth doing:** `sites.instagram` is already populated. A
+logged-out liveness check — does the profile still resolve, when was the last post — is
+a closure signal and a re-scout trigger at essentially zero risk. This folds into the
+link-liveness work above rather than being a separate pipeline.
 
-1. **Monitor the handles already held.** `sites.instagram` is already populated. A
-   logged-out liveness check — does the profile still resolve, when was the last post —
-   is a closure signal and a re-scout trigger, at essentially zero risk. This folds into
-   the link-liveness work above rather than being a separate pipeline.
-2. **Mine what indexes the same knowledge.** Local food media, neighborhood roundups,
-   and Reddit threads carry much of the same under-the-radar signal and are reachable
-   through ordinary web search — which `scout_spot()` already uses. Extending
-   `DISCOVER_SYSTEM_PROMPT` to explicitly target those is a prompt change, not a
-   pipeline. *(Reddit's own API terms changed materially in 2023; check current terms
-   before building against it directly.)*
-3. **Bound any vendor experiment.** Third-party scrapers (e.g. Apify actors) shift
-   operational burden but not legal exposure, and cost per run. If tried, run it **once**
-   over a fixed window and measure novel spots found versus what licenses + OSM + web
-   search already surfaced. Build a pipeline only if marginal yield justifies it.
-
-**The unmet need underneath this question** is truck location and hours — trucks move,
-and they announce it in Stories, the single least accessible surface on either platform.
-No mining strategy solves that well. The **O1 Owner Portal** already on the roadmap does:
-let the truck tell you. That is a better answer to the same problem.
+**The unmet need underneath all of this** is truck location and hours — trucks move, and
+they announce it in Stories, the least accessible surface on any of these platforms. No
+mining strategy solves that. The **O1 Owner Portal** already on the roadmap does: let the
+truck tell you.
 
 ### Architecture: move the judgment into dbt
 
@@ -428,13 +497,23 @@ existing site" becomes a dbt test that runs nightly.
 
 ### Before committing to this phase
 
-Three checks, none of which take long:
+**Do first, because it has a lead time:** submit the Reddit API access request. Approval
+reportedly takes 2–4 weeks and hobby projects sit low in the queue, so start the clock
+before it is needed. Meanwhile Path A (web search over Reddit) is unblocked and needs
+nothing.
+
+Then three checks, none of which take long:
 
 1. Does `healthinspect.pima.gov/Portal/Food/Map` call a JSON endpoint? (network tab)
 2. What fields does the business license layer expose — NAICS? license start date?
    (`.../FeatureServer/0?f=json`)
 3. How many Mexican-food POIs does Overpass actually return for a Tucson bbox? If it is
    ~400 it is a strong backstop; if ~40, OSM coverage here is too thin to matter.
+
+Cheapest first step in the whole phase, ahead of any ingestion work: point
+`DISCOVER_SYSTEM_PROMPT` at Reddit threads and local food media, and compare the
+candidates against a normal run. That measures the ceiling of the no-infrastructure
+approach before any pipeline gets built.
 
 [bl]: https://gisdata.tucsonaz.gov/datasets/cotgis::business-licenses-open-data/about
 [blw]: https://www.tucsonaz.gov/Departments/Business-Services-Department/Taxpayer-Assistance-Division/Business-License-and-Tax-Information/Business-License-Downloads
