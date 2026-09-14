@@ -134,21 +134,53 @@ a genuine change feed, and audit exactly what changed when a pending spot got ve
 Remember: dbt doesn't fetch. "Auto-ingest web data" is two jobs — a scheduled script
 that dumps raw results into a landing table, then dbt models on top.
 
-Candidates, ranked:
+This is also where the scouting pipeline's manual step gets addressed. Today you run a
+search, then tick checkboxes. That checkbox isn't really a decision — it's you
+compensating for the fact that asking an LLM "what taco spots am I missing" returns a
+mix of real finds, closed places, chains, and spots you already have under a different
+name. The fix isn't auto-ticking the boxes; it's feeding discovery from sources solid
+enough that the human check moves to the *promote* step, where it belongs.
 
-1. **Pima County health inspection data** — public open data portal with an API.
-   Matching it to spots by fuzzy name + address proximity is a genuinely interesting
-   modeling problem, and "last inspected: 94" is a real chip on the card.
-2. **The existing `staging_extractions` table** — zero new plumbing. Model the pipeline
-   itself: confidence distributions, how many scouted spots reach promotion, where rows
-   die. Immediate visibility into where the LLM pipeline leaks.
-3. **Link liveness checks** — periodically ping each spot's website/Instagram, flag
-   dead ones for re-scouting.
-4. **Census tract data** — spatial join spots to neighborhoods, unlocking Neighborhood
-   Mode (D2) plus "taco density per capita."
+Sources, with the honest version of each (assessed Sept 2026):
 
-**What you learn:** where the transform layer's boundaries are, and fuzzy record
-linkage in SQL (fiddly, and useful).
+1. **City of Tucson business licenses** — a real queryable API, ~93k records, plus a
+   weekly new-business file. But licensing is per-jurisdiction, and South Tucson is its
+   own incorporated city with no open data — so this feed structurally can't see South
+   4th and South 12th. Great signal, incomplete frame.
+2. **Pima County health permits** — every food business in the metro needs one, so this
+   is the only *complete* registry, and a permit is strong evidence a place is real.
+   Downside: portal only, no documented API. Worth checking whether its map view calls a
+   JSON endpoint before planning around it.
+3. **OpenStreetMap (Overpass)** — free, no key, covers the whole metro including the
+   gaps above. Lags on brand-new spots, so it's good for recall and weak on recency —
+   the opposite profile to the license feed, which is why they complement each other.
+   Easiest to start with.
+4. **Tucson neighborhoods** — published as GeoJSON, load once, point-in-polygon. Unlocks
+   Neighborhood Mode (D2) almost for free.
+5. **The existing `staging_extractions` table** — zero new plumbing. Model your own
+   pipeline: where scouted spots die between staging and promotion. Free, do it first.
+
+**On Instagram and TikTok:** both are rich in exactly this kind of knowledge and both
+are largely closed. Instagram's public-content endpoints need Meta business verification
+and a strict app review aimed at brand monitoring, not restaurant discovery. TikTok's
+open API is for accredited academic research on a non-commercial basis — eligibility
+aside, using it to populate an app isn't what you'd be agreeing to. Scraping is more
+legally defensible than most people assume (courts have held public, logged-out scraping
+isn't a computer-crime violation) but still breaks both platforms' terms and invites
+blocking. The parts worth doing: check the Instagram handles you *already store* for
+signs a spot went quiet, and let ordinary web search mine the local blogs and Reddit
+threads that carry the same word-of-mouth. The thing you actually want from social —
+where a truck is parked today — lives in Stories and isn't minable at all; the Owner
+Portal idea on your roadmap is the better answer to that.
+
+**The interesting architectural move:** the dedup and name-matching logic currently in
+`scraping.py` is set logic and distance math against the database, written in Python.
+It belongs in a dbt model — one that unions the feeds, scores candidates, and ranks
+them. Multi-source agreement (a spot showing up in both a health permit and OSM) is what
+replaces your checkbox.
+
+**What you learn:** where the transform layer's boundaries are, fuzzy record linkage in
+SQL, spatial joins, and unioning sources that don't share a shape.
 
 ---
 

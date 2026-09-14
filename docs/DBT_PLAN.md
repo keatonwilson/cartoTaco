@@ -230,34 +230,219 @@ simply does not have today.
 
 ---
 
-## Phase 5 — External data ingestion
+## Phase 5 — External data ingestion and automated discovery
 
-Shape: a scheduled GitHub Actions job writes raw JSON into `raw_*` tables; dbt models
-on top. dbt itself fetches nothing.
+Shape: a scheduled job writes raw rows into `raw_*` tables; dbt models on top. dbt
+itself fetches nothing.
 
-Ranked by value to CartoTaco:
+This phase is also the answer to a standing question about the scouting pipeline in
+`cartoTacoMenuExtract`: **can candidate discovery be automated?** Mostly yes — but not
+by auto-approving the current candidate list.
 
-1. **Pima County health inspections.** Public open data portal with an API — use the
-   API, not scraping. Matching inspections to sites by normalized name plus address
-   proximity is a substantial modeling exercise (`int_inspection_matches`, with a
-   confidence score and a manual-override table for the ones fuzzy matching gets
-   wrong). Surfaces as an inspection chip on the card.
-2. **`staging_extractions` as a source.** Zero new plumbing — the table already exists
-   in the Supabase project with `pipeline`, `scrape_confidence`, and `status` columns.
-   Model the pipeline itself: confidence distributions by field, the
-   scouted → approved → promoted → vetted funnel, and where rows die. Immediate
-   visibility into where the extraction pipeline leaks.
-3. **Link liveness.** Periodic HTTP status checks on `website` / `instagram` →
-   `raw_link_checks` → a `mart_stale_links` worklist of spots needing re-scouting. Rate
-   limit politely; this is the one item that touches third-party servers directly.
-4. **Census / ACS tract data.** Spatial join spots to Tucson neighborhoods. Unlocks
-   **D2 Neighborhood Mode** from `IMPROVEMENTS.md` plus per-capita taco density.
+### The current bottleneck is precision, not the checkbox
 
-Start with (2) — it is free, needs no new infrastructure, and the modeling is
-immediately useful.
+`pages/5_Scout_New_Spots.py` already automates more than it appears to. Of five steps,
+only two need a human:
 
-**Learning goals.** The transform-layer boundary, fuzzy record linkage in SQL, handling
-a source that updates on someone else's schedule.
+| Step | Automated? |
+|---|---|
+| `discover_candidates()` — one LLM web-search pass, ≤30 candidates | yes |
+| `mark_known_candidates()` — normalized name diff vs. production + staging | yes |
+| **Checkbox selection** | **human** |
+| `scout_spot()` → `geocode_address()` → `find_duplicates()` → `save_scraped_spot()` | yes, loops unattended |
+| **Staging Review → Promote** | **human** |
+
+The checkbox is not really a selection gate — it is a precision patch. Asking an LLM
+"what taco spots exist that aren't on this list" returns a mix of real finds, closed
+spots, chains, and name-variants of spots already tracked. That judgment cannot be
+automated away without fixing the input.
+
+So the goal is not to auto-tick the boxes. It is to make discovery deterministic enough
+that the human gate moves to **promotion**, which is the right place for it anyway —
+that is the step that puts a row in front of users.
+
+### Source feasibility
+
+Assessed September 2026. Endpoint-level details marked *unverified* still need a probe.
+
+#### City of Tucson business licenses — best access, worst coverage
+
+Published on the city's ArcGIS Hub as [Business Licenses (Open Data)][bl], ~93,483
+active records. ArcGIS Hub exposes a `FeatureServer/0/query` endpoint returning GeoJSON
+with `where` clauses, so this is queryable rather than download-only. The city
+separately publishes [weekly files of businesses that started that week][blw] — a
+genuine new-business feed.
+
+*Unverified:* field names, whether NAICS is present, coordinate handling. One
+`?f=json` call answers all three.
+
+**Coverage gap, and it is serious.** Business licensing is fragmented by jurisdiction:
+
+- City of Tucson issues licenses → open data available
+- **City of South Tucson is a separately incorporated city** with its own licensing and
+  no open data portal
+- **Unincorporated Pima County issues no business licenses at all**
+
+South Tucson is one square mile containing South 4th and South 12th — among the densest
+taco corridors in the metro. A feed that structurally cannot see it has a hole exactly
+where the value is. Usable as a signal, not as the sole source.
+
+**Second gap:** licenses carry the legal entity name, not the DBA. "Rodriguez
+Enterprises LLC" will not match "Tacos El Ejemplo." Name resolution is exactly the job
+`scout_spot()` already does well.
+
+#### Pima County health permits — best coverage, worst access
+
+Every food business in Tucson, South Tucson, *and* unincorporated Pima must hold a
+county health permit. That makes the [Health Inspect portal][hi] the only
+jurisdictionally complete registry of food establishments in the metro — precisely the
+gap business licenses cannot cover. It is also a stronger signal: a health permit means
+a kitchen passed plan review and was inspected.
+
+*Verified:* the portal covers food facilities, exposes a map view and a searchable
+table of active permitted facilities, and publishes inspection results with violations.
+No API is documented, and the data is **not** in the [Pima geospatial open data
+portal][pima-gis].
+
+*Unverified, and worth 20 minutes:* the portal has a `/Portal/Food/Map` route. A map
+view must fetch markers from somewhere. Check the network tab for an undocumented JSON
+endpoint. This single answer determines whether the best source is cheap or expensive.
+Do not plan around it before looking.
+
+**Legal note:** Arizona's public records law (A.R.S. § 39-121) distinguishes commercial
+from non-commercial use, with penalties for obtaining records under a non-commercial
+purpose and then using them commercially. Almost certainly moot for a free hobby
+project, but it becomes real if CartoTaco ever monetizes — a records request stating
+purpose is the clean path. Rate-limit politely regardless.
+
+#### OpenStreetMap via Overpass — the free completeness backstop
+
+[Overpass][ovp] is free, needs no key and no auth, and supports the exact query shape
+wanted:
+
+```
+nwr["amenity"~"restaurant|fast_food"]["cuisine"~"mexican"](bbox:32.1,-111.1,32.35,-110.8);
+out center;
+```
+
+Covers the whole metro regardless of jurisdiction, so it plugs the South Tucson hole for
+free. **Weakness:** OSM lags reality — a truck that opened last month is probably absent.
+Strong for recall, weak for recency, the opposite profile to the license feed, which is
+why they pair well. Lowest effort of the three; start here.
+
+#### Tucson neighborhoods — confirmed, trivial, unlocks D2
+
+[Neighborhoods][nb] is published on Tucson's ArcGIS Hub as GeoJSON. Load once as a
+static seed, point-in-polygon each spot, done. Not really an ingestion pipeline — a
+one-time seed plus a join. **D2 Neighborhood Mode** becomes mostly a frontend task once
+the column exists.
+
+#### Link liveness and `staging_extractions` self-modeling
+
+Both fully feasible today with no external dependency and no legal questions.
+`staging_extractions` needs no new infrastructure at all — the table already carries
+`pipeline`, `scrape_confidence`, and `status`. Model the funnel
+(scouted → approved → promoted → vetted), confidence distributions by field, and where
+rows die. Start here; it is free.
+
+### Social media (Instagram / TikTok) — low feasibility, high temptation
+
+Both platforms are rich in exactly the under-the-radar knowledge CartoTaco wants, and
+both are close to inaccessible through sanctioned channels.
+
+**Instagram.** The Basic Display API reached end-of-life 4 Dec 2024. The Graph API
+returns data only for Business/Creator accounts you own or manage. [Hashtag Search][ig]
+exists but requires the *Instagram Public Content Access* feature, which needs Business
+Verification plus a strictly-reviewed App Review, and is capped at 30 unique hashtags
+per 7 days. Meta's stated allowed usages are brand and campaign monitoring — populating
+a restaurant map is not an obvious fit, which matters at review time.
+
+**TikTok.** The Research API is free but requires non-profit academic affiliation, a
+defined research proposal, and a commitment to non-commercial public-interest research.
+Academic eligibility may well be attainable — but using research credentials to populate
+a consumer app falls outside the terms one agrees to. Not a route to take.
+
+**Scraping.** The legal picture is more permissive than commonly assumed — *hiQ v.
+LinkedIn* held the CFAA does not cover public data, and in January 2024 Judge Chen
+granted summary judgment to Bright Data, holding Meta's terms do not bar logged-off
+scraping of public data. But ToS still ban automated access, which supports immediate
+blocking and a civil breach-of-contract claim, and both platforms invest heavily in
+anti-bot. Logged-off is the defensible posture; logged-in is not.
+
+**What is actually worth doing, in order:**
+
+1. **Monitor the handles already held.** `sites.instagram` is already populated. A
+   logged-out liveness check — does the profile still resolve, when was the last post —
+   is a closure signal and a re-scout trigger, at essentially zero risk. This folds into
+   the link-liveness work above rather than being a separate pipeline.
+2. **Mine what indexes the same knowledge.** Local food media, neighborhood roundups,
+   and Reddit threads carry much of the same under-the-radar signal and are reachable
+   through ordinary web search — which `scout_spot()` already uses. Extending
+   `DISCOVER_SYSTEM_PROMPT` to explicitly target those is a prompt change, not a
+   pipeline. *(Reddit's own API terms changed materially in 2023; check current terms
+   before building against it directly.)*
+3. **Bound any vendor experiment.** Third-party scrapers (e.g. Apify actors) shift
+   operational burden but not legal exposure, and cost per run. If tried, run it **once**
+   over a fixed window and measure novel spots found versus what licenses + OSM + web
+   search already surfaced. Build a pipeline only if marginal yield justifies it.
+
+**The unmet need underneath this question** is truck location and hours — trucks move,
+and they announce it in Stories, the single least accessible surface on either platform.
+No mining strategy solves that well. The **O1 Owner Portal** already on the roadmap does:
+let the truck tell you. That is a better answer to the same problem.
+
+### Architecture: move the judgment into dbt
+
+`_normalize_name()`, `mark_known_candidates()`, and `find_duplicates()` in
+`src/scraping.py` are set logic and distance math against the database, re-querying
+`sites` on every call — the 150 m check pulls *all* sites into memory per candidate.
+That is SQL wearing a Python costume.
+
+Split it:
+
+**Python does what only Python can** — call the ArcGIS / Overpass / portal endpoints and
+land raw rows in `raw_business_licenses`, `raw_osm_food`, `raw_health_permits`. Then,
+separately, run `scout_spot()` enrichment over a shortlist dbt hands back.
+
+**dbt does the judgment** — `mart_discovery_queue`:
+
+- unions the raw feeds into one candidate pool at a common grain
+- normalizes names in SQL (the `_normalize_name` logic becomes a macro)
+- anti-joins against `sites` and non-rejected `staging_extractions`
+- does proximity dedup as a spatial join rather than an N×M Python loop
+- scores each candidate on source authority (health permit > license > OSM), recency,
+  name pattern (taco/taquería/birria/mariscos), and **multi-source agreement**
+- emits a ranked worklist
+
+The Streamlit page then becomes "here are 12 scored candidates, scout the top N" — or
+skips the UI entirely: a nightly job scouts everything above a score threshold and
+stages it, with the human gate staying at Promote.
+
+Multi-source agreement is what replaces the human judgment. A spot appearing in both a
+health permit and OSM needs no checkbox.
+
+**Learning goals.** Incremental models (the raw feeds genuinely grow), fuzzy record
+linkage, spatial joins, unioning heterogeneous sources to a common grain, and scoring
+logic that is far easier to test in SQL than in Python — "no queued candidate matches an
+existing site" becomes a dbt test that runs nightly.
+
+### Before committing to this phase
+
+Three checks, none of which take long:
+
+1. Does `healthinspect.pima.gov/Portal/Food/Map` call a JSON endpoint? (network tab)
+2. What fields does the business license layer expose — NAICS? license start date?
+   (`.../FeatureServer/0?f=json`)
+3. How many Mexican-food POIs does Overpass actually return for a Tucson bbox? If it is
+   ~400 it is a strong backstop; if ~40, OSM coverage here is too thin to matter.
+
+[bl]: https://gisdata.tucsonaz.gov/datasets/cotgis::business-licenses-open-data/about
+[blw]: https://www.tucsonaz.gov/Departments/Business-Services-Department/Taxpayer-Assistance-Division/Business-License-and-Tax-Information/Business-License-Downloads
+[hi]: https://healthinspect.pima.gov/portal/
+[pima-gis]: https://gisopendata.pima.gov/
+[ovp]: https://wiki.openstreetmap.org/wiki/Overpass_API
+[nb]: https://gisdata.tucsonaz.gov/datasets/f4224cf3ede84b0c8780610aac8901f2
+[ig]: https://developers.facebook.com/docs/instagram-platform/instagram-api-with-facebook-login/hashtag-search/
 
 ---
 
