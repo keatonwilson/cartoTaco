@@ -343,6 +343,8 @@ Run all tests with `pnpm test`.
 
 Detailed feature documentation in docs/:
 - `IMPROVEMENTS.md` - Roadmap and planned features
+- `DBT_PLAN.md` - Plan for introducing dbt as a transformation layer over the Supabase Postgres DB (phased; not yet started)
+- `DBT_PRIMER.md` - Plain-language reference for what dbt is and what each phase of `DBT_PLAN.md` teaches
 - `UI_REFRESH_PLAN.md` - UI & data-viz refresh plan (shipped, PR #46)
 - `UNVETTED_SPOTS_PLAN.md` - Pending/unvetted spots plan (shipped in this repo; scraping pipeline lives in `cartoTacoMenuExtract`)
 - `MARKER_CLUSTERING.md` - Clustering implementation
