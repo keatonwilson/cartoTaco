@@ -79,6 +79,7 @@ function resetFilters() {
     openNow: false,
     showFavoritesOnly: false,
     showPending: true,
+    showClosed: true,
     styleFilters: { chicken: [], beef: [], pork: [], fish: [], veg: [] }
   });
 }

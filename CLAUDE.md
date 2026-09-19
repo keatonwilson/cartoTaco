@@ -71,6 +71,8 @@ Migrations must be run in this order:
 29. `migrations/029_create_avatars_bucket.sql` - Creates the `avatars` Storage bucket (public-read, 1 MB cap, image/* mime types) and RLS on `storage.objects` so users can only write to their own folder (`avatars/<user_id>/`)
 30. `migrations/030_add_vetting_status_to_sites.sql` - Adds `vetting_status` ('vetted'/'pending'), `source`, `source_url`, `scraped_at`, `vetted_at` to `sites` for the unvetted-spots feature; adds ON DELETE CASCADE FKs from `user_favorites`/`vibe_votes` to `sites` (with orphan cleanup) so retracting a pending spot is safe
 31. `migrations/031_add_vetting_status_to_view.sql` - Rebuilds `sites_complete` view exposing `vetting_status`/`source`/`source_url` in the site jsonb
+32. `migrations/032_add_closed_at_to_sites.sql` - Adds nullable `closed_at` to `sites` (NULL = open) for the closed-spots feature; partial index on closed rows
+33. `migrations/033_add_closed_at_to_view.sql` - Rebuilds `sites_complete` view exposing `closed_at` in the site jsonb
 
 ### Schema Management
 - **`schema/sites_complete_view.sql`** is the single source of truth for the `sites_complete` view definition
@@ -87,15 +89,15 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 ### Derived Stores
 - `isLoading` - Loading state from tacoStore
 - `hasError` - Error state from tacoStore
-- `processedTacoData` - Transforms raw site data into component-ready format with pre-computed values (top 5 menu items, proteins, percentages, and specialty items embedded from view). Each site carries `vettingStatus`/`isPending`/`sourceUrl`; pending (unvetted, web-scraped) spots skip the menu/protein/salsa pre-computation and get empty arrays
-- `filteredTacoData` - Filters `processedTacoData` based on `filterConfig` (search, protein type, establishment type, spice level, open hours, favorites, pending visibility)
-- `summaryStats` - Computed from `processedTacoData` `{ maxSalsaNum, avgSalsaNum, maxHeatLevel, avgHeatLevel }` (vetted spots only)
-- `distributionStats` - `Map<est_id, { heatPercentile, salsaPercentile }>` percentile ranks within the city distribution (powers "Hotter than X% of Tucson spots" context lines); pending spots get no entry and don't affect the pools
+- `processedTacoData` - Transforms raw site data into component-ready format with pre-computed values (top 5 menu items, proteins, percentages, and specialty items embedded from view). Each site carries `vettingStatus`/`isPending`/`sourceUrl` and `isClosed`/`closedAt`; pending (unvetted, web-scraped) spots skip the menu/protein/salsa pre-computation and get empty arrays, while closed spots keep everything recorded while they were open
+- `filteredTacoData` - Filters `processedTacoData` based on `filterConfig` (search, protein type, establishment type, spice level, open hours, favorites, pending visibility, closed visibility). Closed spots never pass the Open Now filter, whatever their stale hours say
+- `summaryStats` - Computed from `processedTacoData` `{ maxSalsaNum, avgSalsaNum, maxHeatLevel, avgHeatLevel }` (open, vetted spots only)
+- `distributionStats` - `Map<est_id, { heatPercentile, salsaPercentile }>` percentile ranks within the city distribution (powers "Hotter than X% of Tucson spots" context lines); pending and closed spots get no entry and don't affect the pools
 - `recentlyAddedSites` - Spots added in the last 30 days, sorted newest first (used by NewSpotsBadge)
 
 ### UI State Stores
 - `selectedSite` - Currently selected establishment (for popup)
-- `filterConfig` - User's active filters: `{ searchText, proteins, types, spiceLevel, openNow, showFavoritesOnly, showPending }`
+- `filterConfig` - User's active filters: `{ searchText, proteins, types, spiceLevel, openNow, showFavoritesOnly, showPending, showClosed }`
 
 ### Authentication Store (src/lib/authStore.js)
 - `authStore` - User, session, loading, and error state
@@ -183,7 +185,7 @@ The map implementation (src/lib/mapping.js) uses Mapbox GL with clustering:
 1. `clusters` - Cluster circles with graduated sizes
 2. `cluster-count` - Cluster count labels
 3. `unclustered-point` - Individual site markers with hover effects
-4. `unclustered-point-label` - Site name labels
+4. `unclustered-point-label` - Site name labels (closed prefixed `✕`, pending `◌`)
 5. `lens-points` / `lens-points-label` - Unclustered points for the heat/salsa lenses (from the non-clustered `taco-sites-all` twin source, hidden in spots lens)
 6. `lens-heatmap` - Density heatmap lens layer
 7. `trail-stop-circles` - Numbered orange circles for trail stops
@@ -194,7 +196,7 @@ The map implementation (src/lib/mapping.js) uses Mapbox GL with clustering:
 - `updateMarkers(processedSites, map)` - Add/update clusters and markers, attach event listeners
 - `applyLens(map, lensId)` - Switch marker styling for the active map lens (visibility + data-driven paint on `heat`/`salsas` feature properties)
 - `resetListeners(map)` - Clean up all event handlers
-- `sitesToGeoJSON(processedSites)` - Convert sites to GeoJSON with embedded properties
+- `sitesToGeoJSON(processedSites)` - Convert sites to GeoJSON with embedded properties (incl. `closed`/`vetting_status` flags for data-driven styling)
 - `flyToSite(map, site)` - Animate to location and open popup
 - `updateTrailLayers(map, stops)` - Render numbered trail stops
 - `updateTrailRoute(map, routeGeojson)` - Render dashed route line from Mapbox Directions API
@@ -252,9 +254,10 @@ Located in src/lib/dataWrangling.js:
 - `IconHighlight.svelte` - Icon-based feature highlights
 - `LocationPicker.svelte` - Map-based location selection component
 - `MapStylePicker.svelte` - Switches between Mapbox map styles
-- `MapLensPicker.svelte` - Map lens switcher (Spots / Heat / Salsas / Density) with inline legends; drives `mapLens` store. Data lenses exclude pending spots (no measurements)
-- `MapLegend.svelte` - Small floating `● Vetted / ◌ Pending` legend; only shown in the Spots lens when pending spots exist
+- `MapLensPicker.svelte` - Map lens switcher (Spots / Heat / Salsas / Density) with inline legends; drives `mapLens` store. Data lenses exclude pending spots (no measurements) and closed spots (measurements are history)
+- `MapLegend.svelte` - Small floating `● Vetted / ◌ Pending / ✕ Closed` legend; only shown in the Spots lens, each row only when such spots exist
 - `NewSpotsBadge.svelte` - Badge showing count of recently added establishments (pending entries get a `◌ Pending` chip)
+- `ClosedBanner.svelte` - Dashed grey banner (`✕ Permanently closed` + closure month) rendered at the top of any card for a closed spot. Closed spots also lose vibe voting, comparison, and directions, but keep hours/charts as a historical record
 - `PendingSpotCard.svelte` - Lightweight preliminary card for pending (unvetted) spots: pending badge, info panel, scraped hours/contact if present, source link, vetting CTA. Dashed `--pending` border; no radar/heat/salsa/vibe/compare
 - `RadarChart.svelte` - Menu/protein radar (ECharts) with a fixed 0–100 scale so shapes compare across spots; supports multi-series overlays via `seriesList` prop (categorical palette + legend), used by `/compare` and TasteProfile
 - `SalsaCount.svelte` - Salsa count bullet bar (ECharts): value bar over city-max track with an average tick
@@ -318,6 +321,7 @@ The filter system works through reactive updates:
 - Open now (based on current time/day)
 - Show favorites only (requires auth)
 - Pending spots toggle (default on; chip only renders when pending spots exist)
+- Closed spots toggle (default on; chip only renders when closed spots exist)
 
 ## Performance Considerations
 
@@ -334,6 +338,7 @@ Test files are co-located in src/lib/:
 - `src/lib/geocoding.test.js` - Tests for geocoding functions
 - `src/lib/validation.test.js` - Tests for form validation functions
 - `src/lib/pendingSpots.test.js` - Tests for pending-spot processing/filtering
+- `src/lib/closedSpots.test.js` - Tests for closed-spot processing/filtering/map styling
 - `src/lib/mapping.test.js` - Tests for map layer/GeoJSON helpers
 - `src/lib/authErrors.test.js` - Tests for auth error message mapping
 
