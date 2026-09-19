@@ -44,6 +44,8 @@
 	/* Pending (unvetted spots) — slate, outside all data palettes on purpose */
 	--pending: #94a3b8;
 	--pending-soft: rgba(148, 163, 184, 0.15);
+	--closed: #a8a29e;
+	--closed-soft: rgba(168, 162, 158, 0.15);
 
 	/* Chart tokens (consumed by src/lib/chartTheme.js) */
 	--chart-grid: rgba(0, 0, 0, 0.08);
@@ -87,6 +89,8 @@
 
 	--pending: #64748b;
 	--pending-soft: rgba(100, 116, 139, 0.25);
+	--closed: #a8a29e;
+	--closed-soft: rgba(120, 113, 108, 0.25);
 
 	--chart-grid: rgba(255, 255, 255, 0.1);
 	--chart-ink: #9ca3af;

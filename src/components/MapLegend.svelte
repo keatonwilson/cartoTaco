@@ -1,23 +1,32 @@
 <script>
-  // Small floating legend distinguishing vetted from pending (unvetted) spots.
-  // Only shown in the default Spots lens, and only when the current data
-  // actually contains a pending spot — no dead chrome otherwise.
+  // Small floating legend distinguishing vetted from pending (unvetted) and
+  // closed spots. Only shown in the default Spots lens, and each row only when
+  // the current data actually contains that kind of spot — no dead chrome.
   import { filteredTacoData } from '$lib/stores';
   import { mapLens } from '$lib/mapLensStore.js';
 
-  $: pendingCount = $filteredTacoData.filter((s) => s.isPending).length;
+  $: pendingCount = $filteredTacoData.filter((s) => s.isPending && !s.isClosed).length;
+  $: closedCount = $filteredTacoData.filter((s) => s.isClosed).length;
 </script>
 
-{#if $mapLens === 'spots' && pendingCount > 0}
+{#if $mapLens === 'spots' && (pendingCount > 0 || closedCount > 0)}
   <div class="map-legend" role="note" aria-label="Map marker legend">
     <span class="legend-item">
       <span class="swatch vetted" aria-hidden="true"></span>
       Vetted
     </span>
-    <span class="legend-item">
-      <span class="swatch pending" aria-hidden="true">?</span>
-      Pending
-    </span>
+    {#if pendingCount > 0}
+      <span class="legend-item">
+        <span class="swatch pending" aria-hidden="true">?</span>
+        Pending
+      </span>
+    {/if}
+    {#if closedCount > 0}
+      <span class="legend-item">
+        <span class="swatch closed" aria-hidden="true">✕</span>
+        Closed
+      </span>
+    {/if}
   </div>
 {/if}
 
@@ -68,5 +77,9 @@
 
   .swatch.pending {
     background: var(--pending);
+  }
+
+  .swatch.closed {
+    background: var(--closed);
   }
 </style>
