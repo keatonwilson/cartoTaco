@@ -1,7 +1,33 @@
 name: Seed Staging from Prod
 
+# Copies the taco content tables from prod into staging.
+#
+# Deliberately NOT a whole-database dump. Supabase owns the auth/storage/
+# realtime schemas and we can't restore into them (permission denied on every
+# statement), and a plain CREATE+COPY dump collides with staging's existing
+# tables and rows — Postgres aborts each COPY on the first duplicate key, so
+# the restore is all-or-nothing per table and lands nothing.
+#
+# ON_ERROR_STOP=1 is load-bearing: without it psql exits 0 no matter how many
+# statements failed, and this job reports success having copied zero rows.
+
 on:
   workflow_dispatch:
+
+env:
+  # Content tables only. User-generated data (favorites, vibe votes, profiles,
+  # submissions, summit sessions) stays whatever staging already had — those
+  # rows reference auth.users, which we don't copy.
+  CONTENT_TABLES: >-
+    public.sites
+    public.descriptions
+    public.menu
+    public.hours
+    public.salsa
+    public.protein
+    public.item_spec
+    public.protein_spec
+    public.salsa_spec
 
 jobs:
   seed:
@@ -16,12 +42,40 @@ jobs:
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
           sudo apt-get install -y postgresql-client-17
 
-      - name: Dump prod schema and data
-        run: /usr/lib/postgresql/17/bin/pg_dump --no-owner --no-acl -d "$PROD_DB_URL" -f dump.sql
+      - name: Add client to PATH
+        run: echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+      - name: Dump prod content tables
+        run: |
+          pg_dump --data-only --no-owner --no-acl \
+            $(for t in $CONTENT_TABLES; do printf -- '-t %s ' "$t"; done) \
+            -d "$PROD_DB_URL" -f data.sql
+          echo "dump: $(wc -l < data.sql) lines"
         env:
           PROD_DB_URL: ${{ secrets.SUPABASE_DB_URL_PROD }}
 
+      # CASCADE also clears staging's user_favorites and vibe_votes, which
+      # reference sites (migration 030). Intended: those rows point at prod
+      # est_ids we're about to replace.
+      - name: Clear staging content
+        run: |
+          psql -v ON_ERROR_STOP=1 -d "$STAGING_DB_URL" \
+            -c "TRUNCATE $(echo $CONTENT_TABLES | tr ' ' ',') CASCADE;"
+        env:
+          STAGING_DB_URL: ${{ secrets.SUPABASE_DB_URL_STAGING }}
+
       - name: Restore into staging
-        run: /usr/lib/postgresql/17/bin/psql -d "$STAGING_DB_URL" -f dump.sql
+        run: psql -v ON_ERROR_STOP=1 -d "$STAGING_DB_URL" -f data.sql
+        env:
+          STAGING_DB_URL: ${{ secrets.SUPABASE_DB_URL_STAGING }}
+
+      - name: Report row counts
+        run: |
+          psql -v ON_ERROR_STOP=1 -d "$STAGING_DB_URL" -c \
+            "SELECT 'sites' AS t, count(*) FROM public.sites
+             UNION ALL SELECT 'menu', count(*) FROM public.menu
+             UNION ALL SELECT 'salsa', count(*) FROM public.salsa
+             UNION ALL SELECT 'protein', count(*) FROM public.protein
+             UNION ALL SELECT 'sites_complete', count(*) FROM public.sites_complete;"
         env:
           STAGING_DB_URL: ${{ secrets.SUPABASE_DB_URL_STAGING }}
