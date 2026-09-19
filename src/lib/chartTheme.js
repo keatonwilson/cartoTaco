@@ -44,6 +44,13 @@ export const SEQUENTIAL = [
  */
 export const PENDING = { light: '#94A3B8', dark: '#64748B' };
 
+/**
+ * Marker color for permanently closed spots — a flatter, warmer grey than
+ * PENDING so the two muted states stay distinguishable from each other as
+ * well as from the brand coral. Stone-400 / stone-500.
+ */
+export const CLOSED = { light: '#A8A29E', dark: '#78716C' };
+
 /** Brand accent (categorical slot 1 / sequential mid) per mode. */
 export function accent(isDark) {
 	return isDark ? CATEGORICAL.dark[0] : CATEGORICAL.light[0];

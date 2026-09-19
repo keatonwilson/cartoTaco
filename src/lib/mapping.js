@@ -6,7 +6,15 @@ import { deviceType } from './deviceDetection';
 import { get } from 'svelte/store';
 import { trailModeActive, trailStops, addStop, removeStop } from './trailStore';
 import { mapLens } from './mapLensStore';
-import { SEQUENTIAL, PENDING } from './chartTheme';
+import { SEQUENTIAL, PENDING, CLOSED } from './chartTheme';
+
+// Data lenses (heat / salsa / density) only ever show spots with real, current
+// measurements: pending spots have none, closed spots' are history.
+const LENS_FILTER = [
+  'all',
+  ['!=', ['get', 'vetting_status'], 'pending'],
+  ['!', ['get', 'closed']]
+];
 
 // Keep track of active popup and its associated Svelte component
 let currentPopup = null;
@@ -167,6 +175,19 @@ function ensureTypeGlyphs(map) {
       ctx.arc(22, 24, 3, 0, Math.PI * 2);
       ctx.fill();
     },
+    'glyph-closed': (ctx) => {
+      // X: permanently closed — outranks both the pending ? and the type
+      // glyph, so "don't drive here" is the first thing the marker says
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(10, 10);
+      ctx.lineTo(22, 22);
+      ctx.moveTo(22, 10);
+      ctx.lineTo(10, 22);
+      ctx.stroke();
+    },
     'glyph-pending': (ctx) => {
       // Question mark: unvetted spot — outranks the type glyph so
       // "not verified yet" is readable without relying on color
@@ -190,7 +211,7 @@ function ensureTypeGlyphs(map) {
 }
 
 // Convert processed sites to GeoJSON format
-function sitesToGeoJSON(processedSites) {
+export function sitesToGeoJSON(processedSites) {
   return {
     type: 'FeatureCollection',
     features: processedSites
@@ -208,9 +229,15 @@ function sitesToGeoJSON(processedSites) {
           type: site.type,
           // Flat flag for data-driven pending styling and lens filters
           vetting_status: site.vettingStatus || 'vetted',
-          // Label carries a dotted-circle prefix for pending spots so the
-          // distinction doesn't rely on marker color alone
-          label: site.isPending ? `◌ ${site.name}` : site.name,
+          // Flat flag for data-driven closed styling and lens filters
+          closed: !!site.isClosed,
+          // Label carries a prefix for closed (✕) and pending (◌) spots so
+          // the distinction doesn't rely on marker color alone. Closed wins.
+          label: site.isClosed
+            ? `✕ ${site.name}`
+            : site.isPending
+              ? `◌ ${site.name}`
+              : site.name,
           // Scalar fields for data-driven lens styling
           heat: site.heatOverall || 0,
           salsas: site.salsaCount || 0,
@@ -322,9 +349,11 @@ export const updateMarkers = (processedSites, map) => {
     source: 'taco-sites',
     filter: ['!', ['has', 'point_count']],
     paint: {
-      // Muted slate for pending (unvetted) spots, brand coral for vetted
+      // Grey for closed, muted slate for pending (unvetted), brand coral
+      // for everything still open. Closed outranks pending.
       'circle-color': [
         'case',
+        ['get', 'closed'], CLOSED.light,
         ['==', ['get', 'vetting_status'], 'pending'], PENDING.light,
         '#FE795D'
       ],
@@ -345,14 +374,18 @@ export const updateMarkers = (processedSites, map) => {
         'case',
         ['boolean', ['feature-state', 'hover'], false],
         1,   // Full opacity on hover
-        ['case', ['==', ['get', 'vetting_status'], 'pending'], 0.7, 0.9]
+        ['case',
+          ['get', 'closed'], 0.55,
+          ['==', ['get', 'vetting_status'], 'pending'], 0.7,
+          0.9]
       ],
       'circle-stroke-opacity': 1
     }
   });
 
   // Type glyph on top of each marker circle (restaurant / stand / truck).
-  // Pending spots show a ? instead — "not verified" outranks "it's a truck"
+  // Closed spots show an ✕ and pending spots a ? instead — "don't go" and
+  // "not verified" both outrank "it's a truck"
   map.addLayer({
     id: 'unclustered-point-glyph',
     type: 'symbol',
@@ -361,6 +394,7 @@ export const updateMarkers = (processedSites, map) => {
     layout: {
       'icon-image': [
         'case',
+        ['get', 'closed'], 'glyph-closed',
         ['==', ['get', 'vetting_status'], 'pending'], 'glyph-pending',
         ['match',
           ['get', 'type'],
@@ -391,6 +425,7 @@ export const updateMarkers = (processedSites, map) => {
     paint: {
       'text-color': [
         'case',
+        ['get', 'closed'], CLOSED.dark,
         ['==', ['get', 'vetting_status'], 'pending'], '#64748B',
         '#333'
       ],
@@ -400,15 +435,16 @@ export const updateMarkers = (processedSites, map) => {
   });
 
   // ─── Lens layers (hidden until a data lens is active) ───
-  // All three exclude pending (unvetted) spots: they carry no measurements,
-  // and their implicit zeros would render as the lightest ramp step and lie.
+  // All three exclude pending (unvetted) spots — no measurements, and their
+  // implicit zeros would render as the lightest ramp step and lie — and closed
+  // spots, whose measurements are history and shouldn't shape today's picture.
 
   // Individual points for the heat/salsa lenses — unclustered at every zoom
   map.addLayer({
     id: 'lens-points',
     type: 'circle',
     source: 'taco-sites-all',
-    filter: ['!=', ['get', 'vetting_status'], 'pending'],
+    filter: LENS_FILTER,
     layout: { visibility: 'none' },
     paint: {
       'circle-color': SEQUENTIAL[4],
@@ -423,7 +459,7 @@ export const updateMarkers = (processedSites, map) => {
     id: 'lens-points-label',
     type: 'symbol',
     source: 'taco-sites-all',
-    filter: ['!=', ['get', 'vetting_status'], 'pending'],
+    filter: LENS_FILTER,
     layout: {
       visibility: 'none',
       'text-field': ['get', 'name'],
@@ -445,7 +481,7 @@ export const updateMarkers = (processedSites, map) => {
     id: 'lens-heatmap',
     type: 'heatmap',
     source: 'taco-sites-all',
-    filter: ['!=', ['get', 'vetting_status'], 'pending'],
+    filter: LENS_FILTER,
     layout: { visibility: 'none' },
     paint: {
       'heatmap-weight': 1,
