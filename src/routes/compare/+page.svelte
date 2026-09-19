@@ -15,13 +15,14 @@
   import EmptyState from '../../components/EmptyState.svelte';
   import VibeFingerprint from '../../components/VibeFingerprint.svelte';
 
-  // Parse IDs from URL. Pending (unvetted) spots have no comparable data —
-  // drop them even if a shared URL includes their id.
+  // Parse IDs from URL. Pending (unvetted) spots have no comparable data and
+  // closed spots aren't a choice you can make — drop both even if a shared
+  // URL includes their id.
   $: ids = ($page.url.searchParams.get('ids') || '').split(',').map(Number).filter(Boolean);
   $: sites = ids
     .map(id => $processedTacoData.find(s => s.est_id === id))
     .filter(Boolean)
-    .filter(s => !s.isPending);
+    .filter(s => !s.isPending && !s.isClosed);
 
   // Winner computation — returns array of est_ids that share the max value
   function getWinners(siteList, accessor) {
