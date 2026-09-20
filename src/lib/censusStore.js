@@ -20,12 +20,14 @@ function parseTime(s) {
 }
 
 export const censusStats = derived(processedTacoData, ($allSites) => {
-	// Census figures are editorial measurements — pending (unvetted) spots
-	// have none and would silently skew every aggregate toward zero
-	const $sites = ($allSites || []).filter((s) => !s.isPending);
+	// Census figures describe the city as it stands today: pending (unvetted)
+	// spots have no measurements and would skew every aggregate toward zero,
+	// and closed spots are no longer part of the city.
+	const $sites = ($allSites || []).filter((s) => !s.isPending && !s.isClosed);
 	if ($sites.length === 0) return null;
 	const n = $sites.length;
-	const pendingCount = ($allSites || []).length - n;
+	const pendingCount = ($allSites || []).filter((s) => s.isPending && !s.isClosed).length;
+	const closedCount = ($allSites || []).filter((s) => s.isClosed).length;
 
 	// ── Hero stats ──
 	const openNow = $sites.filter((s) => isOpenNow(s.rawData?.hours)).length;
@@ -109,6 +111,7 @@ export const censusStats = derived(processedTacoData, ($allSites) => {
 	return {
 		totalSpots: n,
 		pendingCount,
+		closedCount,
 		openNow,
 		avgHeat,
 		totalSalsas,

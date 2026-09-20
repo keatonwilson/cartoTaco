@@ -15,6 +15,7 @@
   import HandmadeBadge from "./HandmadeBadge.svelte";
   import SalsaLineup from "./SalsaLineup.svelte";
   import ContextStrip from "./ContextStrip.svelte";
+  import ClosedBanner from "./ClosedBanner.svelte";
   import { selectedSite, summaryStats, distributionStats, processedTacoData } from "$lib/stores";
   import { radarMax } from "$lib/chartTheme";
   import { isMobile } from "$lib/deviceDetection";
@@ -27,6 +28,10 @@
 
   // Local state
   let showLongDescription = false;
+
+  // Closed spots keep their recorded data as a historical record, but lose the
+  // affordances that assume you might go: vibe voting, comparison, directions.
+  $: isClosed = !!$selectedSite?.isClosed;
 
   // Comparison state for this card
   $: isInComparison = $comparisonSites.some(s => s.est_id === $selectedSite?.est_id);
@@ -91,21 +96,26 @@
     <!-- ========== MOBILE LAYOUT (unchanged) ========== -->
     <div id="popup-content">
       <div class="left-panel">
+        {#if isClosed}
+          <ClosedBanner closedAt={$selectedSite.closedAt} />
+        {/if}
         <div class="header-section">
           <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">
             {$selectedSite.name || 'Unknown Location'}
           </h2>
           <div class="header-actions">
             <FavoriteButton estId={$selectedSite.est_id} size="sm" />
-            <button
-              class="compare-btn"
-              class:compare-active={isInComparison}
-              disabled={!isInComparison && comparisonFull}
-              on:click={toggleComparison}
-              title={isInComparison ? 'Remove from comparison' : comparisonFull ? 'Max 3 spots' : 'Add to comparison'}
-            >
-              {isInComparison ? '− Compare' : '+ Compare'}
-            </button>
+            {#if !isClosed}
+              <button
+                class="compare-btn"
+                class:compare-active={isInComparison}
+                disabled={!isInComparison && comparisonFull}
+                on:click={toggleComparison}
+                title={isInComparison ? 'Remove from comparison' : comparisonFull ? 'Max 3 spots' : 'Add to comparison'}
+              >
+                {isInComparison ? '− Compare' : '+ Compare'}
+              </button>
+            {/if}
           </div>
         </div>
         <HoursOpen
@@ -113,6 +123,7 @@
           endHours={$selectedSite.endHours || {}}
         />
         <ContactInfo
+          showDirections={!isClosed}
           phone={$selectedSite.site?.phone}
           website={$selectedSite.site?.website}
           instagram={$selectedSite.site?.instagram}
@@ -139,14 +150,16 @@
             {showLongDescription ? "Show less" : "Read more"}
           </button>
         </div>
-        <div class="vibe-section">
-          <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Vibe Check</h2>
-          <p class="vibe-subtitle">Tap any chip to vote on what this spot does well. Your vote, plus everyone else's, builds a vibe fingerprint — no stars, no essays.</p>
-          <VibeVotes estId={$selectedSite.est_id} />
-          <div class="vibe-fingerprint-wrap">
-            <VibeFingerprint estId={$selectedSite.est_id} />
+        {#if !isClosed}
+          <div class="vibe-section">
+            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Vibe Check</h2>
+            <p class="vibe-subtitle">Tap any chip to vote on what this spot does well. Your vote, plus everyone else's, builds a vibe fingerprint — no stars, no essays.</p>
+            <VibeVotes estId={$selectedSite.est_id} />
+            <div class="vibe-fingerprint-wrap">
+              <VibeFingerprint estId={$selectedSite.est_id} />
+            </div>
           </div>
-        </div>
+        {/if}
         <CollapsibleSection title="Menu Summary" defaultOpen={false}>
           <div class="radar-chart-container">
             <RadarChart
@@ -230,6 +243,10 @@
   {:else}
     <!-- ========== DESKTOP LAYOUT (compact, no-scroll) ========== -->
     <div id="popup-content" class="desktop-layout">
+      {#if isClosed}
+        <ClosedBanner closedAt={$selectedSite.closedAt} />
+      {/if}
+
       <!-- Row 1: Header bar -->
       <div class="desktop-header">
         <div class="desktop-header-left">
@@ -240,15 +257,17 @@
         </div>
         <div class="desktop-header-actions">
           <FavoriteButton estId={$selectedSite.est_id} size="sm" />
-          <button
-            class="compare-btn"
-            class:compare-active={isInComparison}
-            disabled={!isInComparison && comparisonFull}
-            on:click={toggleComparison}
-            title={isInComparison ? 'Remove from comparison' : comparisonFull ? 'Max 3 spots' : 'Add to comparison'}
-          >
-            {isInComparison ? '− Compare' : '+ Compare'}
-          </button>
+          {#if !isClosed}
+            <button
+              class="compare-btn"
+              class:compare-active={isInComparison}
+              disabled={!isInComparison && comparisonFull}
+              on:click={toggleComparison}
+              title={isInComparison ? 'Remove from comparison' : comparisonFull ? 'Max 3 spots' : 'Add to comparison'}
+            >
+              {isInComparison ? '− Compare' : '+ Compare'}
+            </button>
+          {/if}
         </div>
       </div>
 
@@ -279,6 +298,7 @@
         <div class="desktop-contact">
           <ContactInfo
             compact={true}
+            showDirections={!isClosed}
             phone={$selectedSite.site?.phone}
             website={$selectedSite.site?.website}
             instagram={$selectedSite.site?.instagram}
@@ -292,11 +312,13 @@
       </div>
 
       <!-- Row 4: Vibe votes (anti-review) + aggregate fingerprint, centered -->
-      <div class="desktop-vibe-row">
-        <span class="desktop-vibe-label">Vibe Check:</span>
-        <VibeVotes estId={$selectedSite.est_id} compact={true} />
-        <VibeFingerprint estId={$selectedSite.est_id} />
-      </div>
+      {#if !isClosed}
+        <div class="desktop-vibe-row">
+          <span class="desktop-vibe-label">Vibe Check:</span>
+          <VibeVotes estId={$selectedSite.est_id} compact={true} />
+          <VibeFingerprint estId={$selectedSite.est_id} />
+        </div>
+      {/if}
 
       <!-- Row 5: Two radar charts side by side. Protein prep styles sit
            directly under the Protein radar so they read as belonging to it;

@@ -69,11 +69,15 @@
 			<!-- Favorites Grid -->
 			<div class="favorites-grid">
 				{#each favoriteLocations as site (site.est_id)}
-					<div class="favorite-card">
+					<div class="favorite-card" class:is-closed={site.isClosed}>
 						<div class="card-header">
 							<h3 class="card-title">{site.name}</h3>
 							<FavoriteButton estId={site.est_id} size="sm" />
 						</div>
+
+						{#if site.isClosed}
+							<span class="closed-chip">✕ Permanently closed</span>
+						{/if}
 
 						<div class="card-body">
 							<!-- Location Type -->
@@ -351,5 +355,25 @@
 		.favorites-grid {
 			grid-template-columns: 1fr;
 		}
+	}
+
+	/* Closed favorites stay in the list — a saved spot that shut down is still
+	   the user's to keep or clear — but say so plainly. */
+	.favorite-card.is-closed {
+		border: 1px dashed var(--closed);
+	}
+
+	.closed-chip {
+		align-self: flex-start;
+		margin: 0.75rem 1.25rem 0;
+		padding: 0.125rem 0.5rem;
+		border-radius: 0.25rem;
+		background: var(--closed-soft);
+		color: var(--ink-2);
+		font-size: 0.7rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+		white-space: nowrap;
 	}
 </style>

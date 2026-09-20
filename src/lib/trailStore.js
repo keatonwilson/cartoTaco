@@ -43,6 +43,8 @@ export function exitTrailMode() {
  * @param {object} site - Full processedSite object
  */
 export function addStop(site) {
+	// A closed spot can't be a stop on a trail you're about to walk
+	if (site?.isClosed) return;
 	trailStops.update((stops) => {
 		if (stops.find((s) => s.est_id === site.est_id)) return stops;
 		return [...stops, site];

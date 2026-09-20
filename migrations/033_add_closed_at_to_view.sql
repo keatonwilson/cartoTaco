@@ -1,3 +1,7 @@
+-- Migration 033: Rebuild sites_complete view with closed_at.
+-- Copied from schema/sites_complete_view.sql (single source of truth) per the
+-- workflow in schema/README.md. Requires migration 032 (adds the column).
+
 -- Canonical definition of the sites_complete view.
 -- This file is the SINGLE SOURCE OF TRUTH for the view schema.
 -- Any migration that rebuilds the view should copy from this file.

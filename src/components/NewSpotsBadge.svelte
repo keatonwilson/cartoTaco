@@ -120,7 +120,9 @@
                 <div class="spot-info">
                   <div class="spot-name">{spot.name}</div>
                   <div class="spot-meta">
-                    {#if spot.isPending}
+                    {#if spot.isClosed}
+                      <span class="spot-closed">✕ Closed</span>
+                    {:else if spot.isPending}
                       <span class="spot-pending">◌ Pending</span>
                     {/if}
                     <span class="spot-type">{spot.type}</span>
@@ -168,7 +170,9 @@
                   <div class="spot-info">
                     <div class="spot-name">{spot.name}</div>
                     <div class="spot-meta">
-                      {#if spot.isPending}
+                      {#if spot.isClosed}
+                        <span class="spot-closed">✕ Closed</span>
+                      {:else if spot.isPending}
                         <span class="spot-pending">◌ Pending</span>
                       {/if}
                       <span class="spot-type">{spot.type}</span>
@@ -435,14 +439,19 @@
     white-space: nowrap;
   }
 
-  /* Pending (unvetted) chip */
-  .spot-pending {
+  /* Pending (unvetted) and closed chips */
+  .spot-pending,
+  .spot-closed {
     background: var(--pending-soft);
     color: var(--ink-2);
     padding: 0.125rem 0.5rem;
     border-radius: 0.25rem;
     white-space: nowrap;
     font-weight: 600;
+  }
+
+  .spot-closed {
+    background: var(--closed-soft);
   }
 
   .arrow {

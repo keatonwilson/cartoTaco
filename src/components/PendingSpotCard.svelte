@@ -8,6 +8,7 @@
   import HoursOpen from './HoursOpen.svelte';
   import ContactInfo from './ContactInfo.svelte';
   import FavoriteButton from './FavoriteButton.svelte';
+  import ClosedBanner from './ClosedBanner.svelte';
   import { selectedSite } from '$lib/stores';
 
   // Matches the prop mapping.js passes to popup cards; unused (reads selectedSite)
@@ -37,6 +38,9 @@
   <div class="pending-card"><p class="empty">No location selected</p></div>
 {:else}
   <div class="pending-card">
+    {#if site.isClosed}
+      <ClosedBanner closedAt={site.closedAt} />
+    {/if}
     <div class="header-row">
       <span class="pending-badge">◌ Pending vetting</span>
       <FavoriteButton estId={site.est_id} size="sm" />
@@ -70,6 +74,7 @@
     {#if hasContact || (site.latitude && site.longitude)}
       <div class="section">
         <ContactInfo
+          showDirections={!site.isClosed}
           phone={site.site?.phone}
           website={site.site?.website}
           instagram={site.site?.instagram}

@@ -320,6 +320,13 @@
           <span class="tile-label">scouted, awaiting vetting — not counted above</span>
         </div>
       {/if}
+      {#if stats.closedCount > 0}
+        <!-- Closed spots stay on the map but out of the census -->
+        <div class="tile tile-closed">
+          <span class="tile-number stat-number">{stats.closedCount}</span>
+          <span class="tile-label">closed for good — not counted above</span>
+        </div>
+      {/if}
     </div>
 
     <div class="census-grid">
@@ -514,6 +521,15 @@
 
   .tile-pending .tile-number {
     color: var(--pending);
+  }
+
+  .tile-closed {
+    border-style: dashed;
+    border-color: var(--closed);
+  }
+
+  .tile-closed .tile-number {
+    color: var(--closed);
   }
 
   .tile-label {

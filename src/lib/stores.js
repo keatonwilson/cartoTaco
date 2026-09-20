@@ -79,6 +79,11 @@ export const processedTacoData = derived(
         // component-ready values. Hours/contact may exist from scraping.
         const isPending = site.site.vetting_status === 'pending';
 
+        // Closed spots keep every measurement we recorded while they were open
+        // (unlike pending spots, which never had any) — they just stop counting
+        // toward city-wide stats and get marked closed everywhere they appear.
+        const isClosed = !!site.site.closed_at;
+
         // Pre-compute values used by components
         const menuPercs = filterObjectByKeySubstring(site.menu, "perc");
         const proteinPercs = filterObjectByKeySubstring(site.protein, "perc");
@@ -142,6 +147,8 @@ export const processedTacoData = derived(
           // web-scraped preliminary entries awaiting an editorial visit
           vettingStatus: site.site.vetting_status || 'vetted',
           isPending,
+          isClosed,
+          closedAt: site.site.closed_at || null,
           sourceUrl: site.site.source_url || null,
 
           // Descriptions
@@ -208,9 +215,9 @@ export const processedTacoData = derived(
 export const summaryStats = derived(
   processedTacoData,
   ($processedTacoData) => {
-    // Pending (unvetted) spots have no measurements — exclude them so their
-    // implicit zeros don't drag the city averages down
-    const vettedSites = ($processedTacoData || []).filter(s => !s.isPending);
+    // Pending (unvetted) spots have no measurements and closed spots are
+    // history — exclude both so they don't skew the city averages
+    const vettedSites = ($processedTacoData || []).filter(s => !s.isPending && !s.isClosed);
     if (vettedSites.length === 0) {
       return {
         maxSalsaNum: 0,
@@ -239,9 +246,10 @@ export const distributionStats = derived(
   processedTacoData,
   ($processedTacoData) => {
     const stats = new Map();
-    // Pending (unvetted) spots have no measurements: they get no percentile
-    // entry, and their implicit zeros must not inflate everyone else's rank
-    const vettedSites = ($processedTacoData || []).filter(s => !s.isPending);
+    // Pending (unvetted) spots have no measurements and closed spots are no
+    // longer part of the city: neither gets a percentile entry, and neither
+    // may shift everyone else's rank
+    const vettedSites = ($processedTacoData || []).filter(s => !s.isPending && !s.isClosed);
     if (vettedSites.length < 2) {
       return stats;
     }
@@ -314,6 +322,7 @@ export const filterConfig = writable({
   openNow: false,
   showFavoritesOnly: false,
   showPending: true,
+  showClosed: true,
   styleFilters: {
     chicken: [],
     beef: [],
@@ -377,6 +386,12 @@ export const filteredTacoData = derived(
       // Note: active protein/spice/style filters below also exclude pending
       // spots, intentionally — we can't verify they meet any requirement.
       if (!$filterConfig.showPending && site.isPending) {
+        return false;
+      }
+
+      // Closed spots — shown by default so users learn a spot closed rather
+      // than finding nothing, hideable via toggle
+      if (!$filterConfig.showClosed && site.isClosed) {
         return false;
       }
 
@@ -444,8 +459,10 @@ export const filteredTacoData = derived(
         return false;
       }
 
-      // Open now filter
+      // Open now filter — a closed spot is never open now, whatever its
+      // stale hours rows still say
       if ($filterConfig.openNow) {
+        if (site.isClosed) return false;
         if (!isOpenNow(site.rawData.hours)) {
           return false;
         }

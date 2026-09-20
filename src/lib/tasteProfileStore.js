@@ -222,9 +222,10 @@ function knnRecommend(targetVector, candidates, maxSalsa) {
 export const tasteProfile = derived(
 	[favoriteIds, processedTacoData, summaryStats],
 	([$favoriteIds, $allTacoData, $summaryStats]) => {
-		// Pending (unvetted) spots have all-zero feature vectors — exclude them
-		// from favorites math, thresholds, k-NN candidates, and the scatter plot
-		const $processedTacoData = ($allTacoData || []).filter(s => !s.isPending);
+		// Pending (unvetted) spots have all-zero feature vectors and closed spots
+		// must never be recommended — exclude both from favorites math,
+		// thresholds, k-NN candidates, and the scatter plot
+		const $processedTacoData = ($allTacoData || []).filter(s => !s.isPending && !s.isClosed);
 		if (!$favoriteIds || $favoriteIds.size === 0 || $processedTacoData.length === 0) {
 			return null;
 		}

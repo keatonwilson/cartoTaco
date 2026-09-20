@@ -16,6 +16,9 @@
   // desktop card beside the always-visible hours. The full stacked layout below
   // is unchanged and still used on mobile.
   export let compact = false;
+  // Closed spots suppress the directions button — the card is a historical
+  // record, not a trip to plan.
+  export let showDirections = true;
 
   // Format phone number for tel: link
   function formatPhoneForLink(phoneStr) {
@@ -38,7 +41,7 @@
         </div>
       {/if}
       <div class="contact-compact-actions">
-        {#if latitude && longitude && name}
+        {#if showDirections && latitude && longitude && name}
           <DirectionsButton {latitude} {longitude} {name} />
         {/if}
 
@@ -133,7 +136,7 @@
       <!-- Action Buttons: Directions + Social Media -->
       {#if latitude || longitude || instagram || facebook}
         <div class="action-buttons">
-          {#if latitude && longitude && name}
+          {#if showDirections && latitude && longitude && name}
             <DirectionsButton {latitude} {longitude} {name} />
           {/if}
 

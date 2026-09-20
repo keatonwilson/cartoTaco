@@ -9,6 +9,7 @@
   import X from 'phosphor-svelte/lib/X';
   import MagicWand from 'phosphor-svelte/lib/MagicWand';
   import CircleDashed from 'phosphor-svelte/lib/CircleDashed';
+  import XCircle from 'phosphor-svelte/lib/XCircle';
   import { browser } from '$app/environment';
   import { scale } from 'svelte/transition';
   import { trailModeActive, enterTrailMode, exitTrailMode } from '../lib/trailStore.js';
@@ -58,6 +59,9 @@
   // Pending (unvetted) spots currently in the dataset — the toggle chip only
   // renders when there's something to toggle
   $: pendingCount = $processedTacoData.filter(s => s.isPending).length;
+
+  // Closed spots currently in the dataset — same deal, same chip shape
+  $: closedCount = $processedTacoData.filter(s => s.isClosed).length;
 
   // Aggregate unique styles per protein across all sites
   $: availableStyles = (() => {
@@ -112,6 +116,10 @@
 
   function toggleShowPending() {
     filterConfig.update(cfg => ({ ...cfg, showPending: !cfg.showPending }));
+  }
+
+  function toggleShowClosed() {
+    filterConfig.update(cfg => ({ ...cfg, showClosed: !cfg.showClosed }));
   }
 
   // Dual-thumb spice slider: clamp so the thumbs can't cross
@@ -174,6 +182,7 @@
       openNow: false,
       showFavoritesOnly: false,
       showPending: true,
+      showClosed: true,
       styleFilters: { chicken: [], beef: [], pork: [], fish: [], veg: [] }
     });
   }
@@ -195,6 +204,7 @@
     $filterConfig.openNow ||
     $filterConfig.showFavoritesOnly ||
     !$filterConfig.showPending ||
+    !$filterConfig.showClosed ||
     Object.values($filterConfig.styleFilters).some(arr => arr.length > 0);
 
   // Flat list of active filters for the removable-chip row
@@ -235,6 +245,9 @@
     // Inverted sense: the chip appears when the default (shown) is changed
     if (!cfg.showPending) {
       chips.push({ id: 'pending', label: 'Hiding pending', remove: toggleShowPending });
+    }
+    if (!cfg.showClosed) {
+      chips.push({ id: 'closed', label: 'Hiding closed', remove: toggleShowClosed });
     }
     return chips;
   })();
@@ -358,6 +371,19 @@
               {#if browser}<CircleDashed size={13} />{/if}
               Pending
               <span class="chip-count">{pendingCount}</span>
+            </button>
+          {/if}
+          {#if closedCount > 0}
+            <button
+              class="filter-chip"
+              class:on={$filterConfig.showClosed}
+              on:click={toggleShowClosed}
+              aria-pressed={$filterConfig.showClosed}
+              title="Spots that have closed for good"
+            >
+              {#if browser}<XCircle size={13} />{/if}
+              Closed
+              <span class="chip-count">{closedCount}</span>
             </button>
           {/if}
         </div>

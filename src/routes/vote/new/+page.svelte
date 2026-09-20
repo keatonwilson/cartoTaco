@@ -14,9 +14,9 @@
   let errorMsg = '';
 
   // Filter spots by search text. Pending (unvetted) spots are excluded —
-  // voting on a spot with no data makes no sense.
+  // voting on a spot with no data makes no sense — and so are closed ones.
   $: filtered = $processedTacoData.filter(s => {
-    if (s.isPending) return false;
+    if (s.isPending || s.isClosed) return false;
     if (!searchText.trim()) return true;
     return s.name.toLowerCase().includes(searchText.toLowerCase());
   });
