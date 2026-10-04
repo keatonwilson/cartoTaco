@@ -41,6 +41,7 @@ Run in order. Each migration depends on the previous ones.
 | 021 | `021_create_group_sessions.sql` | Creates `group_sessions` table for Taco Summit (`id`, `creator_token`, `site_ids`, `title`, `closed_at`) with open RLS |
 | 022 | `022_create_group_votes.sql` | Creates `group_votes` table for ranked-choice ballots (`session_id`, `voter_token`, `est_id`, `rank`) with unique constraint, index, and open RLS |
 | 023 | `023_add_snacks_menu_type.sql` | Adds snacks as a menu type |
+| 034 | `034_spec_link_healing.sql` | Self-healing specialty links (write-time triggers, `heal_spec_links()` sweep, `heal_log` audit table) + read-only `data_health_report()`; backfills existing rows |
 
 ## Rollback
 
@@ -54,4 +55,19 @@ To roll back the Taco Summit tables (migrations 021–022):
 ```sql
 DROP TABLE IF EXISTS public.group_votes;
 DROP TABLE IF EXISTS public.group_sessions;
+```
+
+To roll back data-health self-healing (migration 034). Links it already filled
+stay (see `heal_log` for what it changed):
+```sql
+DROP TRIGGER IF EXISTS menu_fill_spec_links ON public.menu;
+DROP TRIGGER IF EXISTS protein_fill_spec_links ON public.protein;
+DROP TRIGGER IF EXISTS salsa_fill_spec_links ON public.salsa;
+DROP TRIGGER IF EXISTS item_spec_heal_links ON public.item_spec;
+DROP TRIGGER IF EXISTS protein_spec_heal_links ON public.protein_spec;
+DROP TRIGGER IF EXISTS salsa_spec_heal_links ON public.salsa_spec;
+DROP FUNCTION IF EXISTS public.data_health_report(), public.heal_spec_links_on_spec_change(),
+  public.heal_spec_links(text), public.relabel_heal_log(bigint, text), public.heal_log_watermark(),
+  public.fill_spec_links(), public.resolve_spec_id(text, text), public.normalize_spec_name(text),
+  public.write_heal_log(text, text, text, integer, text, text, text, text);
 ```
