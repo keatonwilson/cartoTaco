@@ -1,0 +1,4 @@
+# Minimal project root so the Supabase CLI can find supabase/migrations/.
+# Local dev (supabase start) isn't used here; migrations are pushed by
+# .github/workflows/migrate.yml with --db-url.
+project_id = "cartoTaco"

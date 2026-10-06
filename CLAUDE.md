@@ -39,41 +39,50 @@ The application uses Supabase with a critical performance optimization:
 - `summaries` - Dropped in migration 019 (summary stats now computed client-side from `processedTacoData`)
 
 ### Running Migrations
-Migrations must be run in this order:
-1. `migrations/002_add_contact_and_social_fields.sql` - Adds contact/social fields
-2. `migrations/001_create_sites_view.sql` - Creates the `sites_complete` view
-3. `migrations/003_create_profiles_table.sql` - Creates user profiles table with RLS policies (requires Supabase Auth)
-4. `migrations/004_create_location_submissions.sql` - Creates location_submissions table for user submissions with RLS policies
-5. `migrations/005_create_favorites_table.sql` - Creates user_favorites table with RLS policies
-6. `migrations/006_enable_rls_public_tables.sql` - Enables RLS on public data tables (sites, descriptions, menu, hours, salsa, protein, summaries, specs) with read-only access policies
-7. `migrations/007_add_created_at_to_sites.sql` - Adds created_at timestamp to sites table
-8. `migrations/008_update_sites_complete_view.sql` - Updates view to include created_at field
-9. `migrations/009_add_spec_fk_columns.sql` - Adds foreign key columns for specialty items
-10. `migrations/010_update_sites_complete_view.sql` - Updates view again (spec-related)
-11. `migrations/011_remove_spec_text_cols_from_view.sql` - Removes text columns, keeps FK references
-12. `migrations/012_drop_specialty_item_id_4.sql` - Removes specific specialty item record
-13. `migrations/013_add_burro_perc_to_view.sql` - Adds missing burro_perc to view (fixes burritos not showing in radar chart)
-14. `migrations/014_add_foreign_key_constraints.sql` - Adds FK constraints on est_id for child tables (run orphan checks first)
-15. `migrations/015_add_est_id_indexes.sql` - Adds indexes on est_id join columns and spec FK columns
-16. `migrations/016_view_naming_cleanup.sql` - Aliases burro→burrito in view, removes unused site fields (contact, lat_2, lon_2, days_loc_2)
-17. `migrations/017_drop_legacy_spec_text_columns.sql` - Drops legacy text columns (specialty_item_N, protein_spec_N, salsa_spec_N) replaced by FK columns
-18. `migrations/018_rename_spec_fk_columns.sql` - Renames spec FK columns to consistent spec_id_N pattern, rebuilds view
-19. `migrations/019_drop_summaries_table.sql` - Drops the unused summaries table (stats now computed client-side)
-20. `migrations/020_drop_unused_sites_columns.sql` - Drops unused columns from sites table (contact, lat_2, lon_2, days_loc_2)
-21. `migrations/021_create_group_sessions.sql` - Creates `group_sessions` table for Taco Summit feature (id, creator_token, site_ids, title, closed_at) with open RLS policies
-22. `migrations/022_create_group_votes.sql` - Creates `group_votes` table for ranked-choice ballots (session_id, voter_token, est_id, rank) with unique constraint and index
-23. `migrations/023_add_snacks_menu_type.sql` - Adds snacks as a menu type
-24. `migrations/024_enable_rls_staging_extractions.sql` - Enables RLS on staging_extractions table (admin data-entry helper app); authenticated users get SELECT/INSERT/UPDATE, anonymous blocked
-25. `migrations/025_fix_sites_complete_security_invoker.sql` - Fixes SECURITY DEFINER warning on sites_complete view by setting security_invoker = true (PostgreSQL 15+)
-26. `migrations/026_add_quesadilla_to_view.sql` - Adds quesadilla_yes/quesadilla_perc to sites_complete view (columns already exist in menu table)
-27. `migrations/027_create_vibe_votes.sql` - Creates `vibe_votes` table for the anti-review feature (binary emoji votes across four dimensions: heat_legit, authentic, value, vibe). Public SELECT for aggregate counts; INSERT/DELETE gated on `auth.uid() = user_id`
-28. `migrations/028_extend_profiles.sql` - Adds `username` (UNIQUE slug, `[a-z0-9_]{3,20}`) and `bio` (≤280 chars) to `profiles`; updates the signup trigger to auto-generate a unique username from the email local-part; backfills existing rows; opens SELECT to anon/authenticated for `/u/[username]` browsing
-29. `migrations/029_create_avatars_bucket.sql` - Creates the `avatars` Storage bucket (public-read, 1 MB cap, image/* mime types) and RLS on `storage.objects` so users can only write to their own folder (`avatars/<user_id>/`)
-30. `migrations/030_add_vetting_status_to_sites.sql` - Adds `vetting_status` ('vetted'/'pending'), `source`, `source_url`, `scraped_at`, `vetted_at` to `sites` for the unvetted-spots feature; adds ON DELETE CASCADE FKs from `user_favorites`/`vibe_votes` to `sites` (with orphan cleanup) so retracting a pending spot is safe
-31. `migrations/031_add_vetting_status_to_view.sql` - Rebuilds `sites_complete` view exposing `vetting_status`/`source`/`source_url` in the site jsonb
-32. `migrations/032_add_closed_at_to_sites.sql` - Adds nullable `closed_at` to `sites` (NULL = open) for the closed-spots feature; partial index on closed rows
-33. `migrations/033_add_closed_at_to_view.sql` - Rebuilds `sites_complete` view exposing `closed_at` in the site jsonb
-34. `migrations/034_spec_link_healing.sql` - Self-healing specialty links + data health report (see Data Health below); backfills existing rows on apply
+Migrations live in `supabase/migrations/` as `<timestamp>_<NNN>_<name>.sql` and are
+applied by CI: pushing to `staging` or `main` runs `supabase db push`
+(`.github/workflows/migrate.yml`) against that environment. Don't paste SQL into the
+Supabase editor by hand — CI then thinks the migration never ran.
+
+New migration: `supabase migration new <name>` (real timestamp, sorts after the
+backfilled `20200101…` ones). The `NNN_` in the name is the historical number kept
+for readability; the timestamp is what the CLI orders by.
+
+Historical order, as originally applied:
+1. `002_add_contact_and_social_fields.sql` - Adds contact/social fields
+2. `001_create_sites_view.sql` - Creates the `sites_complete` view
+3. `003_create_profiles_table.sql` - Creates user profiles table with RLS policies (requires Supabase Auth)
+4. `004_create_location_submissions.sql` - Creates location_submissions table for user submissions with RLS policies
+5. `005_create_favorites_table.sql` - Creates user_favorites table with RLS policies
+6. `006_enable_rls_public_tables.sql` - Enables RLS on public data tables (sites, descriptions, menu, hours, salsa, protein, summaries, specs) with read-only access policies
+7. `007_add_created_at_to_sites.sql` - Adds created_at timestamp to sites table
+8. `008_update_sites_complete_view.sql` - Updates view to include created_at field
+9. `009_add_spec_fk_columns.sql` - Adds foreign key columns for specialty items
+10. `010_update_sites_complete_view.sql` - Updates view again (spec-related)
+11. `011_remove_spec_text_cols_from_view.sql` - Removes text columns, keeps FK references
+12. `012_drop_specialty_item_id_4.sql` - Removes specific specialty item record
+13. `013_add_burro_perc_to_view.sql` - Adds missing burro_perc to view (fixes burritos not showing in radar chart)
+14. `014_add_foreign_key_constraints.sql` - Adds FK constraints on est_id for child tables (run orphan checks first)
+15. `015_add_est_id_indexes.sql` - Adds indexes on est_id join columns and spec FK columns
+16. `016_view_naming_cleanup.sql` - Aliases burro→burrito in view, removes unused site fields (contact, lat_2, lon_2, days_loc_2)
+17. `017_drop_legacy_spec_text_columns.sql` - Drops legacy text columns (specialty_item_N, protein_spec_N, salsa_spec_N) replaced by FK columns
+18. `018_rename_spec_fk_columns.sql` - Renames spec FK columns to consistent spec_id_N pattern, rebuilds view
+19. `019_drop_summaries_table.sql` - Drops the unused summaries table (stats now computed client-side)
+20. `020_drop_unused_sites_columns.sql` - Drops unused columns from sites table (contact, lat_2, lon_2, days_loc_2)
+21. `021_create_group_sessions.sql` - Creates `group_sessions` table for Taco Summit feature (id, creator_token, site_ids, title, closed_at) with open RLS policies
+22. `022_create_group_votes.sql` - Creates `group_votes` table for ranked-choice ballots (session_id, voter_token, est_id, rank) with unique constraint and index
+23. `023_add_snacks_menu_type.sql` - Adds snacks as a menu type
+24. `024_enable_rls_staging_extractions.sql` - Enables RLS on staging_extractions table (admin data-entry helper app); authenticated users get SELECT/INSERT/UPDATE, anonymous blocked
+25. `025_fix_sites_complete_security_invoker.sql` - Fixes SECURITY DEFINER warning on sites_complete view by setting security_invoker = true (PostgreSQL 15+)
+26. `026_add_quesadilla_to_view.sql` - Adds quesadilla_yes/quesadilla_perc to sites_complete view (columns already exist in menu table)
+27. `027_create_vibe_votes.sql` - Creates `vibe_votes` table for the anti-review feature (binary emoji votes across four dimensions: heat_legit, authentic, value, vibe). Public SELECT for aggregate counts; INSERT/DELETE gated on `auth.uid() = user_id`
+28. `028_extend_profiles.sql` - Adds `username` (UNIQUE slug, `[a-z0-9_]{3,20}`) and `bio` (≤280 chars) to `profiles`; updates the signup trigger to auto-generate a unique username from the email local-part; backfills existing rows; opens SELECT to anon/authenticated for `/u/[username]` browsing
+29. `029_create_avatars_bucket.sql` - Creates the `avatars` Storage bucket (public-read, 1 MB cap, image/* mime types) and RLS on `storage.objects` so users can only write to their own folder (`avatars/<user_id>/`)
+30. `030_add_vetting_status_to_sites.sql` - Adds `vetting_status` ('vetted'/'pending'), `source`, `source_url`, `scraped_at`, `vetted_at` to `sites` for the unvetted-spots feature; adds ON DELETE CASCADE FKs from `user_favorites`/`vibe_votes` to `sites` (with orphan cleanup) so retracting a pending spot is safe
+31. `031_add_vetting_status_to_view.sql` - Rebuilds `sites_complete` view exposing `vetting_status`/`source`/`source_url` in the site jsonb
+32. `032_add_closed_at_to_sites.sql` - Adds nullable `closed_at` to `sites` (NULL = open) for the closed-spots feature; partial index on closed rows
+33. `033_add_closed_at_to_view.sql` - Rebuilds `sites_complete` view exposing `closed_at` in the site jsonb
+34. `034_spec_link_healing.sql` - Self-healing specialty links + data health report (see Data Health below); backfills existing rows on apply
 
 ### Data Health (self-healing)
 Migration 034 makes the database repair specialty links itself. Cards only show specials whose `spec_id_N` FK is set; cartoTacoMenuExtract promotion writes the spec *name* into `specialty_item_N` / `protein_spec_N` / `salsa_spec_N` (re-added by that repo's migration 009 after 017 dropped them, so they exist in production) and links the id.
