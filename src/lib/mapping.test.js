@@ -42,7 +42,8 @@ vi.mock('./deviceDetection', async () => {
   return { deviceType: w('desktop'), isMobile: w(false) };
 });
 
-import { flyToSite } from './mapping.js';
+import { flyToSite, sitesToGeoJSON } from './mapping.js';
+import { hasValidCoordinates } from './stores.js';
 import { selectedSite } from './stores.js';
 import { deviceType } from './deviceDetection';
 
@@ -177,5 +178,32 @@ describe('flyToSite', () => {
     expect(get(selectedSite)).toEqual(siteB);
     expect(h.popups).toHaveLength(0);
     expect(map.easeToCalls).toHaveLength(2);
+  });
+});
+
+describe('coordinate validation', () => {
+  it('accepts a spot inside the Tucson metro box', () => {
+    expect(hasValidCoordinates(siteA)).toBe(true);
+  });
+
+  it.each([
+    ['the ocean (a geocoding miss)', { longitude: 0, latitude: 0 }],
+    ['swapped lat/lon', { longitude: 32.2, latitude: -110.9 }],
+    ['out of state', { longitude: -118.2, latitude: 34.05 }],
+    ['missing coordinates', { longitude: null, latitude: null }],
+    ['non-numeric strings', { longitude: 'NA', latitude: 'NA' }]
+  ])('rejects %s', (_label, coords) => {
+    expect(hasValidCoordinates({ est_id: 9, name: 'Bad', ...coords })).toBe(false);
+  });
+
+  it('accepts coordinates that arrive as numeric strings', () => {
+    expect(hasValidCoordinates({ longitude: '-110.9', latitude: '32.2' })).toBe(true);
+  });
+
+  it('keeps out-of-area spots out of the GeoJSON entirely', () => {
+    const ocean = { est_id: 3, name: 'Ocean Taco', longitude: 0, latitude: 0 };
+    const geojson = sitesToGeoJSON([siteA, ocean, siteB]);
+
+    expect(geojson.features.map((f) => f.id)).toEqual([1, 2]);
   });
 });

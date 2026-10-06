@@ -120,10 +120,10 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 - `isLoading` - Loading state from tacoStore
 - `hasError` - Error state from tacoStore
 - `processedTacoData` - Transforms raw site data into component-ready format with pre-computed values (top 5 menu items, proteins, percentages, and specialty items embedded from view). Each site carries `vettingStatus`/`isPending`/`sourceUrl` and `isClosed`/`closedAt`; pending (unvetted, web-scraped) spots skip the menu/protein/salsa pre-computation and get empty arrays, while closed spots keep everything recorded while they were open
-- `filteredTacoData` - Filters `processedTacoData` based on `filterConfig` (search, protein type, establishment type, spice level, open hours, favorites, pending visibility, closed visibility). Closed spots never pass the Open Now filter, whatever their stale hours say
+- `filteredTacoData` - Filters `processedTacoData` based on `filterConfig` (search, protein type, establishment type, spice level, open hours, favorites, pending visibility, closed visibility). Closed spots never pass the Open Now filter, whatever their stale hours say. Spots failing `hasValidCoordinates()` are dropped first — they can't be placed on the map, so they can't be a map result either
 - `summaryStats` - Computed from `processedTacoData` `{ maxSalsaNum, avgSalsaNum, maxHeatLevel, avgHeatLevel }` (open, vetted spots only)
 - `distributionStats` - `Map<est_id, { heatPercentile, salsaPercentile }>` percentile ranks within the city distribution (powers "Hotter than X% of Tucson spots" context lines); pending and closed spots get no entry and don't affect the pools
-- `recentlyAddedSites` - Spots added in the last 30 days, sorted newest first (used by NewSpotsBadge)
+- `recentlyAddedSites` - Spots added in the last 30 days, sorted newest first (used by NewSpotsBadge); excludes spots failing `hasValidCoordinates()`, since clicking one flies the map to it
 
 ### UI State Stores
 - `selectedSite` - Currently selected establishment (for popup)
@@ -226,7 +226,7 @@ The map implementation (src/lib/mapping.js) uses Mapbox GL with clustering:
 - `updateMarkers(processedSites, map)` - Add/update clusters and markers, attach event listeners
 - `applyLens(map, lensId)` - Switch marker styling for the active map lens (visibility + data-driven paint on `heat`/`salsas` feature properties)
 - `resetListeners(map)` - Clean up all event handlers
-- `sitesToGeoJSON(processedSites)` - Convert sites to GeoJSON with embedded properties (incl. `closed`/`vetting_status` flags for data-driven styling)
+- `sitesToGeoJSON(processedSites)` - Convert sites to GeoJSON with embedded properties (incl. `closed`/`vetting_status` flags for data-driven styling); skips spots failing `hasValidCoordinates()`
 - `flyToSite(map, site)` - Animate to location and open popup
 - `updateTrailLayers(map, stops)` - Render numbered trail stops
 - `updateTrailRoute(map, routeGeojson)` - Render dashed route line from Mapbox Directions API
@@ -253,6 +253,21 @@ Located in src/lib/dataWrangling.js:
 - `getTopFive(arr, n = 5)` - Sort and return top N items, stripping '_perc' suffix from keys
 - `percentageOfMaxArray(arr)` - Convert array values to percentages of max
 - `convertHoursData(startTimes, endTimes)` - Transform hours data into component-ready format (Mon–Sun order with abbreviations)
+
+## Coordinate Validation
+
+`hasValidCoordinates(site)` in `src/lib/stores.js` gates every map-facing store
+on a Tucson metro bounding box (lat 31.9–32.6, lon -111.4–-110.5). The same
+numbers back the `bad_coordinates` check in `data_health_report()` (migration
+034) — keep the two in sync.
+
+Scraped pending spots arrive with NULL coordinates when the geocoder misses.
+Mapbox reads `[null, null]` as `[0, 0]`, so a truthiness check hid the marker
+but not the camera: searching for such a spot, or hitting Surprise Me, sailed
+the map into the Gulf of Guinea (issue #67). Unplaceable spots stay in
+`processedTacoData` (so the nightly data health report still reports them) but
+are dropped from `filteredTacoData`, `recentlyAddedSites`, `sitesToGeoJSON()`
+and `flyToSite()`.
 
 ## Supporting Utilities
 
@@ -284,7 +299,7 @@ Located in src/lib/dataWrangling.js:
 - `IconHighlight.svelte` - Icon-based feature highlights
 - `LocationPicker.svelte` - Map-based location selection component
 - `MapStylePicker.svelte` - Switches between Mapbox map styles
-- `MapLensPicker.svelte` - Map lens switcher (Spots / Heat / Salsas / Density) with inline legends; drives `mapLens` store. Data lenses exclude pending spots (no measurements) and closed spots (measurements are history)
+- `MapLensPicker.svelte` - Map lens switcher (Spots / Heat / Salsas / Density) with inline legends; drives `mapLens` store. Data lenses exclude pending spots (no measurements) and closed spots (measurements are history). The density heatmap uses a deliberately wide `heatmap-radius` — Tucson's spots are sparse enough that the stock radius drew one blob per spot and nothing between them
 - `MapLegend.svelte` - Small floating `● Vetted / ◌ Pending / ✕ Closed` legend; only shown in the Spots lens, each row only when such spots exist
 - `NewSpotsBadge.svelte` - Badge showing count of recently added establishments (pending entries get a `◌ Pending` chip)
 - `ClosedBanner.svelte` - Dashed grey banner (`✕ Permanently closed` + closure month) rendered at the top of any card for a closed spot. Closed spots also lose vibe voting, comparison, and directions, but keep hours/charts as a historical record
@@ -314,7 +329,7 @@ Located in src/lib/dataWrangling.js:
 - `src/routes/Map.svelte` - Map component with filter integration and trail mode support
 
 #### Public Routes
-- `src/routes/census/+page.svelte` - Tucson Taco Census: public city-wide stats dashboard (hero tiles, menu prevalence, protein leaderboard, heat histogram, tortilla split, 7×24 open-hours grid, growth timeline), all client-side from `censusStats` (`src/lib/censusStore.js`)
+- `src/routes/census/+page.svelte` - Tucson Taco Census: public city-wide stats dashboard (hero tiles, menu prevalence, protein leaderboard, heat histogram, tortilla split, 7×24 open-hours grid, growth timeline), all client-side from `censusStats` (`src/lib/censusStore.js`). The growth timeline is the one figure built from open/close *events* over all vetted spots, closed included — it describes history, so it must not be recomputed from today's survivors or every closure retroactively erases the spot's past (issue #62)
 - `src/routes/compare/+page.svelte` - Side-by-side comparison of up to 3 spots (shareable via `?ids=1,2,3` query params). Desktop renders Menu/Protein as single overlaid radars with shared axes. Sticky command bar (+ mobile spot tabs) and a sticky spot-name header row keep navigation reachable at any scroll depth; an "at a glance" verdict strip (leader per metric with margin) sits above the grid. NOTE: `overflow-x` on these pages must stay `clip`, never `hidden` — hidden creates a scrollport that silently breaks the sticky positioning
 - `src/routes/compare/+page.js` - Route config for comparison page
 - `src/routes/vote/new/+page.svelte` - Taco Summit creation: pick 2–6 spots, set a title, creates a `group_sessions` row and redirects to the voting page
@@ -369,7 +384,7 @@ Test files are co-located in src/lib/:
 - `src/lib/validation.test.js` - Tests for form validation functions
 - `src/lib/pendingSpots.test.js` - Tests for pending-spot processing/filtering
 - `src/lib/closedSpots.test.js` - Tests for closed-spot processing/filtering/map styling
-- `src/lib/mapping.test.js` - Tests for map layer/GeoJSON helpers
+- `src/lib/mapping.test.js` - Tests for map layer/GeoJSON helpers and coordinate validation
 - `src/lib/authErrors.test.js` - Tests for auth error message mapping
 
 Run all tests with `pnpm test`.
