@@ -20,8 +20,10 @@ cd "$(dirname "$0")/.."
 versions=$(ls supabase/migrations/*.sql | xargs -n1 basename | cut -d_ -f1)
 count=$(wc -l <<< "$versions" | tr -d ' ')
 
+# Show the host only - never the credentials in front of the '@'.
+host="${DB_URL##*@}"
 echo "Baselining $count migrations as applied."
-read -rp "Target: ${DB_URL%%@*}@... - type 'yes' to continue: " ok
+read -rp "Target: ${host%%/*} - type 'yes' to continue: " ok
 [[ "$ok" == "yes" ]] || { echo "aborted"; exit 1; }
 
 # ponytail: one repair call per version; --status applied only writes the
