@@ -40,6 +40,8 @@ forward — that's how it got abandoned the first time.
 
 A Vercel preview builds the PR's **code** against whichever Supabase project is
 set in Vercel's Preview environment. There is no per-branch database and
+If you suspect the two databases have drifted apart, run `schema-parity.yml`.
+
 `migrate.yml` does not run for PR branches. A PR that adds a migration will show
 a preview that errors against the un-migrated schema until it merges to
 `staging`. That is expected; test it on staging, not on the preview.
@@ -76,6 +78,37 @@ fail. User-generated rows (favorites, votes, profiles, submissions) stay as
 staging had them, since they reference `auth.users`.
 
 Run it after a big data-entry session in production, not routinely.
+
+### `schema-parity.yml` — prod vs staging schema diff
+
+**Trigger**: manual only.
+
+`pg_dump --schema-only --schema=public` from both databases, normalized and
+diffed. Prints the difference to the job summary (`-` prod only, `+` staging
+only) and fails the job when they disagree. Full diff in the `schema-diff`
+artifact.
+
+Migrations are applied by CI now, but `supabase migration list` only knows what
+the migration-history table says. SQL run by hand in the Supabase editor leaves
+no row there, so the history keeps claiming both databases agree. This job asks
+Postgres instead.
+
+A dump diff rather than an `information_schema.columns` query: less code, and it
+covers views, policies, functions, indexes and constraints too, so it surfaces
+drift nobody thought to check for.
+
+Caveats:
+
+- **Drift is often expected.** Staging legitimately runs ahead of prod between a
+  `staging` merge and the `main` merge that follows. Read a failure as "look at
+  this", not "something is broken". That's also why it isn't wired to `push` —
+  a check that cries wolf on every release teaches everyone to ignore it.
+- `public` only. Supabase owns `auth`/`storage`/`realtime` and their contents
+  differ by design, so the `storage.objects` policies from migration 029 are out
+  of scope here.
+- Ownership and grants are stripped (`--no-owner --no-acl`). The two projects use
+  different role names, which would diff on every object and bury real findings.
+- The summary is capped at 300 changed lines; the artifact has the rest.
 
 ### Repository secrets
 

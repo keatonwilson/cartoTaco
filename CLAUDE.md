@@ -102,6 +102,7 @@ Migration 034 makes the database repair specialty links itself. Cards only show 
 - `heal_log` - every automatic fix (service role only)
 - `data_health_report()` - read-only checks needing a human (unlinked/ambiguous specs, yes-vs-share mismatches, missing child rows/heat, bad coordinates, half-set hours, duplicate spots, stale pending/staging); severities `error`/`warn`/`info`
 - `.github/workflows/data-health.yml` - nightly sweep + report into the job summary (uses `SUPABASE_DB_URL_PROD`); the same report is browsable in cartoTacoMenuExtract's Data Health page
+- `.github/workflows/schema-parity.yml` - manual `pg_dump` diff of the prod and staging `public` schemas; catches hand-edits in the Supabase editor that leave no migration-history row. Staging legitimately runs ahead of prod mid-release, so a failure means "look at this", not "broken"
 - All functions are revoked from `anon`/`authenticated`
 
 ### Schema Management
