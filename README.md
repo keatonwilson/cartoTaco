@@ -159,7 +159,13 @@ The application uses Supabase with the following main tables:
 
 ### Running Migrations
 
-Migrations are applied by CI on push to `staging` or `main` (`.github/workflows/migrate.yml`). For a brand-new database, point `supabase db push --db-url` at it once to run all 34 in order. See [supabase/migrations/README.md](supabase/migrations/README.md) for the workflow and [CLAUDE.md](CLAUDE.md) for what each migration does.
+Migrations are applied by CI: merge to `staging` to apply them there, then `staging` → `main` to ship. Never run SQL in the Supabase editor by hand — CI then believes the migration never ran.
+
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — the full branch/deploy/migration workflow
+- [supabase/migrations/README.md](supabase/migrations/README.md) — writing a migration
+- [CLAUDE.md](CLAUDE.md) — what each of the 34 migrations does
+
+For a brand-new database, point `supabase db push --db-url` at it once to run all 34 in order.
 
 ## 🌟 Roadmap
 
