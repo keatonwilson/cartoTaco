@@ -25,7 +25,10 @@ import { trailStops, addStop, clearStops } from './trailStore.js';
 
 // A site as returned by the sites_complete view. Closed spots keep every
 // measurement we recorded while they were open — only closed_at is set.
-function site(estId, { heat = 5, salsas = 4, closedAt = null, vetting = 'vetted' } = {}) {
+function site(
+  estId,
+  { heat = 5, salsas = 4, closedAt = null, vetting = 'vetted', createdAt = '2026-01-01T00:00:00Z' } = {}
+) {
   return {
     est_id: estId,
     site: {
@@ -34,7 +37,7 @@ function site(estId, { heat = 5, salsas = 4, closedAt = null, vetting = 'vetted'
       type: 'Truck',
       lat_1: 32.2,
       lon_1: -110.9,
-      created_at: '2026-01-01T00:00:00Z',
+      created_at: createdAt,
       vetting_status: vetting,
       source: 'editorial',
       source_url: null,
@@ -114,6 +117,57 @@ describe('closed spot gating', () => {
       expect(stats.totalSpots).toBe(2);
       expect(stats.closedCount).toBe(1);
       expect(stats.avgHeat).toBe(6);
+    });
+  });
+
+  // The growth timeline is the one census figure that must see closed spots:
+  // it describes history, not the city as it stands today (issue #62).
+  describe('census growth timeline', () => {
+    it('counts a closed spot for the years it was actually open', () => {
+      tacoStore.setData([
+        site(1, { createdAt: '2024-01-01T00:00:00Z' }),
+        site(2, { createdAt: '2024-06-01T00:00:00Z', closedAt: '2026-03-01T00:00:00Z' })
+      ]);
+
+      const { growth } = get(censusStats);
+      // Two openings then one closure — the 2024 points still count spot 2
+      expect(growth.map((g) => [g.date, g.count, g.delta])).toEqual([
+        ['2024-01-01T00:00:00Z', 1, 1],
+        ['2024-06-01T00:00:00Z', 2, 1],
+        ['2026-03-01T00:00:00Z', 1, -1]
+      ]);
+    });
+
+    it('names the spot on each event so a downstep reads as a closure', () => {
+      tacoStore.setData([
+        site(1, { createdAt: '2024-01-01T00:00:00Z', closedAt: '2026-03-01T00:00:00Z' }),
+        // censusStats is null with no open spots at all, so keep one around
+        site(2, { createdAt: '2024-02-01T00:00:00Z' })
+      ]);
+
+      const closure = get(censusStats).growth.at(-1);
+      expect(closure.delta).toBe(-1);
+      expect(closure.name).toBe('Spot 1');
+    });
+
+    it('keeps pending spots out — their created_at is a scrape date', () => {
+      tacoStore.setData([
+        site(1, { createdAt: '2024-01-01T00:00:00Z' }),
+        site(2, { createdAt: '2026-09-01T00:00:00Z', vetting: 'pending' })
+      ]);
+
+      expect(get(censusStats).growth).toHaveLength(1);
+    });
+
+    it('never dips below zero when a closure has no opening date', () => {
+      tacoStore.setData([
+        site(1, { createdAt: null, closedAt: '2026-03-01T00:00:00Z' }),
+        site(2, { createdAt: '2024-01-01T00:00:00Z' })
+      ]);
+
+      const { growth } = get(censusStats);
+      expect(growth.every((g) => g.count >= 0)).toBe(true);
+      expect(growth.at(-1).count).toBe(1);
     });
   });
 
