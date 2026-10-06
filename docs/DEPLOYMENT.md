@@ -110,6 +110,12 @@ Caveats:
   different role names, which would diff on every object and bury real findings.
 - The summary is capped at 300 changed lines; the artifact has the rest.
 
+> **A new `workflow_dispatch` workflow can't be run until it reaches `main`.**
+> GitHub only offers manual dispatch for workflows present on the default
+> branch, so `gh workflow run schema-parity.yml --ref staging` answers `HTTP 404`
+> while the file exists only on `staging`. Nothing is misconfigured — ship it to
+> `main` first. The same applied to `data-health.yml` and `seed-staging.yml`.
+
 ### Repository secrets
 
 | Secret | Description |
