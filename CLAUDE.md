@@ -73,6 +73,16 @@ Migrations must be run in this order:
 31. `migrations/031_add_vetting_status_to_view.sql` - Rebuilds `sites_complete` view exposing `vetting_status`/`source`/`source_url` in the site jsonb
 32. `migrations/032_add_closed_at_to_sites.sql` - Adds nullable `closed_at` to `sites` (NULL = open) for the closed-spots feature; partial index on closed rows
 33. `migrations/033_add_closed_at_to_view.sql` - Rebuilds `sites_complete` view exposing `closed_at` in the site jsonb
+34. `migrations/034_spec_link_healing.sql` - Self-healing specialty links + data health report (see Data Health below); backfills existing rows on apply
+
+### Data Health (self-healing)
+Migration 034 makes the database repair specialty links itself. Cards only show specials whose `spec_id_N` FK is set; cartoTacoMenuExtract promotion writes the spec *name* into `specialty_item_N` / `protein_spec_N` / `salsa_spec_N` (re-added by that repo's migration 009 after 017 dropped them, so they exist in production) and links the id.
+- `normalize_spec_name()` / `resolve_spec_id()` - one matching rule (lowercase, trimmed, collapsed whitespace; link only on exactly one match). Mirrored in cartoTacoMenuExtract `src/spec_tables.py`; keep them in sync
+- BEFORE INSERT/UPDATE triggers on `menu`/`protein`/`salsa` fill an empty `spec_id_N` from its name slot; AFTER triggers on the spec tables run `heal_spec_links()` so creating/renaming a spec back-links existing spots. Healing only fills empty links, never overwrites or clears one. To unlink a special, clear its name slot too, or the trigger re-links it
+- `heal_log` - every automatic fix (service role only)
+- `data_health_report()` - read-only checks needing a human (unlinked/ambiguous specs, yes-vs-share mismatches, missing child rows/heat, bad coordinates, half-set hours, duplicate spots, stale pending/staging); severities `error`/`warn`/`info`
+- `.github/workflows/data-health.yml` - nightly sweep + report into the job summary (uses `SUPABASE_DB_URL_PROD`); the same report is browsable in cartoTacoMenuExtract's Data Health page
+- All functions are revoked from `anon`/`authenticated`
 
 ### Schema Management
 - **`schema/sites_complete_view.sql`** is the single source of truth for the `sites_complete` view definition

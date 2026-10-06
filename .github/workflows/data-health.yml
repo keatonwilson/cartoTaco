@@ -1,0 +1,76 @@
+name: Data Health
+
+# Nightly self-healing + audit of production data (migration 034).
+#
+# 1. heal_spec_links() fills any empty specialty spec_id_N whose name now
+#    resolves to exactly one spec. Write-time triggers normally do this
+#    already; the sweep is the safety net. Every fix lands in heal_log.
+# 2. data_health_report() lists issues that need a human. Findings are
+#    written to the job summary; the job only fails if the SQL itself fails
+#    (e.g. migration 034 not applied), never because findings exist.
+#
+# The same checks are browsable in cartoTacoMenuExtract's Data Health page.
+
+on:
+  schedule:
+    - cron: '23 10 * * *' # 03:23 Tucson (UTC-7, no DST)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Heal specialty links
+        run: |
+          filled=$(psql -X -v ON_ERROR_STOP=1 -At -d "$DB_URL" \
+            -c "SELECT public.heal_spec_links('nightly_action');")
+          echo "Specialty links filled: $filled"
+          echo "### Self-healing" >> "$GITHUB_STEP_SUMMARY"
+          echo "Specialty links filled tonight: **$filled**" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL_PROD }}
+
+      - name: Run health report
+        run: |
+          psql -X -v ON_ERROR_STOP=1 --csv -d "$DB_URL" -c "
+            SELECT severity, check_name, est_id, site_name, detail
+              FROM public.data_health_report()
+             ORDER BY CASE severity WHEN 'error' THEN 0 WHEN 'warn' THEN 1 ELSE 2 END,
+                      check_name, est_id;" > report.csv
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL_PROD }}
+
+      - name: Write summary
+        run: |
+          python3 - <<'PY'
+          import csv, os
+          from collections import Counter
+
+          rows = list(csv.DictReader(open("report.csv")))
+          counts = Counter(r["severity"] for r in rows)
+          esc = lambda v: (v or "").replace("|", "\\|").replace("\n", " ")
+
+          out = ["", "### Health report",
+                 f"🔴 {counts['error']} errors · 🟡 {counts['warn']} warnings · ⚪ {counts['info']} info", ""]
+          if rows:
+              out += ["| severity | check | est_id | spot | detail |", "|---|---|---|---|---|"]
+              out += [f"| {r['severity']} | {r['check_name']} | {r['est_id']} | {esc(r['site_name'])} | {esc(r['detail'])} |"
+                      for r in rows]
+          else:
+              out.append("No findings. 🌮")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write("\n".join(out) + "\n")
+          if counts["error"]:
+              print(f"::warning title=Data health::{counts['error']} error-level findings, see the job summary")
+          PY
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-health-report
+          path: report.csv
+          retention-days: 30
