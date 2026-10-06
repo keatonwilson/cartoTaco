@@ -140,7 +140,7 @@ src/
 │   └── (protected)/         # Favorites, profile, submit (requires auth)
 ├── app.css                  # Global styles
 docs/                        # Feature documentation
-migrations/                  # Database migrations (001-020)
+supabase/migrations/         # Database migrations, applied by CI
 schema/                      # Canonical view definitions
 ```
 
@@ -159,7 +159,7 @@ The application uses Supabase with the following main tables:
 
 ### Running Migrations
 
-After setting up your Supabase project, run the 20 (or so) migrations in order. See [CLAUDE.md](CLAUDE.md) for the full migration list and [migrations/README.md](migrations/README.md) for detailed instructions.
+Migrations are applied by CI on push to `staging` or `main` (`.github/workflows/migrate.yml`). For a brand-new database, point `supabase db push --db-url` at it once to run all 34 in order. See [supabase/migrations/README.md](supabase/migrations/README.md) for the workflow and [CLAUDE.md](CLAUDE.md) for what each migration does.
 
 ## 🌟 Roadmap
 

@@ -4,13 +4,36 @@ This folder contains SQL migration files for the CartoTaco database.
 
 ## How to Run Migrations
 
-1. Log in to your Supabase Dashboard
-2. Navigate to: **SQL Editor** (left sidebar)
-3. Click **New Query**
-4. Open the migration file you want to run (e.g., `001_create_sites_view.sql`)
-5. Copy the entire contents of the file
-6. Paste into the SQL Editor
-7. Click **Run** (or press `Ctrl/Cmd + Enter`)
+You don't. CI does it: pushing to `staging` or `main` runs `supabase db push`
+against that environment (`.github/workflows/migrate.yml`). Pasting SQL into the
+Supabase SQL editor by hand leaves the CLI's history table out of date, so the
+next push either re-runs the migration or skips one it shouldn't.
+
+Adding one:
+
+```bash
+supabase migration new add_whatever    # creates supabase/migrations/<timestamp>_add_whatever.sql
+# write the SQL, open a PR, merge to staging first, then main
+```
+
+Checking state:
+
+```bash
+supabase migration list --db-url "$DB_URL"
+```
+
+### Filenames
+
+`<timestamp>_<NNN>_<name>.sql`. The CLI orders by the leading 14-digit timestamp.
+Migrations 001-034 predate CI and were applied by hand, so they carry synthetic
+`20200101000NNN` timestamps assigned in numeric order; new migrations get a real
+timestamp and sort after them. The `NNN_` is the historical number, kept so the
+tables below and the docs still line up.
+
+Note: 002 was originally applied *before* 001 (see the CLAUDE.md list). The
+backfilled timestamps put them in numeric order instead. Harmless — both were
+baselined as applied via `scripts/baseline-migrations.sh` and never replay — but
+don't read this folder's order as the historical one.
 
 ## Migration Files
 
