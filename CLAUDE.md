@@ -6,6 +6,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 CartoTaco is an interactive map-based application for exploring taco establishments in Tucson, AZ. Built with SvelteKit, it features an optimized architecture that fetches all site data in a single database query using a Supabase view. The app supports user authentication, favorites, trail building (multi-stop route planning), location submissions, theme switching, and group decision voting (Taco Summit).
 
+## Workflow
+
+Branch off `staging`. PR into `staging`, verify on the staging deploy, then PR
+`staging` → `main` to ship. Merging to either branch deploys that environment and
+applies any new migrations to its database (`.github/workflows/migrate.yml`).
+
+Never apply SQL through the Supabase editor — CI then believes the migration
+never ran. Vercel previews have no database of their own, so a PR that adds a
+migration won't work on its preview URL until it reaches `staging`.
+
+Full detail in `docs/DEPLOYMENT.md`.
+
 ## Development Commands
 
 - `pnpm install` - Install dependencies (use pnpm, not npm)
@@ -40,9 +52,8 @@ The application uses Supabase with a critical performance optimization:
 
 ### Running Migrations
 Migrations live in `supabase/migrations/` as `<timestamp>_<NNN>_<name>.sql` and are
-applied by CI: pushing to `staging` or `main` runs `supabase db push`
-(`.github/workflows/migrate.yml`) against that environment. Don't paste SQL into the
-Supabase editor by hand — CI then thinks the migration never ran.
+applied by CI on merge to `staging`, then to `main` (see Workflow above and
+`docs/DEPLOYMENT.md`). Never paste SQL into the Supabase editor.
 
 New migration: `supabase migration new <name>` (real timestamp, sorts after the
 backfilled `20200101…` ones). The `NNN_` in the name is the historical number kept
@@ -366,6 +377,7 @@ Run all tests with `pnpm test`.
 ## Documentation
 
 Detailed feature documentation in docs/:
+- `DEPLOYMENT.md` - Branch flow, CI/CD, migrations, secrets, rollback (canonical workflow)
 - `IMPROVEMENTS.md` - Roadmap and planned features
 - `UI_REFRESH_PLAN.md` - UI & data-viz refresh plan (shipped, PR #46)
 - `UNVETTED_SPOTS_PLAN.md` - Pending/unvetted spots plan (shipped in this repo; scraping pipeline lives in `cartoTacoMenuExtract`)
