@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS public.heal_log (
   check_name  text NOT NULL,
   source      text NOT NULL,          -- 'write_trigger' | 'sweep' | 'spec_trigger' | 'backfill'
   table_name  text NOT NULL,
-  est_id      integer,
+  est_id      bigint,
   column_name text,
   old_value   text,
   new_value   text,
@@ -62,10 +62,13 @@ CREATE INDEX IF NOT EXISTS heal_log_ran_at_idx ON public.heal_log (ran_at DESC);
 ALTER TABLE public.heal_log ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.heal_log FROM anon, authenticated;
 
+-- Drop the earlier integer-arg signature so the bigint one is unambiguous.
+DROP FUNCTION IF EXISTS public.write_heal_log(text, text, text, integer, text, text, text, text);
+
 -- Writes to heal_log go through this so a trigger never fails a write just
 -- because the writing role can't see heal_log (RLS on, no policies).
 CREATE OR REPLACE FUNCTION public.write_heal_log(
-  p_check text, p_source text, p_table text, p_est_id integer,
+  p_check text, p_source text, p_table text, p_est_id bigint,
   p_column text, p_old text, p_new text, p_note text)
 RETURNS void
 LANGUAGE sql
@@ -141,7 +144,7 @@ BEGIN
     CONTINUE WHEN v_id IS NULL OR array_position(v_linked, v_id) IS NOT NULL;
     v_patch := v_patch || jsonb_build_object('spec_id_' || i, v_id);
     v_linked := v_linked || v_id;
-    PERFORM public.write_heal_log('spec_link', 'write_trigger', TG_TABLE_NAME, NEW.est_id,
+    PERFORM public.write_heal_log('spec_link', 'write_trigger', TG_TABLE_NAME::text, NEW.est_id,
                                   'spec_id_' || i, NULL, v_id::text, v_name);
   END LOOP;
 
@@ -432,7 +435,7 @@ END;
 $$;
 
 -- ── Permissions: none of this is for the public API ─────────────────────────
-REVOKE EXECUTE ON FUNCTION public.write_heal_log(text, text, text, integer, text, text, text, text) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.write_heal_log(text, text, text, bigint, text, text, text, text) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.heal_log_watermark() FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.relabel_heal_log(bigint, text) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.resolve_spec_id(text, text) FROM PUBLIC, anon, authenticated;
