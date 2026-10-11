@@ -180,6 +180,10 @@ export const processedTacoData = derived(
           salsaVarieties: isPending ? [] : SALSA_VARIETIES
             .filter(v => site.salsa[`${v.key}_yes`] === true)
             .map(v => ({ name: v.label })),
+          // Catalog styles from site_salsas (migration 037): slug, name,
+          // definitive hex colour, and optional per-spot heat / note. Each
+          // links to /salsa/[slug].
+          salsaStyles: isPending ? [] : (site.salsa.styles || []),
           otherSalsas: isPending ? [] : [1, 2, 3]
             .map(n => ({
               name: cleanNA(site.salsa[`other_${n}_name`]),
@@ -356,6 +360,7 @@ export const filterConfig = writable({
   showFavoritesOnly: false,
   showPending: true,
   showClosed: true,
+  salsaStyle: null, // salsa_styles slug; set from /?salsa=<slug> by the Salsa Atlas
   styleFilters: {
     chicken: [],
     beef: [],
@@ -431,6 +436,12 @@ export const filteredTacoData = derived(
       // Closed spots — shown by default so users learn a spot closed rather
       // than finding nothing, hideable via toggle
       if (!$filterConfig.showClosed && site.isClosed) {
+        return false;
+      }
+
+      // Salsa style filter ("Show on the map" from a Salsa Atlas page)
+      if ($filterConfig.salsaStyle &&
+          !(site.salsaStyles || []).some(s => s.slug === $filterConfig.salsaStyle)) {
         return false;
       }
 
