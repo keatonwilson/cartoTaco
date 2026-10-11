@@ -9,6 +9,7 @@
 	import Question from 'phosphor-svelte/lib/Question';
 	import Ranking from 'phosphor-svelte/lib/Ranking';
 	import ChartBar from 'phosphor-svelte/lib/ChartBar';
+	import Pepper from 'phosphor-svelte/lib/Pepper';
 	import CaretDown from 'phosphor-svelte/lib/CaretDown';
 	import { fly } from 'svelte/transition';
 	import ThemeToggle from './ThemeToggle.svelte';
@@ -142,6 +143,14 @@
         <ChartBar size={16} weight="duotone" />
         Census
       </button>
+      <button
+        class="nav-link"
+        on:click={() => handleNavigation('/salsa')}
+        title="A field guide to Tucson's salsas"
+      >
+        <Pepper size={16} weight="duotone" />
+        Salsa
+      </button>
 
       {#if $isAuthenticated}
         <!-- User menu: consolidates account actions behind one control -->
@@ -245,6 +254,13 @@
       >
         <ChartBar size={16} weight="duotone" />
         Taco Census
+      </button>
+      <button
+        class="mobile-nav-link"
+        on:click={() => handleNavigation('/salsa')}
+      >
+        <Pepper size={16} weight="duotone" />
+        Salsa Atlas
       </button>
       {#if $isAuthenticated}
         <div class="mobile-user-info">

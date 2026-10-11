@@ -17,6 +17,7 @@
   import { filterPanelOpen, mobileNavOpen } from '$lib/uiStore.js';
   import { get } from 'svelte/store';
   import MapLensPicker from './MapLensPicker.svelte';
+  import { shortName } from '$lib/salsa';
 
   const PROTEINS = [
     { key: 'chicken', label: 'Chicken' },
@@ -183,6 +184,7 @@
       showFavoritesOnly: false,
       showPending: true,
       showClosed: true,
+      salsaStyle: null,
       styleFilters: { chicken: [], beef: [], pork: [], fish: [], veg: [] }
     });
   }
@@ -205,7 +207,15 @@
     $filterConfig.showFavoritesOnly ||
     !$filterConfig.showPending ||
     !$filterConfig.showClosed ||
+    !!$filterConfig.salsaStyle ||
     Object.values($filterConfig.styleFilters).some(arr => arr.length > 0);
+
+  // Display name for the active salsa-style filter, read off any spot serving it
+  $: salsaStyleName = $filterConfig.salsaStyle
+    ? $processedTacoData
+        .flatMap(s => s.salsaStyles || [])
+        .find(s => s.slug === $filterConfig.salsaStyle)?.name
+    : null;
 
   // Flat list of active filters for the removable-chip row
   $: activeChips = (() => {
@@ -236,6 +246,13 @@
         id: 'spice',
         label: `Spice ${cfg.spiceLevel.min}–${cfg.spiceLevel.max}`,
         remove: resetSpice
+      });
+    }
+    if (cfg.salsaStyle) {
+      chips.push({
+        id: 'salsa',
+        label: `Salsa · ${salsaStyleName ? shortName(salsaStyleName) : cfg.salsaStyle}`,
+        remove: () => filterConfig.update(c => ({ ...c, salsaStyle: null }))
       });
     }
     if (cfg.openNow) chips.push({ id: 'open', label: 'Open Now', remove: toggleOpenNow });

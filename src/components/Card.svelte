@@ -224,6 +224,7 @@
           </div>
           <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Salsa Lineup</h2>
           <SalsaLineup
+            styles={$selectedSite.salsaStyles || []}
             salsaVarieties={$selectedSite.salsaVarieties || []}
             otherSalsas={$selectedSite.otherSalsas || []}
           />
@@ -388,6 +389,7 @@
       <div class="desktop-salsa-lineup">
         <span class="desktop-lineup-label">Salsas:</span>
         <SalsaLineup
+          styles={$selectedSite.salsaStyles || []}
           salsaVarieties={$selectedSite.salsaVarieties || []}
           otherSalsas={$selectedSite.otherSalsas || []}
         />

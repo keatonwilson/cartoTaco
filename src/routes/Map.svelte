@@ -8,7 +8,8 @@
 		processedTacoData,
 		filteredTacoData,
 		selectedSite,
-		flyToTarget
+		flyToTarget,
+		filterConfig
 	} from '../lib/stores';
 	import { isMobile, screenWidth } from '../lib/deviceDetection';
 	import Card from '../components/Card.svelte';
@@ -270,6 +271,20 @@
 				const newUrl = newParams.toString() ? `?${newParams}` : window.location.pathname;
 				history.replaceState({}, '', newUrl);
 			}
+		}
+	}
+
+	// Salsa Atlas "Show on the map": /?salsa=<slug> pre-sets the salsa style filter.
+	// The param is consumed so clearing the chip isn't undone by a reload.
+	let salsaRestored = false;
+	$: if (!salsaRestored && typeof window !== 'undefined') {
+		salsaRestored = true;
+		const params = new URLSearchParams(window.location.search);
+		const slug = params.get('salsa');
+		if (slug) {
+			filterConfig.update((cfg) => ({ ...cfg, salsaStyle: slug }));
+			params.delete('salsa');
+			history.replaceState({}, '', params.toString() ? `?${params}` : window.location.pathname);
 		}
 	}
 
