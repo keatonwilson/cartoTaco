@@ -186,6 +186,10 @@ describe('coordinate validation', () => {
     expect(hasValidCoordinates(siteA)).toBe(true);
   });
 
+  it('accepts Green Valley, at the south edge of the box', () => {
+    expect(hasValidCoordinates({ longitude: -110.99477, latitude: 31.897985 })).toBe(true);
+  });
+
   it.each([
     ['the ocean (a geocoding miss)', { longitude: 0, latitude: 0 }],
     ['swapped lat/lon', { longitude: 32.2, latitude: -110.9 }],
