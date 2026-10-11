@@ -4,6 +4,7 @@
 	import { initTheme } from '$lib/theme.js';
 	import { loadFavorites } from '$lib/favoritesStore.js';
 	import { loadUserVibeVotes } from '$lib/vibeVotesStore.js';
+	import { loadSalsaFavorites } from '$lib/salsaFavoritesStore.js';
 	import { isAuthenticated } from '$lib/authStore.js';
 	import { initializeStores } from '$lib/stores.js';
 	import '../app.css';
@@ -25,6 +26,7 @@
 		if ($isAuthenticated) {
 			loadFavorites();
 			loadUserVibeVotes();
+			loadSalsaFavorites();
 		}
 
 		// Auto-start tour for first-time visitors (delay to let map render)
@@ -46,6 +48,7 @@
 	$: if ($isAuthenticated) {
 		loadFavorites();
 		loadUserVibeVotes();
+		loadSalsaFavorites();
 	}
 </script>
 
