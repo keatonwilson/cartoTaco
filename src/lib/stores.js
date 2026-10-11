@@ -271,6 +271,36 @@ export const distributionStats = derived(
 );
 
 // Derived store for recently added sites (last 30 days)
+// Tucson metro bounding box. Same numbers as the bad_coordinates check in
+// data_health_report() (migration 034) — keep the two in sync.
+const TUCSON_BOUNDS = { minLat: 31.9, maxLat: 32.6, minLon: -111.4, maxLon: -110.5 };
+
+/**
+ * True when a site's coordinates land inside the Tucson metro area.
+ *
+ * Scraped pending spots arrive with no coordinates at all when the geocoder
+ * misses. A truthiness check hides their markers but not the camera: Mapbox
+ * reads [null, null] as [0, 0], so searching for one or hitting Surprise Me
+ * sailed the map to the Gulf of Guinea. A spot we can't place isn't a map
+ * destination, so it stays out of the map-facing stores. The nightly data
+ * health report flags the same rows for a human to fix at the source.
+ *
+ * ponytail: a flat bounding box, not a real polygon — a spot misplaced *within*
+ * the box still renders. Tighten it only if that starts happening.
+ */
+export function hasValidCoordinates(site) {
+  const lon = Number(site?.longitude);
+  const lat = Number(site?.latitude);
+  return (
+    Number.isFinite(lon) &&
+    Number.isFinite(lat) &&
+    lat >= TUCSON_BOUNDS.minLat &&
+    lat <= TUCSON_BOUNDS.maxLat &&
+    lon >= TUCSON_BOUNDS.minLon &&
+    lon <= TUCSON_BOUNDS.maxLon
+  );
+}
+
 export const recentlyAddedSites = derived(
   processedTacoData,
   ($processedTacoData) => {
@@ -284,6 +314,9 @@ export const recentlyAddedSites = derived(
     return $processedTacoData
       .filter(site => {
         if (!site.createdAt) return false;
+        // Clicking a badge entry flies the map to it, so an unplaceable spot
+        // has nowhere to go
+        if (!hasValidCoordinates(site)) return false;
         const createdDate = new Date(site.createdAt);
         return createdDate >= thirtyDaysAgo;
       })
@@ -382,6 +415,12 @@ export const filteredTacoData = derived(
     }
 
     return $processedTacoData.filter(site => {
+      // A spot we can't place on the map can't be a map result either — it
+      // would render no marker and fly the camera to [0, 0] if picked.
+      if (!hasValidCoordinates(site)) {
+        return false;
+      }
+
       // Pending (unvetted) spots — shown by default, hideable via toggle.
       // Note: active protein/spice/style filters below also exclude pending
       // spots, intentionally — we can't verify they meet any requirement.

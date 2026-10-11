@@ -206,9 +206,10 @@
         confine: true,
         axisPointer: { type: 'line', lineStyle: { color: ink.label } },
         formatter: (params) => {
-          const p = params[0];
-          const d = new Date(p.value[0]);
-          return `${d.toLocaleDateString()}: <b>${p.value[1]}</b> spots on the map`;
+          const [date, count, delta, name] = params[0].value;
+          const when = new Date(date).toLocaleDateString();
+          const what = delta < 0 ? `${name} closed` : `${name} opened`;
+          return `${when} — ${what}<br/><b>${count}</b> spots on the map`;
         }
       },
       xAxis: {
@@ -223,7 +224,7 @@
         {
           type: 'line',
           step: 'end',
-          data: s.growth.map((g) => [g.date, g.count]),
+          data: s.growth.map((g) => [g.date, g.count, g.delta, g.name]),
           symbol: 'none',
           lineStyle: { width: 2, color: accent(isDark) },
           areaStyle: { color: accent(isDark), opacity: 0.08 }
@@ -407,7 +408,7 @@
     {#if stats.growth.length > 1}
       <section class="census-section">
         <h2 class="section-title">The map keeps growing</h2>
-        <p class="section-sub">Cumulative spots since CartoTaco started counting</p>
+        <p class="section-sub">Spots on the map over time, openings and closures</p>
         <div class="chart growth-chart" bind:this={growthEl}></div>
       </section>
     {/if}

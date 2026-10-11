@@ -102,11 +102,22 @@ export const censusStats = derived(processedTacoData, ($allSites) => {
 	}
 	const maxOpenCount = Math.max(1, ...openGrid.flat());
 
-	// ── Growth timeline: cumulative spots by created_at ──
-	const growth = [...$sites]
-		.filter((s) => s.createdAt)
-		.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-		.map((s, i) => ({ date: s.createdAt, count: i + 1, name: s.name }));
+	// ── Growth timeline: spots on the map over time ──
+	// This is the one census figure built from *all* vetted spots, closed
+	// included: it describes history, not the city as it stands today.
+	// Counting only today's survivors rewrote the past — a spot that opened in
+	// 2024 and closed in 2026 disappeared from 2024 as well, so every closure
+	// retroactively lowered the whole curve behind it.
+	// Pending spots stay out; their created_at is a scrape date, not an opening.
+	const historical = ($allSites || []).filter((s) => !s.isPending && s.createdAt);
+	const growth = [
+		...historical.map((s) => ({ date: s.createdAt, delta: 1, name: s.name })),
+		// A closure only steps down if we also know when the spot opened,
+		// otherwise the curve could dip below zero.
+		...historical.filter((s) => s.closedAt).map((s) => ({ date: s.closedAt, delta: -1, name: s.name }))
+	].sort((a, b) => new Date(a.date) - new Date(b.date));
+	let running = 0;
+	for (const e of growth) e.count = running += e.delta;
 
 	return {
 		totalSpots: n,

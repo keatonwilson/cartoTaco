@@ -1,0 +1,101 @@
+name: Schema Parity
+
+# Compares the prod and staging schemas and prints the difference.
+#
+# Migrations are applied by CI now (migrate.yml), but drift still happens:
+# SQL run by hand in the Supabase editor leaves no migration-history row, so
+# `supabase migration list` keeps claiming the two databases agree. This job
+# asks Postgres instead of asking the history table.
+#
+# A pg_dump diff rather than an information_schema.columns query: it is less
+# code and it covers views, policies, functions, indexes and constraints too,
+# so it surfaces drift nobody thought to check for.
+#
+# Manual-dispatch only. Drift is usually expected mid-flight (staging has a
+# migration main hasn't shipped yet), so this reporting on every push would
+# be noise that teaches everyone to ignore it.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+
+    steps:
+      # The runner's bundled client is older than the Supabase servers, and
+      # pg_dump refuses to dump from a newer server than itself.
+      - name: Install PostgreSQL 17 client
+        run: |
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Add client to PATH
+        run: echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+      # Schema only, public only. Supabase owns auth/storage/realtime and
+      # their contents differ by design. Ownership and grants are stripped:
+      # the two projects use different role names, which would diff on every
+      # single object and bury any real finding.
+      - name: Dump prod schema
+        run: |
+          pg_dump --schema-only --schema=public --no-owner --no-acl \
+            -d "$DB_URL" -f prod.sql
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL_PROD }}
+
+      - name: Dump staging schema
+        run: |
+          pg_dump --schema-only --schema=public --no-owner --no-acl \
+            -d "$DB_URL" -f staging.sql
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL_STAGING }}
+
+      # pg_dump stamps its own and the server's version in a header comment;
+      # left in, a Postgres patch release on one project reads as schema drift.
+      - name: Normalize
+        run: |
+          for f in prod staging; do
+            grep -v -e "^--" -e "^$" "$f.sql" > "$f.norm" || true
+            echo "$f: $(wc -l < "$f.norm") lines"
+          done
+
+      - name: Diff
+        id: diff
+        run: |
+          if diff -u prod.norm staging.norm > schema.diff; then
+            echo "### Schema parity ✅" >> "$GITHUB_STEP_SUMMARY"
+            echo "prod and staging \`public\` schemas are identical." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # Lines unique to one side, which reads better than diff hunks when
+          # the question is "what does prod have that staging doesn't".
+          {
+            echo "### Schema parity ❌"
+            echo "\`-\` prod only · \`+\` staging only"
+            echo
+            echo '```diff'
+            # Cap it: a full dump diff can blow the 1 MB summary limit
+            grep -E '^[-+]' schema.diff | grep -v -E '^(---|\+\+\+)' | head -300
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "::warning title=Schema drift::prod and staging public schemas differ, see the job summary"
+          exit 1
+
+      - name: Upload diff
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-diff
+          path: |
+            schema.diff
+            prod.norm
+            staging.norm
+          retention-days: 30
+          if-no-files-found: ignore

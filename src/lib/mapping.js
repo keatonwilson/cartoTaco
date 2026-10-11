@@ -1,7 +1,7 @@
 import PopupContent from '../components/Card.svelte';
 import PendingPopupContent from '../components/PendingSpotCard.svelte';
 import mapboxgl from 'mapbox-gl';
-import { selectedSite } from './stores';
+import { selectedSite, hasValidCoordinates } from './stores';
 import { deviceType } from './deviceDetection';
 import { get } from 'svelte/store';
 import { trailModeActive, trailStops, addStop, removeStop } from './trailStore';
@@ -215,7 +215,7 @@ export function sitesToGeoJSON(processedSites) {
   return {
     type: 'FeatureCollection',
     features: processedSites
-      .filter(site => site && site.longitude && site.latitude)
+      .filter(hasValidCoordinates)
       .map(site => ({
         type: 'Feature',
         id: site.est_id, // Required for feature-state hover effects
@@ -485,17 +485,23 @@ export const updateMarkers = (processedSites, map) => {
     layout: { visibility: 'none' },
     paint: {
       'heatmap-weight': 1,
-      'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 8, 1, 15, 3],
-      'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 8, 20, 15, 60],
+      // Tucson's spots are sparse enough that the stock radius drew one blob
+      // per spot and nothing between them — a dot map in heatmap clothing.
+      // A radius wide enough for neighbouring spots' tails to overlap is what
+      // turns it into a field, so it scales roughly with the city at each zoom.
+      'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 8, 30, 11, 70, 15, 120],
+      'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 8, 1.5, 15, 3],
+      // The ramp picks up colour early: spreading the radius lowers the peak
+      // density, so stops set for tight blobs would render mostly transparent.
       'heatmap-color': [
         'interpolate',
         ['linear'],
         ['heatmap-density'],
         0, 'rgba(255, 241, 238, 0)',
-        0.2, SEQUENTIAL[2],
-        0.4, SEQUENTIAL[3],
-        0.6, SEQUENTIAL[4],
-        0.8, SEQUENTIAL[6],
+        0.1, SEQUENTIAL[1],
+        0.3, SEQUENTIAL[3],
+        0.5, SEQUENTIAL[4],
+        0.7, SEQUENTIAL[6],
         1, SEQUENTIAL[8]
       ],
       'heatmap-opacity': 0.8
@@ -727,6 +733,9 @@ function adjustPopupPosition(popup, map) {
 // Fly to a site and open its popup (or bottom sheet on mobile)
 export function flyToSite(map, site) {
   if (!map || !site) return;
+  // No marker was drawn for an out-of-area spot (see hasValidCoordinates), so
+  // there is nothing to fly to — "Surprise Me" would just sail into the ocean.
+  if (!hasValidCoordinates(site)) return;
 
   const coordinates = [site.longitude, site.latitude];
 

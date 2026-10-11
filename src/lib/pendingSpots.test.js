@@ -19,7 +19,8 @@ import {
   summaryStats,
   distributionStats,
   filterConfig,
-  filteredTacoData
+  filteredTacoData,
+  recentlyAddedSites
 } from './stores.js';
 import { censusStats } from './censusStore.js';
 
@@ -48,15 +49,15 @@ function vettedSite(estId, { heat = 5, salsas = 4 } = {}) {
 
 // A pending (web-scraped) site: no menu/protein/salsa rows, so the view's
 // LEFT JOINs produce objects whose fields are all null
-function pendingSite(estId) {
+function pendingSite(estId, { lat = 32.3, lon = -110.8 } = {}) {
   return {
     est_id: estId,
     site: {
       est_id: estId,
       name: `Pending Spot ${estId}`,
       type: 'Truck',
-      lat_1: 32.3,
-      lon_1: -110.8,
+      lat_1: lat,
+      lon_1: lon,
       created_at: '2026-07-01T00:00:00Z',
       vetting_status: 'pending',
       source: 'web_scrape',
@@ -165,5 +166,40 @@ describe('pending spot gating', () => {
       expect(stats.pendingCount).toBe(1);
       expect(stats.avgHeat).toBe(6);
     });
+  });
+});
+
+// A scraped spot whose geocode missed has no coordinates at all. Mapbox reads
+// [null, null] as [0, 0], so these used to sail the map into the ocean when
+// searched for or picked by Surprise Me (issue #67).
+describe('unplaceable spots', () => {
+  beforeEach(() => {
+    resetFilters();
+    tacoStore.setData([
+      vettedSite(1),
+      pendingSite(2, { lat: null, lon: null }),
+      pendingSite(3, { lat: 0, lon: 0 })
+    ]);
+  });
+
+  it('keeps them out of filteredTacoData, so they are never a map result', () => {
+    expect(get(filteredTacoData).map((s) => s.est_id)).toEqual([1]);
+  });
+
+  it('keeps them out of the new spots badge', () => {
+    tacoStore.setData([
+      // Both recent; only the placeable one can be flown to
+      { ...vettedSite(1), site: { ...vettedSite(1).site, created_at: new Date().toISOString() } },
+      {
+        ...pendingSite(2, { lat: null, lon: null }),
+        site: { ...pendingSite(2, { lat: null, lon: null }).site, created_at: new Date().toISOString() }
+      }
+    ]);
+
+    expect(get(recentlyAddedSites).map((s) => s.est_id)).toEqual([1]);
+  });
+
+  it('still records them in processedTacoData for the data health report', () => {
+    expect(get(processedTacoData).map((s) => s.est_id)).toEqual([1, 2, 3]);
   });
 });
