@@ -60,7 +60,7 @@ jobs:
       - name: Normalize
         run: |
           for f in prod staging; do
-            grep -v -e "^--" -e "^$" "$f.sql" > "$f.norm" || true
+            grep -v -e "^--" -e "^$" -e '^\\\(un\)\?restrict ' "$f.sql" > "$f.norm" || true
             echo "$f: $(wc -l < "$f.norm") lines"
           done
 

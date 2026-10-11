@@ -272,8 +272,8 @@ export const distributionStats = derived(
 
 // Derived store for recently added sites (last 30 days)
 // Tucson metro bounding box. Same numbers as the bad_coordinates check in
-// data_health_report() (migration 034) — keep the two in sync.
-const TUCSON_BOUNDS = { minLat: 31.9, maxLat: 32.6, minLon: -111.4, maxLon: -110.5 };
+// data_health_report() (migrations 034/035) — keep the two in sync. The south edge takes in Green Valley.
+const TUCSON_BOUNDS = { minLat: 31.8, maxLat: 32.6, minLon: -111.4, maxLon: -110.5 };
 
 /**
  * True when a site's coordinates land inside the Tucson metro area.

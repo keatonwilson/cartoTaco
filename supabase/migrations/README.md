@@ -65,6 +65,7 @@ Run in order. Each migration depends on the previous ones.
 | 022 | `022_create_group_votes.sql` | Creates `group_votes` table for ranked-choice ballots (`session_id`, `voter_token`, `est_id`, `rank`) with unique constraint, index, and open RLS |
 | 023 | `023_add_snacks_menu_type.sql` | Adds snacks as a menu type |
 | 034 | `034_spec_link_healing.sql` | Self-healing specialty links (write-time triggers, `heal_spec_links()` sweep, `heal_log` audit table) + read-only `data_health_report()`; backfills existing rows |
+| 035 | `035_widen_tucson_bounds.sql` | Moves the `bad_coordinates` south edge from 31.9 to 31.8 so Green Valley is in scope (replaces `data_health_report()`; first migration applied by CI, so it carries a real timestamp) |
 
 ## Rollback
 
