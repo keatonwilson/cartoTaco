@@ -14,26 +14,17 @@
 	$: isFavorited = $favoriteIds.has(estId);
 
 	async function handleToggle() {
-		console.log('FavoriteButton clicked for estId:', estId);
-		console.log('Is authenticated:', $isAuthenticated);
-
 		// Redirect to login if not authenticated
 		if (!$isAuthenticated) {
-			console.log('Not authenticated, redirecting to login');
 			goto('/login?redirect=/');
 			return;
 		}
 
-		if (isToggling) {
-			console.log('Already toggling, ignoring click');
-			return;
-		}
+		if (isToggling) return;
 
 		isToggling = true;
 		try {
-			console.log('Toggling favorite for:', estId);
-			const result = await toggleFavorite(estId);
-			console.log('Toggle result:', result);
+			await toggleFavorite(estId);
 		} catch (error) {
 			console.error('Error toggling favorite:', error);
 		} finally {

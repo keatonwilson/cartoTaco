@@ -29,6 +29,8 @@ Full detail in `docs/DEPLOYMENT.md`.
 - `pnpm test` - Run unit tests (vitest)
 - `pnpm test:watch` - Run tests in watch mode
 
+CI (`.github/workflows/ci.yml`) runs check, test, and build on every PR. Node 24 (`.nvmrc`, CI, and the Vercel runtime agree).
+
 ## Environment Setup
 
 Required environment variables in `.env`:
@@ -244,7 +246,6 @@ The map implementation (src/lib/mapping.js) uses Mapbox GL with clustering:
 
 ### Supporting Map Libraries
 - `src/lib/mapStore.js` - Holds the Mapbox map instance
-- `src/lib/mapStyles.js` - Mapbox style definitions for the MapStylePicker
 - `src/lib/geocoding.js` - Mapbox geocoding for address/location search
 
 ## Data Processing Utilities
@@ -273,7 +274,9 @@ and `flyToSite()`.
 
 ## Supporting Utilities
 
-- `src/lib/auth.js` - Additional Supabase auth utilities
+- `src/lib/auth.js` - Server-side Supabase client with cookie handling (used by `hooks.server.js`)
+- `src/lib/censusStore.js` - `censusStats` derived store backing `/census`
+- `src/lib/vibeVotes.js` - Vibe vote database operations (the store wraps these)
 - `src/lib/authErrors.js` - Maps Supabase auth errors to friendly messages (e.g. signup email rate limit)
 - `src/lib/favorites.js` - Favorites database operations (add, remove, fetch)
 - `src/lib/submissions.js` - Location submission handling and DB persistence
@@ -296,11 +299,11 @@ and `flyToSite()`.
 - `FilterBar.svelte` - Search and filter controls: toggle chips with live city-composition counts (proteins, types, Open Now), dual-thumb spice range slider, and a removable active-filters chip row visible even when the panel is collapsed
 - `Header.svelte` - Main application header; authenticated desktop nav consolidates account actions (Submit/Favorites/Profile/Sign Out) into a user dropdown menu
 - `LoadingState.svelte` - Shared loading indicator (bobbing taco + pulsing dots + message), reduced-motion aware; used by Map, census, and compare
+- `HandmadeBadge.svelte` - "Handmade Tortillas" pill shown on Card
 - `HoursInput.svelte` - Input component for hours data (used in submission form)
 - `HoursOpen.svelte` - Week Rhythm strip: 7 day pills with mini open-span bars on a shared 24h scale, today ring, calm open/closed status dot; overnight hours wrap
 - `IconHighlight.svelte` - Icon-based feature highlights
 - `LocationPicker.svelte` - Map-based location selection component
-- `MapStylePicker.svelte` - Switches between Mapbox map styles
 - `MapLensPicker.svelte` - Map lens switcher (Spots / Heat / Salsas / Density) with inline legends; drives `mapLens` store. Data lenses exclude pending spots (no measurements) and closed spots (measurements are history). The density heatmap uses a deliberately wide `heatmap-radius` — Tucson's spots are sparse enough that the stock radius drew one blob per spot and nothing between them
 - `MapLegend.svelte` - Small floating `● Vetted / ◌ Pending / ✕ Closed` legend; only shown in the Spots lens, each row only when such spots exist
 - `NewSpotsBadge.svelte` - Badge showing count of recently added establishments (pending entries get a `◌ Pending` chip)
@@ -396,10 +399,5 @@ Run all tests with `pnpm test`.
 Detailed feature documentation in docs/:
 - `DEPLOYMENT.md` - Branch flow, CI/CD, migrations, secrets, rollback (canonical workflow)
 - `IMPROVEMENTS.md` - Roadmap and planned features
-- `UI_REFRESH_PLAN.md` - UI & data-viz refresh plan (shipped, PR #46)
 - `UNVETTED_SPOTS_PLAN.md` - Pending/unvetted spots plan (shipped in this repo; scraping pipeline lives in `cartoTacoMenuExtract`)
-- `MARKER_CLUSTERING.md` - Clustering implementation
-- `QUERY_OPTIMIZATION.md` - Database view implementation
-- `SEARCH_FILTER.md` - Filter system details
-- `USER_SUBMISSIONS.md` - Location submission feature
-- `VISUALIZATION_IMPROVEMENTS.md` - Chart enhancements
+- `USER_SUBMISSIONS.md` - Location submission design and the manual approval process
