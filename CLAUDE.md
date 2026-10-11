@@ -49,6 +49,7 @@ The application uses Supabase with a critical performance optimization:
 ### Supporting Tables
 - `item_spec`, `protein_spec`, `salsa_spec` - Specialty item information
 - `summaries` - Dropped in migration 019 (summary stats now computed client-side from `processedTacoData`)
+- `salsa_styles` / `site_salsas` - Salsa catalog and spot↔salsa links (see Salsa Atlas below)
 
 ### Running Migrations
 Migrations live in `supabase/migrations/` as `<timestamp>_<NNN>_<name>.sql` and are
@@ -95,6 +96,9 @@ Historical order, as originally applied:
 33. `033_add_closed_at_to_view.sql` - Rebuilds `sites_complete` view exposing `closed_at` in the site jsonb
 34. `034_spec_link_healing.sql` - Self-healing specialty links + data health report (see Data Health below); backfills existing rows on apply
 35. `035_widen_tucson_bounds.sql` - Widens the `bad_coordinates` box south to 31.8 so Green Valley is in scope
+36. `036_create_salsa_styles.sql` - Salsa Atlas backend: `salsa_styles` catalog (ingredients, history, palette of hex codes, optional photo), `site_salsas` join table (per-spot heat/house name/note, no cap), `sync_site_salsas()` trigger, `salsas` storage bucket, and the seed of ~20 styles
+37. `037_add_salsa_styles_to_view.sql` - Rebuilds `sites_complete` exposing `salsa.styles` (`[{slug, name, color, heat, house_name, note}]` plus the style's flavour scores, so the taste profile can match on them)
+38. `038_create_user_favorite_salsas.sql` - `user_favorite_salsas` (user_id, style_id) with own-rows-only RLS, for favouriting salsas from the atlas
 
 ### Data Health (self-healing)
 Migration 034 makes the database repair specialty links itself. Cards only show specials whose `spec_id_N` FK is set; cartoTacoMenuExtract promotion writes the spec *name* into `specialty_item_N` / `protein_spec_N` / `salsa_spec_N` (re-added by that repo's migration 009 after 017 dropped them, so they exist in production) and links the id.
@@ -105,6 +109,17 @@ Migration 034 makes the database repair specialty links itself. Cards only show 
 - `.github/workflows/data-health.yml` - nightly sweep + report into the job summary (uses `SUPABASE_DB_URL_PROD`); the same report is browsable in cartoTacoMenuExtract's Data Health page
 - `.github/workflows/schema-parity.yml` - manual `pg_dump` diff of the prod and staging `public` schemas; catches hand-edits in the Supabase editor that leave no migration-history row. Staging legitimately runs ahead of prod mid-release, so a failure means "look at this", not "broken"
 - All functions are revoked from `anon`/`authenticated`
+
+### Salsa Atlas (salsa catalog)
+Migrations 036/037. `salsa_styles` is the catalog behind `/salsa`; `site_salsas` says which spot serves which style.
+- A style is tied to legacy data by `variety_key` (`verde` → `salsa.verde_yes`) or `spec_id` (→ `salsa_spec`). Styles with neither are hand-curated
+- The `salsa` row is still what cartoTacoMenuExtract writes. `sync_site_salsas()` (AFTER trigger on `salsa`) adds/removes `site_salsas` rows for keyed styles to match it, never touches hand-curated links, and never overwrites a hand-set `heat`/`house_name`/`note`. To add a salsa to a spot that has no boolean or spec for it, insert the `site_salsas` row directly
+- Inserting or re-keying a style re-syncs every spot (statement trigger on `salsa_styles`), so a new keyed style picks up existing spots by itself
+- `smoke`/`acid`/`sweet`/`chunk`/`rich` are 0–10 flavour scores (editorial estimates). With typical heat they are the six `AXES` in `src/lib/salsa.js`: they place a salsa on `SalsaMap` and `neighbours()` ranks relatives by distance across them
+- `region` is a coarse bucket (`north`/`west`/`central`/`south`/`everywhere`) used only to cluster the atlas; `origin` is the display text
+- `palette` is 3–5 lowercase hex codes, first one definitive (CHECK-enforced). Any palette colour can become a page background; `inkFor()` picks black or white text, and `salsa.test.js` asserts 4.5:1 against every seeded colour
+- Photos: upload to the `salsas` bucket through the dashboard and set `img_url` (+ `img_credit`); until then `SalsaArt.svelte` draws a bowl from the palette
+- Editorial text lives in the 036 seed; later edits are new migrations (`UPDATE salsa_styles …`)
 
 ### Schema Management
 - **`schema/sites_complete_view.sql`** is the single source of truth for the `sites_complete` view definition
@@ -130,6 +145,7 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 ### UI State Stores
 - `selectedSite` - Currently selected establishment (for popup)
 - `filterConfig` - User's active filters: `{ searchText, proteins, types, spiceLevel, openNow, showFavoritesOnly, showPending, showClosed }`
+  - `salsaStyle` (a `salsa_styles` slug, default `null`) is set from `/?salsa=<slug>` by the Salsa Atlas's "Show on the map"; `processedTacoData` sites carry `salsaStyles` from the view
 
 ### Authentication Store (src/lib/authStore.js)
 - `authStore` - User, session, loading, and error state
@@ -151,6 +167,11 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 - `VIBE_DIMENSIONS` - `['heat_legit', 'authentic', 'value', 'vibe']`
 - Functions: `loadUserVibeVotes()`, `loadVibeCounts(estId, { force })`, `toggleVibeVote(estId, dimension)`, `hasVoted(estId, dimension)`
 - Optimistic UI: toggle flips the user state and bumps the count immediately, reverting on DB failure
+
+### Salsa Favorites Store (src/lib/salsaFavoritesStore.js)
+- `favoriteSalsas` - Array of favourited `salsa_styles` rows (with flavour scores), newest first; `favoriteSalsaSlugs` (derived Set)
+- Functions: `loadSalsaFavorites()`, `toggleSalsaFavorite(style)` (optimistic, reverts with a toast on failure)
+- Feeds `tasteProfile`: with favourite salsas, k-NN adds `salsaAffinity()` (distance from the user's salsa taste to a spot's closest salsa) to the 7 spot dimensions, pulls spots serving a favourite closer, and returns `salsaTaste` plus `matchedSalsas` on each recommendation. Without any, recommendations are unchanged. A profile still needs at least one favourite *spot*
 
 ### Trail Store (src/lib/trailStore.js)
 - `trailModeActive` - Whether trail building mode is active
@@ -308,7 +329,11 @@ and `flyToSite()`.
 - `PendingSpotCard.svelte` - Lightweight preliminary card for pending (unvetted) spots: pending badge, info panel, scraped hours/contact if present, source link, vetting CTA. Dashed `--pending` border; no radar/heat/salsa/vibe/compare
 - `RadarChart.svelte` - Menu/protein radar (ECharts) with a fixed 0–100 scale so shapes compare across spots; supports multi-series overlays via `seriesList` prop (categorical palette + legend), used by `/compare` and TasteProfile
 - `SalsaCount.svelte` - Salsa count bullet bar (ECharts): value bar over city-max track with an average tick
-- `SalsaLineup.svelte` - Per-salsa chip row: named varieties (Verde, Rojo, …) plus the spot's "other" house salsas with individual heat dots and tap-to-reveal descriptions. Data comes from `salsaVarieties`/`otherSalsas` on `processedTacoData`
+- `SalsaLineup.svelte` - Per-salsa chip row: catalog styles as colour-dotted links to `/salsa/[slug]` (falling back to the named varieties on a database without `salsa.styles`) plus the spot's "other" house salsas with individual heat dots and tap-to-reveal descriptions. Data comes from `salsaVarieties`/`otherSalsas` on `processedTacoData`
+- `SalsaHex.svelte` - One salsa as a hexagon (definitive colour, lower tip in colours 2 and 3, hatched when no Tucson spot serves it). Must sit in a `.hex-cell` inside `.honeycomb > .comb`; those layout styles are global-under-`.salsa-atlas` in `src/routes/salsa/+layout.svelte`
+- `SalsaFavoriteButton.svelte` - Heart for a salsa style on its atlas page (signed-out users go to login); colours come from `currentColor`
+- `SalsaMap.svelte` - Scatter on a salsa's page: every salsa as a dot (in its own colour) on two reader-picked axes from `AXES` (heat + the five flavour columns), this salsa and its four nearest relatives labelled and joined, hover/focus tooltip, and a table of the same numbers. Opens on the two axes that spread the group widest
+- `SalsaArt.svelte` - Generated stand-in for a salsa photo: top-down bowl drawn from the palette, seeded by slug so SSR and client match
 - `SpecCarousel.svelte` & `SpecCard.svelte` - Specialty item displays
 - `SpiceGauge.svelte` - Heat Ladder: 10-notch sequential-coral meter with hero number and optional city-percentile context line (pure Svelte/CSS, no chart lib)
 - `ThemeToggle.svelte` - Dark/light mode toggle button
@@ -334,6 +359,7 @@ and `flyToSite()`.
 - `src/routes/census/+page.svelte` - Tucson Taco Census: public city-wide stats dashboard (hero tiles, menu prevalence, protein leaderboard, heat histogram, tortilla split, 7×24 open-hours grid, growth timeline), all client-side from `censusStats` (`src/lib/censusStore.js`). The growth timeline is the one figure built from open/close *events* over all vetted spots, closed included — it describes history, so it must not be recomputed from today's survivors or every closure retroactively erases the spot's past (issue #62)
 - `src/routes/compare/+page.svelte` - Side-by-side comparison of up to 3 spots (shareable via `?ids=1,2,3` query params). Desktop renders Menu/Protein as single overlaid radars with shared axes. Sticky command bar (+ mobile spot tabs) and a sticky spot-name header row keep navigation reachable at any scroll depth; an "at a glance" verdict strip (leader per metric with margin) sits above the grid. NOTE: `overflow-x` on these pages must stay `clip`, never `hidden` — hidden creates a scrollport that silently breaks the sticky positioning
 - `src/routes/compare/+page.js` - Route config for comparison page
+- `src/routes/salsa/` - Salsa Atlas. `+layout.server.js` loads the whole `salsa_styles` catalog once (server-rendered); `+layout.svelte` scopes the Fraunces display face to these routes, holds the honeycomb CSS, and runs View Transitions between atlas pages. `+page.svelte` is the honeycomb index: `clusterStyles()` groups the salsas by the feature in `?by=` (family, colour, region, heat, in Tucson) and `honeycombLayout()` places each group as a blob on one shared hex lattice, at least one empty cell apart; hexagons are absolutely positioned so re-clustering animates with a CSS transform transition. The atlas re-points the surface/ink tokens to a corn-yellow theme (toasted corn in dark mode) inside `.salsa-atlas`. `[slug]/+page.svelte` is one salsa: hero, click-to-copy palette, ingredients, history, spots serving it (from `processedTacoData`), neighbours and ←/→ paging. Helpers in `src/lib/salsa.js`
 - `src/routes/vote/new/+page.svelte` - Taco Summit creation: pick 2–6 spots, set a title, creates a `group_sessions` row and redirects to the voting page
 - `src/routes/vote/[session_id]/+page.svelte` - Taco Summit voting/results page; states: ranked-choice ballot entry, post-vote waiting with live preview, locked results with `SummitResults`; uses Supabase Realtime for live vote counts and session lock detection; anonymous via `voter_token` UUID in localStorage; creator identified by `creator_token` in localStorage
 - `src/routes/u/[username]/+page.svelte` + `+page.server.js` - Public profile page; server load looks up `profiles` by username (404 if not found); renders avatar, display name, username, bio, member-since. Recent check-ins section is a placeholder until Phase 3 ships.
@@ -387,6 +413,7 @@ Test files are co-located in src/lib/:
 - `src/lib/pendingSpots.test.js` - Tests for pending-spot processing/filtering
 - `src/lib/closedSpots.test.js` - Tests for closed-spot processing/filtering/map styling
 - `src/lib/mapping.test.js` - Tests for map layer/GeoJSON helpers and coordinate validation
+- `src/lib/salsa.test.js` - Tests for Salsa Atlas helpers (contrast on every seeded palette colour, sorting, spot lists)
 - `src/lib/authErrors.test.js` - Tests for auth error message mapping
 
 Run all tests with `pnpm test`.
