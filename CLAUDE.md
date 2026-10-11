@@ -94,6 +94,7 @@ Historical order, as originally applied:
 32. `032_add_closed_at_to_sites.sql` - Adds nullable `closed_at` to `sites` (NULL = open) for the closed-spots feature; partial index on closed rows
 33. `033_add_closed_at_to_view.sql` - Rebuilds `sites_complete` view exposing `closed_at` in the site jsonb
 34. `034_spec_link_healing.sql` - Self-healing specialty links + data health report (see Data Health below); backfills existing rows on apply
+35. `035_widen_tucson_bounds.sql` - Widens the `bad_coordinates` box south to 31.8 so Green Valley is in scope
 
 ### Data Health (self-healing)
 Migration 034 makes the database repair specialty links itself. Cards only show specials whose `spec_id_N` FK is set; cartoTacoMenuExtract promotion writes the spec *name* into `specialty_item_N` / `protein_spec_N` / `salsa_spec_N` (re-added by that repo's migration 009 after 017 dropped them, so they exist in production) and links the id.
@@ -258,9 +259,9 @@ Located in src/lib/dataWrangling.js:
 ## Coordinate Validation
 
 `hasValidCoordinates(site)` in `src/lib/stores.js` gates every map-facing store
-on a Tucson metro bounding box (lat 31.9–32.6, lon -111.4–-110.5). The same
-numbers back the `bad_coordinates` check in `data_health_report()` (migration
-034) — keep the two in sync.
+on a Tucson metro bounding box (lat 31.8–32.6, lon -111.4–-110.5; the south edge takes in Green Valley). The same
+numbers back the `bad_coordinates` check in `data_health_report()` (migrations
+034/035) — keep the two in sync.
 
 Scraped pending spots arrive with NULL coordinates when the geocoder misses.
 Mapbox reads `[null, null]` as `[0, 0]`, so a truthiness check hid the marker
