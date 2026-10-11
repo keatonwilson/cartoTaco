@@ -2,7 +2,7 @@
 -- This file is the SINGLE SOURCE OF TRUTH for the view schema.
 -- Any migration that rebuilds the view should copy from this file.
 --
--- Last updated: Migration 033 (added closed_at)
+-- Last updated: Migration 037 (added salsa.styles)
 
 DROP VIEW IF EXISTS public.sites_complete;
 
@@ -140,6 +140,20 @@ SELECT
           (CASE WHEN ss2.id IS NOT NULL THEN jsonb_build_object('id', ss2.id, 'name', ss2.name, 'short_descrip', ss2.short_descrip, 'long_descrip', ss2.long_descrip) END)
       ) AS t(spec)
       WHERE spec IS NOT NULL
+    ),
+    -- Catalog styles this spot serves (migration 037); 'color' is the style's
+    -- definitive hex. NULL when the spot has no links.
+    'styles', (
+      SELECT jsonb_agg(
+               jsonb_build_object('slug', st.slug, 'name', st.name, 'color', st.palette[1],
+                                  'heat', ss.heat, 'house_name', ss.house_name, 'note', ss.note,
+                                  -- the style's flavour profile, for taste-profile matching
+                                  'heat_min', st.heat_min, 'heat_max', st.heat_max, 'smoke', st.smoke,
+                                  'acid', st.acid, 'sweet', st.sweet, 'chunk', st.chunk, 'rich', st.rich)
+               ORDER BY st.name)
+      FROM public.site_salsas ss
+      JOIN public.salsa_styles st ON st.id = ss.style_id
+      WHERE ss.est_id = s.est_id
     )
   ) AS salsa,
 
@@ -204,4 +218,4 @@ LEFT JOIN public.salsa_spec   ss2  ON sa.spec_id_2 = ss2.id;
 GRANT SELECT ON public.sites_complete TO anon;
 GRANT SELECT ON public.sites_complete TO authenticated;
 
-COMMENT ON VIEW public.sites_complete IS 'Optimized view combining all site-related tables into a single query. Specialty data embedded as JSONB arrays via FK joins. burro aliased to burrito; unused site fields removed; spec FK columns normalized to spec_id_N. snacks_yes/snacks_perc added in migration 023. quesadilla_yes/quesadilla_perc added in migration 026. vetting_status/source/source_url added in migration 031 (unvetted spots feature). closed_at added in migration 033 (closed spots).';
+COMMENT ON VIEW public.sites_complete IS 'Optimized view combining all site-related tables into a single query. Specialty data embedded as JSONB arrays via FK joins. burro aliased to burrito; unused site fields removed; spec FK columns normalized to spec_id_N. snacks_yes/snacks_perc added in migration 023. quesadilla_yes/quesadilla_perc added in migration 026. vetting_status/source/source_url added in migration 031 (unvetted spots feature). closed_at added in migration 033 (closed spots). salsa.styles added in migration 037 (Salsa Atlas).';
