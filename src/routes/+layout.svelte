@@ -27,20 +27,29 @@
 			loadUserVibeVotes();
 		}
 
-		// Auto-start tour for first-time visitors (delay to let map render)
-		if (shouldAutoStart()) {
-			const tourTimeout = setTimeout(() => startTour(), 1500);
-			return () => {
-				if (cleanupTheme) cleanupTheme();
-				clearTimeout(tourTimeout);
-			};
-		}
-
 		// Cleanup on unmount
 		return () => {
 			if (cleanupTheme) cleanupTheme();
+			clearTimeout(tourTimeout);
 		};
 	});
+
+	// Auto-start tour for first-time visitors, but only on the map: its steps
+	// point at map-page controls, and a first visit can land on /reset-password
+	// or /auth/confirm from an email (delay to let map render)
+	let tourTimeout = null;
+	let tourAutoStarted = false;
+	$: if (isMapPage && !tourAutoStarted && !tourTimeout && shouldAutoStart()) {
+		tourTimeout = setTimeout(() => {
+			tourAutoStarted = true;
+			tourTimeout = null;
+			startTour();
+		}, 1500);
+	}
+	$: if (!isMapPage && tourTimeout) {
+		clearTimeout(tourTimeout);
+		tourTimeout = null;
+	}
 
 	// Reload user-scoped social data when authentication state changes
 	$: if ($isAuthenticated) {
