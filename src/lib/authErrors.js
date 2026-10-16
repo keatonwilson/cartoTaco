@@ -9,7 +9,7 @@
 const FALLBACK_MESSAGE = 'Something went wrong. Please try again.';
 
 export const EMAIL_RATE_LIMIT_MESSAGE =
-	"We've sent out as many confirmation emails as we can right now. Please wait a few minutes and try again.";
+	"We've sent out as many emails as we can right now. Please wait a few minutes and try again.";
 
 const GENERIC_RATE_LIMIT_MESSAGE = 'Too many attempts. Please wait a few minutes and try again.';
 
@@ -70,6 +70,19 @@ export function friendlyAuthError(error, fallback = FALLBACK_MESSAGE) {
 
 	if (error.code === 'weak_password' || message.includes('password should be at least')) {
 		return 'That password is too short. Please use at least 6 characters.';
+	}
+
+	if (error.code === 'same_password' || message.includes('should be different from the old password')) {
+		return 'That is already your password. Pick a new one.';
+	}
+
+	if (error.code === 'otp_expired' || message.includes('invalid or has expired')) {
+		return 'That link is invalid or has expired. Request a new one and use the newest email.';
+	}
+
+	// PKCE links (Supabase's default email template) only work in the browser that requested them
+	if (message.includes('code verifier')) {
+		return 'Open the link in the same browser you requested it from, or request a new one.';
 	}
 
 	if (message.includes('unable to validate email address') || message.includes('invalid email')) {
