@@ -11,6 +11,7 @@
   import Card from './Card.svelte';
   import PendingSpotCard from './PendingSpotCard.svelte';
   import FavoriteButton from './FavoriteButton.svelte';
+  import IconHighlight from './IconHighlight.svelte';
   import { selectedSite } from '$lib/stores';
   import { getOpenStatus, minuteClock } from '$lib/hours';
   import {
@@ -91,7 +92,13 @@
         </button>
       </div>
 
-      <h2 class="spot-name">{site.name || 'Unknown Location'}</h2>
+      <div class="name-row">
+        <h2 class="spot-name">{site.name || 'Unknown Location'}</h2>
+        <!-- Restaurant / stand / truck, this spot's type lit -->
+        <div class="type-icons">
+          <IconHighlight type="siteType" data={site.type || 'unknown'} />
+        </div>
+      </div>
 
       <div class="head-row">
         {#if site.isClosed}
@@ -178,8 +185,38 @@
     white-space: nowrap;
   }
 
+  .name-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .type-icons {
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+
+  .type-icons :global(.icons) {
+    justify-content: flex-start;
+    gap: 6px;
+    margin: 0;
+  }
+
+  .type-icons :global(.site-icon) {
+    width: 30px;
+    height: 30px;
+  }
+
+  /* The icon tooltips would sit under the header's top edge; show them below */
+  .type-icons :global(.tooltip) {
+    bottom: auto;
+    top: calc(100% + 4px);
+  }
+
   .spot-name {
     margin: 0;
+    min-width: 0;
     font-family: var(--font-serif);
     font-weight: 650;
     font-size: 30px;

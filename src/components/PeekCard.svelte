@@ -10,21 +10,33 @@
   import { getOpenStatus, minuteClock } from '$lib/hours';
   import { openSpot, cancelPeekHide, schedulePeekHide, spotPanelWidth } from '$lib/mapping';
   import { trailModeActive, trailStops, addStop, removeStop } from '$lib/trailStore';
-  import { SEQUENTIAL } from '$lib/chartTheme';
   import { isMobile, screenWidth } from '$lib/deviceDetection';
 
   /** Mapbox GL map instance */
   export let map;
 
   const TYPE_LABELS = { 'Brick and Mortar': 'Restaurant', Stand: 'Stand', Truck: 'Food truck' };
-  // Same ladder ramp as SpiceGauge: the two near-white steps are dropped
-  const RAMP = SEQUENTIAL.slice(2);
-  const notchColor = (i) => RAMP[Math.round((i / 9) * (RAMP.length - 1))];
+  const TORTILLA_LABELS = { corn: 'corn', flour: 'flour', both: 'corn & flour' };
+
+  // What sets the spot apart, all from processedTacoData (nothing stored):
+  // its first listed specialty (items come before proteins and salsas), then
+  // salsa count and tortillas as one short facts line
+  function quickFacts(s) {
+    const facts = [];
+    if (s.salsaCount) facts.push(`${s.salsaCount} ${s.salsaCount === 1 ? 'salsa' : 'salsas'}`);
+    const tortilla = TORTILLA_LABELS[String(s.tortillaType || '').toLowerCase()];
+    if (tortilla) {
+      const text = `${s.handmadeTortilla ? 'handmade ' : ''}${tortilla} tortillas`;
+      facts.push(text.charAt(0).toUpperCase() + text.slice(1));
+    }
+    return facts;
+  }
 
   $: peek = $isMobile ? null : $peekSite;
   $: site = peek?.site;
   $: status = site ? getOpenStatus(site.startHours || [], site.endHours || [], $minuteClock) : null;
-  $: heat = Math.max(0, Math.min(10, Math.round(site?.heatOverall || 0)));
+  $: knownFor = site?.specialties?.find((s) => s?.name)?.name || null;
+  $: facts = site ? quickFacts(site) : [];
   $: proteins = (site?.topFiveProteinItems || [])
     .map((name, i) => ({ name, value: site.topFiveProteinValues?.[i] || 0 }))
     .filter((p) => p.value > 0)
@@ -139,15 +151,12 @@
         {:else if site.isClosed}
           <p class="note">Permanently closed. The card keeps what we recorded.</p>
         {:else}
-          <div class="heat" aria-label="Heat {site.heatOverall || 0} out of 10">
-            <span class="heat-label">Heat</span>
-            <span class="ladder">
-              {#each Array(10) as _, i}
-                <span class="notch" style:background={i < heat ? notchColor(i) : null}></span>
-              {/each}
-            </span>
-            <span class="heat-value">{site.heatOverall || 0}</span>
-          </div>
+          {#if knownFor}
+            <p class="known-for"><span class="label">Known for</span> {knownFor}</p>
+          {/if}
+          {#if facts.length}
+            <p class="facts">{facts.join(' · ')}</p>
+          {/if}
           {#if proteins.length}
             <div class="chips">
               {#each proteins as p}
@@ -278,37 +287,27 @@
     color: var(--ink-2);
   }
 
-  .heat {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  .known-for {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.35;
+    font-weight: 600;
+    color: var(--ink-1);
   }
 
-  .heat-label {
-    font: 600 10px/1 var(--font-mono);
+  .known-for .label {
+    display: block;
+    margin-bottom: 1px;
+    font: 600 10px/1.3 var(--font-mono);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--ink-3);
   }
 
-  .ladder {
-    display: flex;
-    flex: 1;
-    gap: 2px;
-  }
-
-  .notch {
-    flex: 1;
-    height: 7px;
-    border-radius: 2px;
-    background: var(--line-1);
-  }
-
-  .heat-value {
-    font-size: 12px;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    color: var(--ink-1);
+  .facts {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--ink-2);
   }
 
   .chips {

@@ -202,10 +202,10 @@ describe('closeSpot', () => {
 });
 
 describe('spotPanelWidth', () => {
-  it('scales with the viewport between 340 and 440px', () => {
-    expect(spotPanelWidth(800)).toBe(340);
-    expect(spotPanelWidth(1200)).toBe(384);
-    expect(spotPanelWidth(1920)).toBe(440);
+  it('scales with the viewport between 360 and 560px', () => {
+    expect(spotPanelWidth(800)).toBe(360);
+    expect(spotPanelWidth(1280)).toBe(486);
+    expect(spotPanelWidth(1920)).toBe(560);
   });
 });
 

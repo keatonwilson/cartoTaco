@@ -696,6 +696,11 @@
     height: 240px;
   }
 
+  /* Specialty cards get most of the panel's width, with the next one peeking in */
+  .panel-layout :global(.carousel-item) {
+    flex-basis: 85%;
+  }
+
   .radar-toggle {
     display: inline-flex;
     padding: 2px;

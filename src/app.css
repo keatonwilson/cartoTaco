@@ -75,10 +75,6 @@
 	   overlays (filter bar, Mapbox controls) offset from this instead of
 	   hardcoding a copy of it. */
 	--header-h: 66px;
-
-	/* Desktop/tablet spot panel (SpotPanel.svelte). mapping.js reads the
-	   resolved width to pad the camera, so the two always agree. */
-	--spot-panel-w: clamp(340px, 32vw, 440px);
 }
 
 :root.dark {

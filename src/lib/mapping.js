@@ -71,7 +71,7 @@ function canHover() {
  * width and the camera pads by it, so the two can't drift apart.
  */
 export function spotPanelWidth(viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1280) {
-  return Math.round(Math.min(440, Math.max(340, viewportWidth * 0.32)));
+  return Math.round(Math.min(560, Math.max(360, viewportWidth * 0.38)));
 }
 
 // --header-h is kept in sync with the real header by Header.svelte

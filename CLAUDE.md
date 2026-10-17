@@ -236,7 +236,7 @@ The map implementation (src/lib/mapping.js) uses Mapbox GL with clustering:
 - `openSpot(map, site)` - Open a spot's card from outside the map handlers (the peek card)
 - `closeSpot(map)` - Close the open spot and give the map back its full width (see Interaction)
 - `computeMapPadding()` / `syncMapPadding(map)` - Camera padding for whatever covers the map (mobile sheet, spot panel, trail/comparison tray). Every overlay-aware camera move uses it; Map.svelte re-syncs on store/resize changes, skipping mid-animation
-- `spotPanelWidth(vw)` - The panel's width (340–440px, 32vw). SpotPanel renders at it and the camera pads by it
+- `spotPanelWidth(vw)` - The panel's width (360–560px, 38vw). SpotPanel renders at it and the camera pads by it
 - `updateTrailLayers(map, stops)` - Render numbered trail stops
 - `updateTrailRoute(map, routeGeojson)` - Render dashed route line from Mapbox Directions API
 - `clearTrailLayers(map)` - Remove all trail visualization
@@ -299,8 +299,8 @@ and `flyToSite()`.
 
 ### Main Components (src/components/)
 - `Card.svelte` - Full spot card. `variant`: `'sheet'` (mobile bottom sheet) or `'panel'` (desktop/tablet side panel: one column of labelled sections split by hairlines with a staggered entrance, Menu/Protein radar behind a toggle). Defaults from `isMobile`
-- `SpotPanel.svelte` - Desktop/tablet spot panel docked left under the header, full height, own scroll. Sticky header: mono kicker (type · region), Fraunces name, Tucson-time status, favorite/compare/close. Renders `Card variant="panel"` or `PendingSpotCard hideHeader`, keyed by spot so swaps re-run the entrance
-- `PeekCard.svelte` - Small floating summary over the hovered pin (status, name, heat ladder, top 3 proteins; pending/closed notes). "Open card" opens the panel, morphing the name across with a view transition where supported; in trail mode it offers "Add as stop N"/"Remove stop N". Placed above the pin, flipped below near the top, kept clear of the panel
+- `SpotPanel.svelte` - Desktop/tablet spot panel docked left under the header, full height, own scroll. Sticky header: mono kicker (type · region), Fraunces name with the restaurant/stand/truck icons beside it, Tucson-time status, favorite/compare/close. Specialty cards widen to 85% of the panel. Renders `Card variant="panel"` or `PendingSpotCard hideHeader`, keyed by spot so swaps re-run the entrance
+- `PeekCard.svelte` - Small floating summary over the hovered pin: status, name, "Known for" (first listed specialty), a quick-facts line (salsa count, handmade/corn/flour tortillas) and top 3 proteins; pending/closed notes instead for those spots. Everything is derived at render from `processedTacoData`, nothing stored. "Open card" opens the panel, morphing the name across with a view transition where supported; in trail mode it offers "Add as stop N"/"Remove stop N". Placed above the pin, flipped below near the top, kept clear of the panel
 - `CollapsibleSection.svelte` - Reusable accordion/collapsible section
 - `ContactInfo.svelte` - Displays contact links (phone, website, Instagram, Facebook)
 - `DirectionsButton.svelte` - Opens Google Maps directions to an establishment
