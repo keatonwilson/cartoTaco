@@ -195,9 +195,6 @@
   .type-icons {
     flex-shrink: 0;
     padding-top: 2px;
-    /* Above the status/actions row, which the tooltip opens over */
-    position: relative;
-    z-index: 2;
   }
 
   .type-icons :global(.icons) {
@@ -211,10 +208,10 @@
     height: 30px;
   }
 
-  /* The icon tooltips would sit under the header's top edge; show them below */
+  /* The kicker above already names the type in words, and a hover tooltip
+     here can only land on the name or the action buttons */
   .type-icons :global(.tooltip) {
-    bottom: auto;
-    top: calc(100% + 4px);
+    display: none;
   }
 
   .spot-name {
