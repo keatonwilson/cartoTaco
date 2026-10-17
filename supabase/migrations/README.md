@@ -37,7 +37,7 @@ don't read this folder's order as the historical one.
 
 ## Migration Files
 
-Run in order. Each migration depends on the previous ones.
+Each migration depends on the previous ones.
 
 | # | File | Purpose |
 |---|------|---------|
@@ -64,6 +64,16 @@ Run in order. Each migration depends on the previous ones.
 | 021 | `021_create_group_sessions.sql` | Creates `group_sessions` table for Taco Summit (`id`, `creator_token`, `site_ids`, `title`, `closed_at`) with open RLS |
 | 022 | `022_create_group_votes.sql` | Creates `group_votes` table for ranked-choice ballots (`session_id`, `voter_token`, `est_id`, `rank`) with unique constraint, index, and open RLS |
 | 023 | `023_add_snacks_menu_type.sql` | Adds snacks as a menu type |
+| 024 | `024_enable_rls_staging_extractions.sql` | Enables RLS on `staging_extractions` (admin data-entry helper); authenticated-only |
+| 025 | `025_fix_sites_complete_security_invoker.sql` | Sets `security_invoker = true` on `sites_complete` |
+| 026 | `026_add_quesadilla_to_view.sql` | Adds `quesadilla_yes` / `quesadilla_perc` to the view |
+| 027 | `027_create_vibe_votes.sql` | Creates `vibe_votes` for the anti-review feature; public SELECT, own-row INSERT/DELETE |
+| 028 | `028_extend_profiles.sql` | Adds `username` and `bio` to `profiles`, auto-generates usernames, opens public SELECT |
+| 029 | `029_create_avatars_bucket.sql` | Creates the `avatars` Storage bucket with own-folder write policies |
+| 030 | `030_add_vetting_status_to_sites.sql` | Adds `vetting_status` and scrape provenance columns to `sites`; cascade FKs from favorites/vibe votes |
+| 031 | `031_add_vetting_status_to_view.sql` | Exposes `vetting_status` / `source` / `source_url` in the view |
+| 032 | `032_add_closed_at_to_sites.sql` | Adds nullable `closed_at` to `sites` (NULL = open) |
+| 033 | `033_add_closed_at_to_view.sql` | Exposes `closed_at` in the view |
 | 034 | `034_spec_link_healing.sql` | Self-healing specialty links (write-time triggers, `heal_spec_links()` sweep, `heal_log` audit table) + read-only `data_health_report()`; backfills existing rows |
 | 035 | `035_widen_tucson_bounds.sql` | Moves the `bad_coordinates` south edge from 31.9 to 31.8 so Green Valley is in scope (replaces `data_health_report()`; first migration applied by CI, so it carries a real timestamp) |
 
