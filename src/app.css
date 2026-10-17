@@ -1,6 +1,9 @@
 /* Self-hosted variable fonts (F2) */
 @import '@fontsource-variable/inter';
 @import '@fontsource-variable/outfit';
+/* Fraunces: the editorial serif, used sparingly (spot names on the panel and
+   peek card). Same face the Salsa Atlas uses. */
+@import '@fontsource-variable/fraunces/opsz.css';
 
 @tailwind base;
 @tailwind components;
@@ -16,6 +19,8 @@
 	/* Type */
 	--font-display: 'Outfit Variable', 'Inter Variable', system-ui, sans-serif;
 	--font-text: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	--font-serif: 'Fraunces Variable', Georgia, 'Times New Roman', serif;
+	--font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
 	/* Surfaces (page → recessed) */
 	--surface-1: #ffffff;
@@ -40,6 +45,7 @@
 	/* Status — reserved for state, never chart series */
 	--success: #10b981;
 	--error: #ef4444;
+	--warning: #d97706;
 
 	/* Pending (unvetted spots) — slate, outside all data palettes on purpose */
 	--pending: #94a3b8;
@@ -69,6 +75,10 @@
 	   overlays (filter bar, Mapbox controls) offset from this instead of
 	   hardcoding a copy of it. */
 	--header-h: 66px;
+
+	/* Desktop/tablet spot panel (SpotPanel.svelte). mapping.js reads the
+	   resolved width to pad the camera, so the two always agree. */
+	--spot-panel-w: clamp(340px, 32vw, 440px);
 }
 
 :root.dark {
@@ -86,6 +96,8 @@
 	--accent: #fe795d;
 	--accent-hover: #fe6a4a;
 	--accent-soft: rgba(254, 121, 93, 0.18);
+
+	--warning: #f59e0b;
 
 	--pending: #64748b;
 	--pending-soft: rgba(100, 116, 139, 0.25);
