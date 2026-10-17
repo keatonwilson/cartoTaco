@@ -1,37 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get, writable } from 'svelte/store';
 
-// Track every popup the module creates so tests can inspect/close them
-const h = vi.hoisted(() => ({ popups: [] }));
-
-vi.mock('mapbox-gl', () => {
-  class Popup {
-    constructor(options) {
-      this.options = options;
-      this.handlers = {};
-      this.removed = false;
-      h.popups.push(this);
-    }
-    setLngLat(lngLat) { this.lngLat = lngLat; return this; }
-    setDOMContent(el) { this.content = el; return this; }
-    addTo(map) { this.map = map; return this; }
-    on(event, cb) { (this.handlers[event] ||= []).push(cb); return this; }
-    remove() {
-      this.removed = true;
-      (this.handlers.close || []).forEach((cb) => cb());
-    }
-  }
-  return { default: { Popup } };
-});
-
-// Popup cards render from the selectedSite store; a stub is enough here
-vi.mock('../components/Card.svelte', () => ({
-  default: class { $destroy() {} }
-}));
-vi.mock('../components/PendingSpotCard.svelte', () => ({
-  default: class { $destroy() {} }
-}));
-
 vi.mock('./supabaseBrowser', () => ({ supabaseBrowser: null }));
 vi.mock('./favoritesStore', async () => {
   const { writable: w } = await import('svelte/store');
@@ -42,27 +11,41 @@ vi.mock('./deviceDetection', async () => {
   return { deviceType: w('desktop'), isMobile: w(false) };
 });
 
-import { flyToSite, sitesToGeoJSON } from './mapping.js';
+import { flyToSite, sitesToGeoJSON, closeSpot, spotPanelWidth } from './mapping.js';
 import { hasValidCoordinates } from './stores.js';
 import { selectedSite } from './stores.js';
 import { deviceType } from './deviceDetection';
 
 /**
  * Minimal Mapbox GL stand-in: tracks camera calls and lets a test decide when
- * the flight lands.
+ * the flight lands. The camera state is just enough for the panel's
+ * open/close bookkeeping.
  */
-function createFakeMap() {
+function createFakeMap({ zoom = 10 } = {}) {
   const listeners = {};
   return {
     moving: false,
+    zoom,
+    center: { lng: -110.97, lat: 32.16 },
+    padding: { top: 0, bottom: 0, left: 0, right: 0 },
     flyToCalls: [],
     easeToCalls: [],
+    jumpToCalls: [],
     isMoving() { return this.moving; },
+    getZoom() { return this.zoom; },
+    getCenter() { return this.center; },
+    getPadding() { return this.padding; },
+    getContainer() { return { clientWidth: 1440, clientHeight: 900 }; },
+    unproject([x, y]) { return { x, y }; },
     flyTo(options) {
       this.flyToCalls.push(options);
       this.moving = true;
     },
-    easeTo(options) { this.easeToCalls.push(options); },
+    easeTo(options) {
+      this.easeToCalls.push(options);
+      if (options.zoom !== undefined) this.zoom = options.zoom;
+    },
+    jumpTo(options) { this.jumpToCalls.push(options); },
     once(event, cb) { (listeners[event] ||= []).push(cb); },
     off(event, cb) {
       listeners[event] = (listeners[event] || []).filter((fn) => fn !== cb);
@@ -70,6 +53,7 @@ function createFakeMap() {
     // Finish the current flight, firing (and clearing) moveend listeners
     settle() {
       this.moving = false;
+      if (this.flyToCalls.length) this.zoom = this.flyToCalls.at(-1).zoom;
       const queued = listeners.moveend || [];
       listeners.moveend = [];
       queued.forEach((cb) => cb());
@@ -83,28 +67,26 @@ const siteB = { est_id: 2, name: 'Taco B', longitude: -111.0, latitude: 32.3 };
 
 describe('flyToSite', () => {
   beforeEach(() => {
-    h.popups.length = 0;
-    selectedSite.set(null);
+    closeSpot();
     deviceType.set('desktop');
-    // createPopupContent needs a document; no DOM env is configured for tests
-    globalThis.document = { createElement: () => ({}) };
   });
 
-  it('opens the card for the flown-to site', () => {
+  it('opens the panel for the flown-to site, centred beside it', () => {
     const map = createFakeMap();
 
     flyToSite(map, siteA);
     expect(get(selectedSite)).toBe(null); // nothing selected mid-flight
+    expect(map.flyToCalls[0].padding.left).toBe(spotPanelWidth());
     map.settle();
 
     expect(get(selectedSite)).toEqual(siteA);
-    expect(h.popups).toHaveLength(1);
-    expect(h.popups[0].lngLat).toEqual([siteA.longitude, siteA.latitude]);
+    const ease = map.easeToCalls.at(-1);
+    expect(ease.center).toEqual([siteA.longitude, siteA.latitude]);
+    expect(ease.padding.left).toBe(spotPanelWidth());
   });
 
   // Regression: issue #55 — every "Surprise Me" after the first one landed on
-  // a card reading "No location selected", because removing the previous popup
-  // fired its close handler and cleared selectedSite after the new site was set
+  // a card reading "No location selected"
   it('keeps the new site selected on repeat fly-tos', () => {
     const map = createFakeMap();
 
@@ -113,12 +95,10 @@ describe('flyToSite', () => {
     expect(get(selectedSite)).toEqual(siteA);
 
     flyToSite(map, siteB);
+    expect(get(selectedSite)).toEqual(siteA); // old card stays up mid-flight
     map.settle();
 
     expect(get(selectedSite)).toEqual(siteB);
-    expect(h.popups[0].removed).toBe(true);
-    expect(h.popups[1].removed).toBe(false);
-    expect(h.popups[1].lngLat).toEqual([siteB.longitude, siteB.latitude]);
   });
 
   it('survives many consecutive fly-tos', () => {
@@ -141,7 +121,6 @@ describe('flyToSite', () => {
     map.settle();
 
     expect(get(selectedSite)).toEqual(siteB);
-    expect(h.popups).toHaveLength(1);
   });
 
   it('opens the card when the flight resolves synchronously (reduced motion)', () => {
@@ -154,17 +133,6 @@ describe('flyToSite', () => {
     flyToSite(map, siteA);
 
     expect(get(selectedSite)).toEqual(siteA);
-    expect(h.popups).toHaveLength(1);
-  });
-
-  it('clears the selection when the user closes the popup', () => {
-    const map = createFakeMap();
-
-    flyToSite(map, siteA);
-    map.settle();
-    h.popups[0].handlers.close.forEach((cb) => cb());
-
-    expect(get(selectedSite)).toBe(null);
   });
 
   it('selects the site for the bottom sheet on mobile', () => {
@@ -176,8 +144,68 @@ describe('flyToSite', () => {
 
     flyToSite(map, siteB);
     expect(get(selectedSite)).toEqual(siteB);
-    expect(h.popups).toHaveLength(0);
+    expect(map.flyToCalls).toHaveLength(0);
     expect(map.easeToCalls).toHaveLength(2);
+    expect(map.easeToCalls[0].padding.left).toBe(0);
+  });
+});
+
+describe('closeSpot', () => {
+  beforeEach(() => {
+    closeSpot();
+    deviceType.set('desktop');
+  });
+
+  it('returns to the view from before the panel when opening zoomed in', () => {
+    const map = createFakeMap({ zoom: 10 });
+    const before = map.getCenter();
+
+    flyToSite(map, siteA);
+    map.settle();
+    closeSpot(map);
+
+    expect(get(selectedSite)).toBe(null);
+    const ease = map.easeToCalls.at(-1);
+    expect(ease).toMatchObject({ center: before, zoom: 10 });
+    expect(ease.padding.left).toBe(0);
+  });
+
+  it('only drops the padding, in place, when opening did not zoom in', () => {
+    // Already at street level: the flight zooms out to 15, not in
+    const map = createFakeMap({ zoom: 16 });
+
+    flyToSite(map, siteA);
+    map.settle();
+    map.easeToCalls.length = 0;
+    closeSpot(map);
+
+    expect(map.easeToCalls).toHaveLength(0);
+    const jump = map.jumpToCalls.at(-1);
+    expect(jump.padding.left).toBe(0);
+    // The new centre is whatever sits mid-screen, so nothing slides
+    expect(jump.center).toEqual({ x: 720, y: 450 });
+  });
+
+  it('closes when something else clears the selection', () => {
+    const map = createFakeMap();
+
+    flyToSite(map, siteA);
+    map.settle();
+    selectedSite.set(null);
+
+    expect(get(selectedSite)).toBe(null);
+    // No map attached through updateMarkers here, so no camera call — but a
+    // fresh open must start a fresh session rather than reuse the stale one
+    flyToSite(map, siteB);
+    expect(map.flyToCalls.at(-1).padding.left).toBe(spotPanelWidth());
+  });
+});
+
+describe('spotPanelWidth', () => {
+  it('scales with the viewport between 340 and 440px', () => {
+    expect(spotPanelWidth(800)).toBe(340);
+    expect(spotPanelWidth(1200)).toBe(384);
+    expect(spotPanelWidth(1920)).toBe(440);
   });
 });
 

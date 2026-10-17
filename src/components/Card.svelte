@@ -26,8 +26,14 @@
     removeFromComparison
   } from "$lib/comparisonStore.js";
 
+  /** 'sheet' (mobile bottom sheet) or 'panel' (desktop/tablet side panel) */
+  export let variant = null;
+  $: layout = variant ?? ($isMobile ? 'sheet' : 'panel');
+
   // Local state
   let showLongDescription = false;
+  /** Which radar the panel layout shows */
+  let radarView = 'menu';
 
   // Closed spots keep their recorded data as a historical record, but lose the
   // affordances that assume you might go: vibe voting, comparison, directions.
@@ -92,7 +98,7 @@
     <p>{errorMessage}</p>
   </div>
 {:else}
-  {#if $isMobile}
+  {#if layout === 'sheet'}
     <!-- ========== MOBILE LAYOUT (unchanged) ========== -->
     <div id="popup-content">
       <div class="left-panel">
@@ -241,61 +247,39 @@
       </div>
     </div>
   {:else}
-    <!-- ========== DESKTOP LAYOUT (compact, no-scroll) ========== -->
-    <div id="popup-content" class="desktop-layout">
+    <!-- ========== PANEL LAYOUT (desktop/tablet side panel) ==========
+         One reading column. The name and actions live in SpotPanel's sticky
+         header, so this is just the body. Each section is a labelled band
+         split by a hairline; --i staggers the entrance. -->
+    <div id="popup-content" class="panel-layout">
       {#if isClosed}
         <ClosedBanner closedAt={$selectedSite.closedAt} />
       {/if}
 
-      <!-- Row 1: Header bar -->
-      <div class="desktop-header">
-        <div class="desktop-header-left">
-          <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">
-            {$selectedSite.name || 'Unknown Location'}
-          </h2>
-          <IconHighlight type="siteType" data={$selectedSite.type || 'unknown'} />
-        </div>
-        <div class="desktop-header-actions">
-          <FavoriteButton estId={$selectedSite.est_id} size="sm" />
-          {#if !isClosed}
-            <button
-              class="compare-btn"
-              class:compare-active={isInComparison}
-              disabled={!isInComparison && comparisonFull}
-              on:click={toggleComparison}
-              title={isInComparison ? 'Remove from comparison' : comparisonFull ? 'Max 3 spots' : 'Add to comparison'}
-            >
-              {isInComparison ? '− Compare' : '+ Compare'}
-            </button>
-          {/if}
-        </div>
-      </div>
+      <section class="panel-section" style="--i:0">
+        <p class="panel-lede">{$selectedSite.shortDescription || 'No description available'}</p>
+        {#if $selectedSite.longDescription}
+          <div class="long-description" class:visible={showLongDescription}>
+            <p class="panel-body">{$selectedSite.longDescription}</p>
+          </div>
+          <button
+            class="expand-button"
+            on:click={toggleLongDescription}
+            aria-expanded={showLongDescription}
+          >
+            {showLongDescription ? 'Show less' : 'Read more'}
+          </button>
+        {/if}
+      </section>
 
-      <!-- Row 2: Description (full width, short with expand) -->
-      <div class="description desktop-description">
-        <p class="dark:text-gray-300">{$selectedSite.shortDescription || 'No description available'}</p>
-        <div class="long-description" class:visible={showLongDescription}>
-          <p class="dark:text-gray-300">{$selectedSite.longDescription || 'No detailed description available'}</p>
-        </div>
-        <button
-          class="expand-button"
-          on:click={toggleLongDescription}
-          aria-expanded={showLongDescription}
-          aria-label={showLongDescription ? "Show less description" : "Read more description"}
-        >
-          {showLongDescription ? "Show less" : "Read more"}
-        </button>
-      </div>
-
-      <!-- Row 3: Hours (always visible, unchanged) + quick contact actions beside it -->
-      <div class="desktop-hours-row">
-        <div class="desktop-hours">
-          <HoursOpen
-            startHours={$selectedSite.startHours || {}}
-            endHours={$selectedSite.endHours || {}}
-          />
-        </div>
-        <div class="desktop-contact">
+      <section class="panel-section" style="--i:1">
+        <h3 class="panel-label">Hours</h3>
+        <HoursOpen
+          showTitle={false}
+          startHours={$selectedSite.startHours || {}}
+          endHours={$selectedSite.endHours || {}}
+        />
+        <div class="panel-contact">
           <ContactInfo
             compact={true}
             showDirections={!isClosed}
@@ -309,99 +293,103 @@
             name={$selectedSite.name || 'Taco Location'}
           />
         </div>
-      </div>
+      </section>
 
-      <!-- Row 4: Vibe votes (anti-review) + aggregate fingerprint, centered -->
-      {#if !isClosed}
-        <div class="desktop-vibe-row">
-          <span class="desktop-vibe-label">Vibe Check:</span>
-          <VibeVotes estId={$selectedSite.est_id} compact={true} />
-          <VibeFingerprint estId={$selectedSite.est_id} />
-        </div>
-      {/if}
+      <section class="panel-section" style="--i:2">
+        <h3 class="panel-label">Heat</h3>
+        <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} percentile={heatPercentile} />
+        <ContextStrip
+          values={cityHeats}
+          value={$selectedSite.heatOverall || 0}
+          min={0}
+          max={10}
+          label="Every Tucson spot's heat — this one highlighted"
+        />
+      </section>
 
-      <!-- Row 5: Two radar charts side by side. Protein prep styles sit
-           directly under the Protein radar so they read as belonging to it;
-           the Menu radar is vertically centered to match the column height. -->
-      <div class="desktop-charts-row">
-        <div class="desktop-chart-col">
-          <h2 class="text-xs font-semibold text-gray-800 dark:text-gray-100 text-center">Menu</h2>
-          <div class="desktop-radar-center">
-            <div class="desktop-radar-container">
-              <RadarChart
-                labels={$selectedSite.topFiveMenuItems || []}
-                data={$selectedSite.topFiveMenuValues || []}
-                max={menuRadarMax}
-              />
-            </div>
-          </div>
-        </div>
-        <div class="desktop-chart-col">
-          <h2 class="text-xs font-semibold text-gray-800 dark:text-gray-100 text-center">Protein</h2>
-          <div class="desktop-radar-container">
-            <RadarChart
-              labels={$selectedSite.topFiveProteinItems || []}
-              data={$selectedSite.topFiveProteinValues || []}
-              max={proteinRadarMax}
-            />
-          </div>
-          {#if $selectedSite.proteinStyles && Object.keys($selectedSite.proteinStyles).length > 0}
-            <div class="desktop-protein-styles">
-              {#each Object.entries($selectedSite.proteinStyles) as [protein, styles]}
-                <div class="protein-style-row">
-                  <span class="protein-label">{protein}</span>
-                  <div class="style-chips">
-                    {#each styles as style}
-                      <span class="style-chip">{style}</span>
-                    {/each}
-                  </div>
-                </div>
-              {/each}
-            </div>
-          {/if}
-        </div>
-      </div>
+      <section class="panel-section" style="--i:3">
+        <h3 class="panel-label">Salsas</h3>
+        <SalsaCount
+          value={$selectedSite.salsaCount || 0}
+          meanValue={$summaryStats.avgSalsaNum || 0}
+          maxValue={$summaryStats.maxSalsaNum || 0}
+          percentile={salsaPercentile}
+        />
+        <SalsaLineup
+          salsaVarieties={$selectedSite.salsaVarieties || []}
+          otherSalsas={$selectedSite.otherSalsas || []}
+        />
+      </section>
 
-      <!-- Row 6: Spice + Tortilla + Salsa in one compact strip -->
-      <div class="desktop-stats-row">
-        <div class="desktop-stat-item">
-          <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} percentile={heatPercentile} />
-        </div>
-        <div class="desktop-stat-item desktop-tortilla-item">
-          <h2 class="text-xs font-semibold text-gray-800 dark:text-gray-100 mb-1">Tortilla</h2>
+      <section class="panel-section" style="--i:4">
+        <h3 class="panel-label">Tortilla</h3>
+        <div class="tortilla-row">
           <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
           {#if $selectedSite.handmadeTortilla}
             <HandmadeBadge />
           {/if}
         </div>
-        <div class="desktop-stat-item desktop-salsa-item">
-          <SalsaCount
-            value={$selectedSite.salsaCount || 0}
-            meanValue={$summaryStats.avgSalsaNum || 0}
-            maxValue={$summaryStats.maxSalsaNum || 0}
-            percentile={salsaPercentile}
-          />
+      </section>
+
+      {#if !isClosed}
+        <section class="panel-section" style="--i:5">
+          <h3 class="panel-label">Vibe check</h3>
+          <VibeVotes estId={$selectedSite.est_id} compact={true} />
+          <div class="vibe-fingerprint-wrap">
+            <VibeFingerprint estId={$selectedSite.est_id} />
+          </div>
+        </section>
+      {/if}
+
+      <!-- One radar at a time behind a toggle: side by side they'd be too
+           narrow for their axis labels at panel width -->
+      <section class="panel-section" style="--i:6">
+        <div class="panel-label-row">
+          <h3 class="panel-label">What they serve</h3>
+          <div class="radar-toggle" role="group" aria-label="Chart">
+            <button type="button" aria-pressed={radarView === 'menu'} on:click={() => (radarView = 'menu')}>Menu</button>
+            <button type="button" aria-pressed={radarView === 'protein'} on:click={() => (radarView = 'protein')}>Protein</button>
+          </div>
         </div>
-      </div>
+        <div class="panel-radar">
+          {#if radarView === 'menu'}
+            <RadarChart
+              labels={$selectedSite.topFiveMenuItems || []}
+              data={$selectedSite.topFiveMenuValues || []}
+              max={menuRadarMax}
+            />
+          {:else}
+            <RadarChart
+              labels={$selectedSite.topFiveProteinItems || []}
+              data={$selectedSite.topFiveProteinValues || []}
+              max={proteinRadarMax}
+            />
+          {/if}
+        </div>
+        {#if radarView === 'protein' && $selectedSite.proteinStyles && Object.keys($selectedSite.proteinStyles).length > 0}
+          <div class="protein-styles">
+            {#each Object.entries($selectedSite.proteinStyles) as [protein, styles]}
+              <div class="protein-style-row">
+                <span class="protein-label">{protein}</span>
+                <div class="style-chips">
+                  {#each styles as style}
+                    <span class="style-chip">{style}</span>
+                  {/each}
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </section>
 
-      <!-- Row 7: Salsa lineup (per-salsa data from the salsa table) -->
-      <div class="desktop-salsa-lineup">
-        <span class="desktop-lineup-label">Salsas:</span>
-        <SalsaLineup
-          salsaVarieties={$selectedSite.salsaVarieties || []}
-          otherSalsas={$selectedSite.otherSalsas || []}
-        />
-      </div>
-
-      <!-- Row 8: Specialties -->
-      <div class="desktop-specialties">
-        <h2 class="text-xs font-semibold text-gray-800 dark:text-gray-100 mb-1">Specialties</h2>
+      <section class="panel-section" style="--i:7">
+        <h3 class="panel-label">Specialties</h3>
         {#if $selectedSite.specialties && $selectedSite.specialties.length > 0}
           <SpecCarousel specialties={$selectedSite.specialties} />
         {:else}
-          <p class="text-sm text-gray-500 italic">No specialty information available for this location.</p>
+          <p class="panel-empty">No specialty information for this spot yet.</p>
         {/if}
-      </div>
+      </section>
     </div>
   {/if}
 {/if}
@@ -623,268 +611,121 @@
     color: #9ca3af;
   }
 
-  .desktop-vibe-row {
+  /* ===== Panel layout (desktop/tablet side panel) ===== */
+  .panel-layout {
+    gap: 0;
+  }
+
+  .panel-section {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 5px 0;
-    margin-top: 2px;
-    flex-wrap: wrap;
-    border-top: 1px solid #e5e7eb;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px 0;
+    border-top: 1px solid var(--line-1);
+    animation: panel-section-in 0.36s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation-delay: calc(var(--i, 0) * 40ms);
   }
 
-  :global(.dark) .desktop-vibe-row {
-    border-top-color: #374151;
+  .panel-section:first-of-type {
+    border-top: none;
+    padding-top: 4px;
   }
 
-  .desktop-vibe-label {
-    font-size: 11px;
-    font-weight: 600;
-    color: #6b7280;
-    flex-shrink: 0;
+  @keyframes panel-section-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
   }
 
-  :global(.dark) .desktop-vibe-label {
-    color: #9ca3af;
+  @media (prefers-reduced-motion: reduce) {
+    .panel-section {
+      animation: none;
+    }
   }
 
-  /* ========== DESKTOP LAYOUT STYLES ========== */
-
-  .desktop-layout {
-    gap: 4px;
+  /* Mono caps label, the Salsa Atlas kicker voice */
+  .panel-label {
+    margin: 0;
+    font: 600 11px/1.3 var(--font-mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-2);
   }
 
-  /* Row 1: Header — right padding avoids overlap with popup close button */
-  .desktop-header {
+  .panel-label-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    padding: 4px 40px 4px 0;
-  }
-
-  .desktop-header-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex: 1;
-    min-width: 0;
-  }
-
-  .desktop-header-left h2 {
-    margin: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  /* Make type icons smaller inline in desktop header */
-  .desktop-header-left :global(.icons) {
-    margin: 0;
-    gap: 6px;
-  }
-
-  .desktop-header-left :global(.site-icon) {
-    width: 26px;
-    height: 26px;
-  }
-
-  /* Show type tooltips below icons; styled to match the card surface */
-  .desktop-header .desktop-header-left :global(.tooltip) {
-    bottom: auto;
-    top: calc(100% + 5px);
-    background: white;
-    color: #374151;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-    z-index: 10;
-  }
-
-  :global(.dark) .desktop-header .desktop-header-left :global(.tooltip) {
-    background: #374151;
-    color: #e5e7eb;
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  }
-
-  /* Row 2: Description (full width) */
-  .desktop-description {
-    margin-top: 0;
-    padding: 7px 10px;
-  }
-
-  .desktop-description .expand-button {
-    padding: 3px 4px;
-    margin-top: 1px;
-  }
-
-  /* Row 3: Hours (kept at natural width so the custom grid renders exactly as
-     designed) + quick contact actions filling the space beside it */
-  .desktop-hours-row {
-    display: flex;
-    gap: 14px;
-    align-items: center;
-    padding: 2px 0;
-  }
-
-  .desktop-hours {
-    flex: 0 0 auto;
-  }
-
-  .desktop-contact {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-  }
-
-  /* Row 5: Two radar charts side by side */
-  .desktop-charts-row {
-    display: flex;
-    gap: 4px;
-    padding: 2px 0;
-  }
-
-  .desktop-chart-col {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 0;
-  }
-
-  .desktop-radar-container {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-    /* Radar size is bound by container height (ECharts uses the smaller
-       dimension) — grow with the viewport so tall screens get full-bodied
-       charts while short laptops keep the no-scroll card fit */
-    height: clamp(150px, 24vh, 260px);
-    position: relative;
-    overflow: visible;
-  }
-
-  /* Vertically centers the Menu radar so it lines up with the taller Protein
-     column (radar + prep-style chips) instead of leaving a dead gap below it. */
-  .desktop-radar-center {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-  }
-
-  /* Protein prep styles — sit under the Protein radar, centered in the column */
-  .desktop-protein-styles {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    gap: 4px 12px;
-    padding: 4px 0 0;
-  }
-
-  .desktop-protein-styles .protein-label {
-    font-size: 10px;
-    min-width: auto;
-  }
-
-  .desktop-protein-styles .style-chip {
-    font-size: 10px;
-    padding: 1px 6px;
-  }
-
-  /* Row 6: Spice + Tortilla + Salsa strip */
-  .desktop-stats-row {
-    display: flex;
-    align-items: center;
     gap: 8px;
-    padding: 5px 8px;
-    background: #f9fafb;
-    border-radius: 6px;
   }
 
-  :global(.dark) .desktop-stats-row {
-    background: #1f2937;
+  .panel-lede {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--ink-1);
+    text-wrap: pretty;
   }
 
-  .desktop-stat-item {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 0;
-  }
-
-  .desktop-stat-item :global(.gauge-wrapper) {
-    gap: 2px;
-  }
-
-  .desktop-stat-item :global(.hero-number) {
-    font-size: 20px;
-  }
-
-  .desktop-stat-item :global(.spice-description) {
-    font-size: 11px;
-  }
-
-  /* Salsa lineup row */
-  .desktop-salsa-lineup {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 5px 0 2px;
-  }
-
-  .desktop-lineup-label {
-    font-size: 11px;
-    font-weight: 600;
+  .panel-body {
+    margin: 8px 0 0;
+    font-size: 14px;
+    line-height: 1.6;
     color: var(--ink-2);
-    flex-shrink: 0;
-    padding-top: 3px;
   }
 
-  .desktop-tortilla-item :global(.icons) {
+  .panel-layout .expand-button {
+    align-self: flex-start;
+    margin-top: -4px;
+  }
+
+  .panel-contact {
+    display: flex;
+  }
+
+  .panel-empty {
     margin: 0;
-    gap: 8px;
+    font-size: 13px;
+    color: var(--ink-3);
+    font-style: italic;
   }
 
-  .desktop-tortilla-item :global(.tortilla-icon) {
-    width: 28px;
-    height: 28px;
-    max-width: 28px;
-    max-height: 28px;
+  .panel-radar {
+    height: 240px;
   }
 
-  .desktop-salsa-item :global(.chart-container) {
-    max-height: 50px;
+  .radar-toggle {
+    display: inline-flex;
+    padding: 2px;
+    border-radius: 999px;
+    border: 1px solid var(--line-1);
+    background: var(--surface-2);
   }
 
-  .desktop-salsa-item :global(.salsa-explanation) {
-    font-size: 9px;
+  .radar-toggle button {
+    padding: 3px 10px;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    font: 600 12px/1.4 var(--font-text);
+    color: var(--ink-2);
+    cursor: pointer;
   }
 
-  /* Row 7: Specialties */
-  .desktop-specialties {
-    padding-top: 4px;
-    border-top: 1px solid lightgray;
+  .radar-toggle button[aria-pressed='true'] {
+    background: var(--surface-1);
+    color: var(--ink-1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
   }
 
-  :global(.dark) .desktop-specialties {
-    border-top-color: #374151;
-  }
-
-  /* Compact the specialty card on desktop so the popup fits without scrolling */
-  .desktop-specialties :global(.compact-card) {
-    min-height: 94px;
+  .radar-toggle button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
   }
 
   /* Header action groups */
-  .header-actions,
-  .desktop-header-actions {
+  .header-actions {
     display: flex;
     align-items: center;
     gap: 6px;

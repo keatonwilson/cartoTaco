@@ -17,7 +17,8 @@
     if ($comparisonSites.length > 0) {
       const params = new URLSearchParams(window.location.search);
       params.set('compare', $comparisonSites.map(s => s.est_id).join(','));
-      history.replaceState({}, '', `?${params}`);
+      // Keep history.state: it carries SvelteKit's entry (and the open spot)
+      history.replaceState(history.state, '', `?${params}`);
     }
   }
 
@@ -96,7 +97,8 @@
   .comparison-tray {
     position: fixed;
     bottom: 0;
-    left: 0;
+    /* Starts beside the desktop spot panel when it's open (set by Map.svelte) */
+    left: var(--spot-panel-offset, 0px);
     right: 0;
     z-index: 50;
     background: white;
