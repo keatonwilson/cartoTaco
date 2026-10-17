@@ -140,6 +140,22 @@ export function getOpenStatus(hours, endHoursOrDate, date) {
 }
 
 /**
+ * Today's opening hours on Tucson's clock, for a "Today" line:
+ * "8 AM – 10 PM", "Open 24 hours", "Closed today", or null when the spot has
+ * no hours on record at all.
+ */
+export function todayHours(hours, endHoursOrDate, date) {
+  const now = endHoursOrDate instanceof Date ? endHoursOrDate : date || new Date();
+  const h = toHoursObject(hours, Array.isArray(endHoursOrDate) ? endHoursOrDate : null);
+  const spans = DAY_KEYS.map((_, dow) => daySpan(h, dow));
+  if (spans.every((s) => s === null)) return null;
+  const today = spans[tucsonNow(now).dow];
+  if (!today) return 'Closed today';
+  if (today.allDay) return 'Open 24 hours';
+  return `${formatTime(today.start)} – ${formatTime(today.end)}`;
+}
+
+/**
  * The current time, updated on each minute boundary, so status labels roll
  * over (7:59 "Opens at 8 AM" → 8:00 "Open til …") while a card is open.
  */

@@ -7,45 +7,17 @@
   // in Fraunces, plain sections split by hairlines.
   import { createEventDispatcher } from 'svelte';
   import { cubicOut } from 'svelte/easing';
-  import X from 'phosphor-svelte/lib/X';
   import Card from './Card.svelte';
   import PendingSpotCard from './PendingSpotCard.svelte';
-  import FavoriteButton from './FavoriteButton.svelte';
-  import IconHighlight from './IconHighlight.svelte';
+  import SpotHeader from './SpotHeader.svelte';
   import { selectedSite } from '$lib/stores';
-  import { getOpenStatus, minuteClock } from '$lib/hours';
-  import {
-    comparisonSites,
-    comparisonCount,
-    addToComparison,
-    removeFromComparison
-  } from '$lib/comparisonStore.js';
 
   /** Panel width in px (spotPanelWidth() in mapping.js) */
   export let width = 400;
 
   const dispatch = createEventDispatcher();
 
-  const TYPE_LABELS = { 'Brick and Mortar': 'Restaurant', Stand: 'Stand', Truck: 'Food truck' };
-
   $: site = $selectedSite;
-  $: region = site?.rawData?.descriptions?.region || null;
-  $: kicker = [
-    site?.isPending ? '◌ Pending vetting' : null,
-    TYPE_LABELS[site?.type] || site?.type,
-    region
-  ]
-    .filter(Boolean)
-    .join(' · ');
-  $: status = site ? getOpenStatus(site.startHours || [], site.endHours || [], $minuteClock) : null;
-
-  $: isInComparison = $comparisonSites.some((s) => s.est_id === site?.est_id);
-  $: comparisonFull = $comparisonCount >= 3 && !isInComparison;
-
-  function toggleComparison() {
-    if (!site) return;
-    isInComparison ? removeFromComparison(site.est_id) : addToComparison(site);
-  }
 
   // A new spot starts at the top of the panel
   let scroller;
@@ -78,53 +50,9 @@
     aria-label={site.name || 'Spot details'}
     in:slideIn
   >
-    <header class="panel-head">
-      <div class="head-row">
-        <p class="kicker">{kicker}</p>
-        <button
-          type="button"
-          class="close-btn"
-          on:click={() => dispatch('close')}
-          aria-label="Close"
-          title="Close (Esc)"
-        >
-          <X size={16} weight="bold" />
-        </button>
-      </div>
-
-      <div class="name-row">
-        <h2 class="spot-name">{site.name || 'Unknown Location'}</h2>
-        <!-- Restaurant / stand / truck, this spot's type lit -->
-        <div class="type-icons">
-          <IconHighlight type="siteType" data={site.type || 'unknown'} />
-        </div>
-      </div>
-
-      <div class="head-row">
-        {#if site.isClosed}
-          <span class="status" data-state="gone">✕ Permanently closed</span>
-        {:else if status}
-          <span class="status" data-state={status.state}>
-            <span class="status-dot"></span>{status.label}
-          </span>
-        {/if}
-        <div class="actions">
-          <FavoriteButton estId={site.est_id} size="sm" />
-          {#if !site.isClosed && !site.isPending}
-            <button
-              type="button"
-              class="compare-btn"
-              class:active={isInComparison}
-              disabled={comparisonFull}
-              on:click={toggleComparison}
-              title={isInComparison ? 'Remove from comparison' : comparisonFull ? 'Max 3 spots' : 'Add to comparison'}
-            >
-              {isInComparison ? '− Compare' : '+ Compare'}
-            </button>
-          {/if}
-        </div>
-      </div>
-    </header>
+    <div class="panel-head">
+      <SpotHeader {site} on:close={() => dispatch('close')} />
+    </div>
 
     <div class="panel-body" bind:this={scroller}>
       <!-- Keyed so a swapped spot re-runs the section entrance and resets
@@ -133,7 +61,7 @@
         {#if site.isPending}
           <PendingSpotCard hideHeader />
         {:else}
-          <Card variant="panel" />
+          <Card />
         {/if}
       {/key}
     </div>
@@ -157,165 +85,9 @@
 
   .panel-head {
     flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 18px 20px 14px;
+    padding: 18px 22px 16px;
     border-bottom: 1px solid var(--line-1);
     background: var(--surface-1);
-  }
-
-  .head-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    min-width: 0;
-  }
-
-  .kicker {
-    margin: 0;
-    min-width: 0;
-    font: 600 11px/1.3 var(--font-mono);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--ink-2);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .name-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 14px;
-  }
-
-  .type-icons {
-    flex-shrink: 0;
-    padding-top: 2px;
-  }
-
-  .type-icons :global(.icons) {
-    justify-content: flex-start;
-    gap: 6px;
-    margin: 0;
-  }
-
-  .type-icons :global(.site-icon) {
-    width: 30px;
-    height: 30px;
-  }
-
-  /* The kicker above already names the type in words, and a hover tooltip
-     here can only land on the name or the action buttons */
-  .type-icons :global(.tooltip) {
-    display: none;
-  }
-
-  .spot-name {
-    margin: 0;
-    min-width: 0;
-    font-family: var(--font-serif);
-    font-weight: 650;
-    font-size: 30px;
-    line-height: 1.06;
-    font-variation-settings: 'opsz' 72;
-    letter-spacing: -0.01em;
-    color: var(--ink-1);
-    text-wrap: balance;
-    view-transition-name: spot-title;
-  }
-
-  .status {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--ink-2);
-    white-space: nowrap;
-  }
-
-  .status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--error);
-  }
-
-  .status[data-state='open'] {
-    color: var(--success);
-  }
-  .status[data-state='open'] .status-dot {
-    background: var(--success);
-  }
-  .status[data-state='closing-soon'] {
-    color: var(--warning);
-  }
-  .status[data-state='closing-soon'] .status-dot {
-    background: var(--warning);
-  }
-  .status[data-state='unknown'] .status-dot {
-    background: var(--ink-3);
-  }
-  .status[data-state='gone'] {
-    color: var(--closed);
-  }
-
-  .actions {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-  }
-
-  .close-btn {
-    flex-shrink: 0;
-    display: grid;
-    place-items: center;
-    width: 30px;
-    height: 30px;
-    margin: -6px -6px 0 0;
-    border-radius: 50%;
-    border: 1px solid var(--line-1);
-    background: var(--surface-2);
-    color: var(--ink-2);
-    cursor: pointer;
-    transition: color 0.15s ease, border-color 0.15s ease;
-  }
-
-  .close-btn:hover {
-    color: var(--accent-hover);
-    border-color: var(--accent);
-  }
-
-  .close-btn:focus-visible,
-  .compare-btn:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-
-  .compare-btn {
-    padding: 4px 10px;
-    border-radius: 999px;
-    border: 1px solid var(--accent);
-    background: transparent;
-    color: var(--accent-hover);
-    font: 600 12px/1.4 var(--font-text);
-    cursor: pointer;
-    white-space: nowrap;
-  }
-
-  .compare-btn.active {
-    background: var(--accent);
-    color: var(--accent-contrast);
-  }
-
-  .compare-btn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
   }
 
   .panel-body {
@@ -323,7 +95,7 @@
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 4px 20px 28px;
+    padding: 4px 22px 32px;
   }
 
   /* While the name morphs from the peek card, keep the rest of the page still

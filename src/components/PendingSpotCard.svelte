@@ -11,7 +11,7 @@
   import ClosedBanner from './ClosedBanner.svelte';
   import { selectedSite } from '$lib/stores';
 
-  /** The side panel shows the name, badge and favorite in its own header */
+  /** The panel/sheet's SpotHeader shows the name, badge, favorite and contact actions */
   export let hideHeader = false;
 
   $: site = $selectedSite;
@@ -73,7 +73,8 @@
       </div>
     {/if}
 
-    {#if hasContact || (site.latitude && site.longitude)}
+    <!-- In the panel and sheet, SpotHeader already carries these actions -->
+    {#if !hideHeader && (hasContact || (site.latitude && site.longitude))}
       <div class="section">
         <ContactInfo
           showDirections={!site.isClosed}

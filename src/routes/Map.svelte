@@ -15,6 +15,7 @@
 	import { isMobile, screenWidth } from '../lib/deviceDetection';
 	import Card from '../components/Card.svelte';
 	import PendingSpotCard from '../components/PendingSpotCard.svelte';
+	import SpotHeader from '../components/SpotHeader.svelte';
 	import SpotPanel from '../components/SpotPanel.svelte';
 	import PeekCard from '../components/PeekCard.svelte';
 	import MapLegend from '../components/MapLegend.svelte';
@@ -453,11 +454,16 @@
 		</div>
 		<!-- Scrollable card content: pending spots get the lightweight preliminary card -->
 		<div class="sheet-content" bind:this={sheetContentEl}>
-			{#if $selectedSite.isPending}
-				<PendingSpotCard />
-			{:else}
-				<Card />
-			{/if}
+			<!-- Same header and body as the desktop panel; pending spots get the
+			     lightweight preliminary card. Keyed so a new spot starts fresh. -->
+			{#key $selectedSite.est_id}
+				<div class="sheet-head"><SpotHeader site={$selectedSite} showClose={false} /></div>
+				{#if $selectedSite.isPending}
+					<PendingSpotCard hideHeader />
+				{:else}
+					<Card />
+				{/if}
+			{/key}
 		</div>
 	</div>
 {/if}
@@ -516,7 +522,7 @@
     left: 0;
     right: 0;
     height: 65dvh; /* dvh excludes iOS Safari address bar */
-    background: white;
+    background: var(--surface-1);
     border-radius: 16px 16px 0 0;
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.18);
     z-index: 150;
@@ -616,6 +622,16 @@
     color: #FE795D;
   }
 
+  .sheet-head {
+    padding: 2px 0 16px;
+    border-bottom: 1px solid var(--line-1);
+  }
+
+  /* The name is a touch smaller on a phone */
+  .sheet-head :global(.spot-head .spot-name) {
+    font-size: 28px;
+  }
+
   /* Scrollable content inside the sheet */
   .sheet-content {
     flex: 1;
@@ -623,7 +639,7 @@
     /* Prevent scroll from propagating to the map at top/bottom boundaries */
     overscroll-behavior: contain;
     /* Bottom padding accounts for the home-indicator bar on iPhone X+ */
-    padding: 0 10px max(20px, env(safe-area-inset-bottom));
+    padding: 0 18px max(24px, env(safe-area-inset-bottom));
     /* iOS Safari: force this scroll container onto its own persistent GPU
        compositing layer. Without this, iOS caches the scroll layer as a
        stale texture and won't repaint text-color changes (e.g. compare

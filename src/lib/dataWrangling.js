@@ -120,3 +120,16 @@ export function convertHoursData(startTimes, endTimes) {
 
   return result;
 }
+
+/**
+ * Words for a 0–10 heat level ("Medium-Hot"), shared by the heat ladder and
+ * the spot card's heat tile.
+ */
+export function describeHeat(value) {
+  if (value === 0) return 'No Heat';
+  if (value <= 2) return 'Mild';
+  if (value <= 4) return 'Medium';
+  if (value <= 6) return 'Medium-Hot';
+  if (value <= 8) return 'Hot';
+  return 'Very Hot';
+}

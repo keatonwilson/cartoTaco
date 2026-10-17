@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tucsonNow, parseTime, formatTime, getOpenStatus } from './hours.js';
+import { tucsonNow, parseTime, formatTime, getOpenStatus, todayHours } from './hours.js';
 
 // Tucson is UTC-7 all year, so these UTC instants are fixed Tucson wall times
 // whatever time zone the test runner is in. Wed Feb 18, 2026.
@@ -107,5 +107,21 @@ describe('getOpenStatus', () => {
     const start = [['wed_start', '9:00']];
     const end = [['wed_end', '22:00']];
     expect(getOpenStatus(start, end, tucson('12:00')).label).toBe('Open til 10 PM');
+  });
+});
+
+describe('todayHours', () => {
+  it("spells out today's span on Tucson's clock", () => {
+    expect(todayHours(weekdays, tucson('7:00'))).toBe('9 AM – 10 PM');
+  });
+
+  it('says closed today, open 24 hours, or nothing at all', () => {
+    expect(todayHours({ mon_start: '9:00', mon_end: '17:00' }, tucson('12:00'))).toBe('Closed today');
+    expect(todayHours({ wed_start: '0:00', wed_end: '23:59' }, tucson('12:00'))).toBe('Open 24 hours');
+    expect(todayHours({}, tucson('12:00'))).toBe(null);
+  });
+
+  it('accepts the startHours/endHours entry arrays', () => {
+    expect(todayHours([['wed_start', '18:00']], [['wed_end', '2:00']], tucson('12:00'))).toBe('6 PM – 2 AM');
   });
 });

@@ -262,6 +262,7 @@ Located in src/lib/dataWrangling.js:
 - `getTopFive(arr, n = 5)` - Sort and return top N items, stripping '_perc' suffix from keys
 - `percentageOfMaxArray(arr)` - Convert array values to percentages of max
 - `convertHoursData(startTimes, endTimes)` - Transform hours data into component-ready format (Mon–Sun order with abbreviations)
+- `describeHeat(value)` - Words for a 0–10 heat level ("Medium-Hot"), shared by `SpiceGauge` and `SpotStats`
 
 ## Coordinate Validation
 
@@ -282,7 +283,8 @@ and `flyToSite()`.
 
 - `src/lib/auth.js` - Server-side Supabase client with cookie handling (used by `hooks.server.js`)
 - `src/lib/censusStore.js` - `censusStats` derived store backing `/census`
-- `src/lib/hours.js` - Opening hours on Tucson's clock (`America/Phoenix`, no DST) whatever the browser's zone: `tucsonNow()`, `parseTime()`, `formatTime()`, `getOpenStatus(hours[, endHours], date)` → `{ isOpen, state: 'open'|'closing-soon'|'opens-later'|'closed'|'unknown', label }` with labels like "Open til 10 PM", "Closes soon · 9:30 PM" (≤60 min), "Opens at 8 AM", "Opens tomorrow at 8 AM", "Opens Mon at 11 AM". Overnight spans count after midnight. `minuteClock` ticks each minute so labels roll over live. `isOpenNow` (stores.js) and `HoursOpen` both use it
+- `src/lib/hours.js` - Opening hours on Tucson's clock (`America/Phoenix`, no DST) whatever the browser's zone: `tucsonNow()`, `parseTime()`, `formatTime()`, `getOpenStatus(hours[, endHours], date)` → `{ isOpen, state: 'open'|'closing-soon'|'opens-later'|'closed'|'unknown', label }` with labels like "Open til 10 PM", "Closes soon · 9:30 PM" (≤60 min), "Opens at 8 AM", "Opens tomorrow at 8 AM", "Opens Mon at 11 AM". Overnight spans count after midnight. `todayHours()` gives "8 AM – 10 PM" / "Closed today" / "Open 24 hours" for the card's Today line. `minuteClock` ticks each minute so labels roll over live. `isOpenNow` (stores.js) and `HoursOpen` both use it
+- `src/lib/directions.js` - `directionsUrl(spot)` / `openDirections(spot)`: Apple Maps on iOS, a `geo:` intent on Android, Google Maps on the web. Used by `DirectionsButton` and `SpotHeader`
 - `src/lib/vibeVotes.js` - Vibe vote database operations (the store wraps these)
 - `src/lib/authErrors.js` - Maps Supabase auth errors to friendly messages (e.g. email rate limit, expired reset link, reused password)
 - `src/lib/favorites.js` - Favorites database operations (add, remove, fetch)
@@ -298,8 +300,10 @@ and `flyToSite()`.
 ## Component Organization
 
 ### Main Components (src/components/)
-- `Card.svelte` - Full spot card. `variant`: `'sheet'` (mobile bottom sheet) or `'panel'` (desktop/tablet side panel: one column of labelled sections split by hairlines with a staggered entrance, Menu/Protein radar behind a toggle). Defaults from `isMobile`
-- `SpotPanel.svelte` - Desktop/tablet spot panel docked left under the header, full height, own scroll. Sticky header: mono kicker (type · region), Fraunces name with the restaurant/stand/truck icons beside it, Tucson-time status, favorite/compare/close. Specialty cards widen to 85% of the panel. Renders `Card variant="panel"` or `PendingSpotCard hideHeader`, keyed by spot so swaps re-run the entrance
+- `Card.svelte` - Spot card body, identical on the desktop panel and the mobile sheet (`SpotHeader` sits above it). One column in decision order, sized to fill the column: Known for (every specialty as a full-width `SpecCard`), `SpotStats` tiles, What they serve (the radar, large, with per-axis percentages, Menu/Protein toggle), Hours (`HoursOpen size="lg"` + a "Today" line), About, Vibe check. Sections are labelled bands split by hairlines with a staggered entrance
+- `SpotHeader.svelte` - Shared card header: mono kicker (type · region), Fraunces name with the restaurant/stand/truck icons, Tucson-time status + address, then Directions / Call / Website / social as labelled pill buttons plus a heart and Compare. Closed spots drop Directions and Compare; pending spots drop Compare. `showClose={false}` in the mobile sheet (its drag bar has the ×)
+- `SpotStats.svelte` - At-a-glance tiles: Heat (48px number, full-width 10-notch ladder, city percentile, `ContextStrip`), Salsas (number, bar against the city max with an average tick, `SalsaLineup`), Tortillas (spans the row). Two columns when the column fits two 220px tiles, stacked otherwise
+- `SpotPanel.svelte` - Desktop/tablet spot panel docked left under the header, full height, own scroll, with `SpotHeader` fixed at the top. Renders `Card` or `PendingSpotCard hideHeader`, keyed by spot so swaps re-run the entrance. The mobile bottom sheet (in Map.svelte) renders the same `SpotHeader` + `Card` inside its scroll area
 - `PeekCard.svelte` - Small floating summary over the hovered pin: status, name, "Known for" (first listed specialty), a quick-facts line (salsa count, handmade/corn/flour tortillas) and top 3 proteins; pending/closed notes instead for those spots. Everything is derived at render from `processedTacoData`, nothing stored. "Open card" opens the panel, morphing the name across with a view transition where supported; in trail mode it offers "Add as stop N"/"Remove stop N". Placed above the pin, flipped below near the top, kept clear of the panel
 - `CollapsibleSection.svelte` - Reusable accordion/collapsible section
 - `ContactInfo.svelte` - Displays contact links (phone, website, Instagram, Facebook)
@@ -310,15 +314,15 @@ and `flyToSite()`.
 - `LoadingState.svelte` - Shared loading indicator (bobbing taco + pulsing dots + message), reduced-motion aware; used by Map, census, and compare
 - `HandmadeBadge.svelte` - "Handmade Tortillas" pill shown on Card
 - `HoursInput.svelte` - Input component for hours data (used in submission form)
-- `HoursOpen.svelte` - Week Rhythm strip: 7 day pills with mini open-span bars on a shared 24h scale, today ring (Tucson's day), status dot with the `getOpenStatus` label; overnight hours wrap. `showTitle`/`showStatus` props hide the heading and label when the surrounding card has them
+- `HoursOpen.svelte` - Week Rhythm strip: 7 day pills with mini open-span bars on a shared 24h scale, today ring (Tucson's day), status dot with the `getOpenStatus` label; overnight hours wrap. `showTitle`/`showStatus` props hide the heading and label when the surrounding card has them; `size="lg"` stretches the days across the full width with taller bars
 - `IconHighlight.svelte` - Icon-based feature highlights
 - `LocationPicker.svelte` - Map-based location selection component
 - `MapLensPicker.svelte` - Map lens switcher (Spots / Heat / Salsas / Density) with inline legends; drives `mapLens` store. Data lenses exclude pending spots (no measurements) and closed spots (measurements are history). The density heatmap uses a deliberately wide `heatmap-radius` — Tucson's spots are sparse enough that the stock radius drew one blob per spot and nothing between them
 - `MapLegend.svelte` - Small floating `● Vetted / ◌ Pending / ✕ Closed` legend; only shown in the Spots lens, each row only when such spots exist
 - `NewSpotsBadge.svelte` - Badge showing count of recently added establishments (pending entries get a `◌ Pending` chip)
 - `ClosedBanner.svelte` - Dashed grey banner (`✕ Permanently closed` + closure month) rendered at the top of any card for a closed spot. Closed spots also lose vibe voting, comparison, and directions, but keep hours/charts as a historical record
-- `PendingSpotCard.svelte` - Lightweight preliminary card for pending (unvetted) spots: pending badge, info panel, scraped hours/contact if present, source link, vetting CTA. Dashed `--pending` border; no radar/heat/salsa/vibe/compare
-- `RadarChart.svelte` - Menu/protein radar (ECharts) with a fixed 0–100 scale so shapes compare across spots; supports multi-series overlays via `seriesList` prop (categorical palette + legend), used by `/compare` and TasteProfile
+- `PendingSpotCard.svelte` - Lightweight preliminary card for pending (unvetted) spots: pending badge, info panel, scraped hours/contact if present, source link, vetting CTA. Dashed `--pending` border; no radar/heat/salsa/vibe/compare. `hideHeader` (panel and sheet) also drops its contact block, since `SpotHeader` carries those actions
+- `RadarChart.svelte` - Menu/protein radar (ECharts), the app's signature chart: keep it. Supports multi-series overlays via `seriesList` (categorical palette + legend), used by `/compare` and TasteProfile. `labelSize` sets the axis label size; `showValues` (single series) prints each axis's percentage under its name and sizes the radar from its box so the two-line labels never clip
 - `SalsaCount.svelte` - Salsa count bullet bar (ECharts): value bar over city-max track with an average tick
 - `SalsaLineup.svelte` - Per-salsa chip row: named varieties (Verde, Rojo, …) plus the spot's "other" house salsas with individual heat dots and tap-to-reveal descriptions. Data comes from `salsaVarieties`/`otherSalsas` on `processedTacoData`
 - `SpecCarousel.svelte` & `SpecCard.svelte` - Specialty item displays
@@ -331,7 +335,7 @@ and `flyToSite()`.
 - `SummitResults.svelte` - Taco Summit results view: ECharts stacked horizontal bar showing rank distribution per spot (orange gradient), winner callout, dark-mode reactive, optional PNG card download
 - `VibeVotes.svelte` - Anti-review chip row on each Card: 🔥 Heat Legit · 🌮 Authentic · 💸 Value · 🎭 Vibe. Click toggles your vote (anonymous users redirected to login); displays aggregate counts. Accepts `compact` prop for tight desktop layouts.
 - `VibeFingerprint.svelte` - Compact 4-bar profile of a spot's vibe votes (normalized to its own total) so vibe shapes compare across spots; hidden with no votes unless `showEmpty`. On Card beside the chips and as a `/compare` row.
-- `ContextStrip.svelte` - City-distribution dot strip: every spot as a faint dot on a shared scale with this spot highlighted (used under the mobile Card's heat ladder).
+- `ContextStrip.svelte` - City-distribution dot strip: every spot as a faint dot on a shared scale with this spot highlighted (used in the `SpotStats` heat tile).
 - `EmptyState.svelte` - Shared empty state (emoji + headline + message + optional CTA); used by favorites, compare, and census.
 - `ToastHost.svelte` - Renders the `toasts` store as a stack of dismissable notifications, mounted once in `+layout.svelte`. Uses Phosphor `CheckCircle/WarningCircle/Info/X` icons.
 
@@ -401,7 +405,8 @@ Test files are co-located in src/lib/:
 - `src/lib/pendingSpots.test.js` - Tests for pending-spot processing/filtering
 - `src/lib/closedSpots.test.js` - Tests for closed-spot processing/filtering/map styling
 - `src/lib/mapping.test.js` - Tests for map layer/GeoJSON helpers, coordinate validation, and the spot panel's fly-to/close camera
-- `src/lib/hours.test.js` - Tests for Tucson-time open status (uses UTC instants so it passes in any runner time zone)
+- `src/lib/hours.test.js` - Tests for Tucson-time open status and today's hours (uses UTC instants so it passes in any runner time zone)
+- `src/lib/directions.test.js` - Tests for the per-platform directions link
 - `src/lib/authErrors.test.js` - Tests for auth error message mapping
 
 Run all tests with `pnpm test`.

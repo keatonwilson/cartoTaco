@@ -18,6 +18,10 @@
    * Values are percentages, so 100 is the honest default.
    */
   export let max = 100;
+  /** Axis label size in px; the wrap width scales with it */
+  export let labelSize = 10;
+  /** Single series only: print each axis's value under its name ("Taco / 55%") */
+  export let showValues = false;
 
   let container;
   let chart;
@@ -26,6 +30,16 @@
   $: isDark = $effectiveTheme === 'dark';
   $: resolvedSeries = seriesList || (data ? [{ name: 'Distribution', values: data }] : []);
   $: multiSeries = resolvedSeries.length > 1;
+
+  // With values printed under each label, the labels are two lines tall and
+  // wider, so a percentage radius clips them in narrow boxes. Size the radar
+  // from the box instead: as big as fits with room left for the labels.
+  function fittedRadius() {
+    const w = container?.clientWidth || 300;
+    const h = container?.clientHeight || 300;
+    const labelW = labelSize * 5.8;
+    return Math.max(60, Math.min(h / 2 - labelSize * 2.6 - 12, w / 2 - labelW - 10));
+  }
 
   function buildOption() {
     const ink = chartInk(isDark);
@@ -64,17 +78,36 @@
         indicator: (labels || []).map((name) => ({ name, max, min: 0 })),
         // Fill the container — the wrap/nameGap settings below keep axis
         // labels inside even at this radius (ECharts doesn't auto-fit them)
-        radius: multiSeries ? '58%' : '66%',
-        center: ['50%', multiSeries ? '48%' : '52%'],
+        radius: multiSeries ? '58%' : showValues ? fittedRadius() : '66%',
+        center: ['50%', multiSeries ? '48%' : showValues ? '54%' : '52%'],
         nameGap: 8,
         axisName: {
           color: ink.strong,
           fontFamily: CHART_FONT,
-          fontSize: 10,
+          fontSize: labelSize,
           fontWeight: 600,
           // Wrap long labels instead of letting them clip at the container edge
           overflow: 'break',
-          width: 58
+          width: Math.round(labelSize * 5.8),
+          ...(showValues && !multiSeries
+            ? {
+                formatter: (name) => {
+                  const i = (labels || []).indexOf(name);
+                  const v = Math.round(resolvedSeries[0]?.values?.[i] ?? 0);
+                  return `{name|${name}}\n{value|${v}%}`;
+                },
+                rich: {
+                  name: { fontSize: labelSize, fontWeight: 600, color: ink.strong, fontFamily: CHART_FONT },
+                  value: {
+                    fontSize: labelSize + 1,
+                    fontWeight: 700,
+                    color: colors[0],
+                    fontFamily: CHART_FONT,
+                    padding: [2, 0, 0, 0]
+                  }
+                }
+              }
+            : {})
         },
         axisLine: { lineStyle: { color: ink.grid } },
         splitLine: { lineStyle: { color: ink.grid } },
@@ -109,7 +142,9 @@
 
     // Popups/collapsibles can mount this at 0×0 — resize when dimensions appear
     resizeObserver = new ResizeObserver(() => {
-      if (chart) chart.resize();
+      if (!chart) return;
+      chart.resize();
+      if (showValues) chart.setOption(buildOption(), { notMerge: true });
     });
     resizeObserver.observe(container);
 
@@ -123,7 +158,7 @@
   });
 
   // Rebuild when data, labels, or theme change
-  $: if (chart && labels && resolvedSeries.length > 0 && (isDark === true || isDark === false)) {
+  $: if (chart && labels && resolvedSeries.length > 0 && (isDark === true || isDark === false) && labelSize && showValues !== undefined) {
     chart.setOption(buildOption(), { notMerge: true });
   }
 </script>

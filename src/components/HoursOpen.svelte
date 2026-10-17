@@ -10,6 +10,8 @@
   export let showTitle = true;
   /** Hide the status label when the surrounding card already shows it */
   export let showStatus = true;
+  /** 'lg' stretches the days across the full width with taller bars (spot card) */
+  export let size = 'md';
 
   const DAYS = [
     { key: 'mon', label: 'Mo', dow: 1 },
@@ -75,7 +77,7 @@
   {#if showTitle}
     <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">Hours</h2>
   {/if}
-  <div class="container">
+  <div class="container" class:lg={size === 'lg'}>
     <div class="days">
       {#each dayData as day, i}
         <button
@@ -289,5 +291,35 @@
 
   .status[data-state='unknown'] .status-dot {
     background: var(--ink-3);
+  }
+
+  /* ── Large: the spot card, where the strip has the full column ── */
+  .container.lg {
+    padding: 10px 12px;
+  }
+
+  .container.lg .days {
+    flex: 1;
+    gap: 6px;
+  }
+
+  .container.lg .day-pill {
+    flex: 1;
+    gap: 6px;
+    padding: 6px 4px 5px;
+  }
+
+  .container.lg .track {
+    width: 12px;
+    height: 48px;
+    border-radius: 6px;
+  }
+
+  .container.lg .day-letter {
+    font-size: 13px;
+  }
+
+  .container.lg .time-tip {
+    font-size: 13px;
   }
 </style>
