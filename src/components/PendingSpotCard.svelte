@@ -11,8 +11,8 @@
   import ClosedBanner from './ClosedBanner.svelte';
   import { selectedSite } from '$lib/stores';
 
-  // Matches the prop mapping.js passes to popup cards; unused (reads selectedSite)
-  export const siteId = null;
+  /** The panel/sheet's SpotHeader shows the name, badge, favorite and contact actions */
+  export let hideHeader = false;
 
   $: site = $selectedSite;
   $: region = site?.rawData?.descriptions?.region || null;
@@ -41,16 +41,18 @@
     {#if site.isClosed}
       <ClosedBanner closedAt={site.closedAt} />
     {/if}
-    <div class="header-row">
-      <span class="pending-badge">◌ Pending vetting</span>
-      <FavoriteButton estId={site.est_id} size="sm" />
-    </div>
+    {#if !hideHeader}
+      <div class="header-row">
+        <span class="pending-badge">◌ Pending vetting</span>
+        <FavoriteButton estId={site.est_id} size="sm" />
+      </div>
 
-    <h2 class="spot-name">{site.name || 'Unknown Location'}</h2>
-    {#if site.type || region}
-      <p class="spot-meta">
-        {[site.type, region].filter(Boolean).join(' · ')}
-      </p>
+      <h2 class="spot-name">{site.name || 'Unknown Location'}</h2>
+      {#if site.type || region}
+        <p class="spot-meta">
+          {[site.type, region].filter(Boolean).join(' · ')}
+        </p>
+      {/if}
     {/if}
 
     <div class="info-panel">
@@ -71,7 +73,8 @@
       </div>
     {/if}
 
-    {#if hasContact || (site.latitude && site.longitude)}
+    <!-- In the panel and sheet, SpotHeader already carries these actions -->
+    {#if !hideHeader && (hasContact || (site.latitude && site.longitude))}
       <div class="section">
         <ContactInfo
           showDirections={!site.isClosed}
