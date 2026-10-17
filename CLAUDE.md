@@ -138,7 +138,7 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 - `isAuthenticated` (derived) - Boolean auth status
 - `currentUser` (derived) - Current user object
 - `currentSession` (derived) - Current session object
-- Functions: `signUp(email, password, metadata)`, `signIn(email, password)`, `signOut()`
+- Functions: `signUp(email, password, metadata)`, `signIn(email, password)`, `signOut()`, `requestPasswordReset(email)`, `verifyRecoveryLink({ tokenHash, type, code })`, `updatePassword(password)`
 - Auto-initializes on module load with session restoration and real-time auth listener
 
 ### Favorites Store (src/lib/favoritesStore.js)
@@ -277,7 +277,7 @@ and `flyToSite()`.
 - `src/lib/auth.js` - Server-side Supabase client with cookie handling (used by `hooks.server.js`)
 - `src/lib/censusStore.js` - `censusStats` derived store backing `/census`
 - `src/lib/vibeVotes.js` - Vibe vote database operations (the store wraps these)
-- `src/lib/authErrors.js` - Maps Supabase auth errors to friendly messages (e.g. signup email rate limit)
+- `src/lib/authErrors.js` - Maps Supabase auth errors to friendly messages (e.g. email rate limit, expired reset link, reused password)
 - `src/lib/favorites.js` - Favorites database operations (add, remove, fetch)
 - `src/lib/submissions.js` - Location submission handling and DB persistence
 - `src/lib/validation.js` - Form validation functions for submissions/auth forms
@@ -345,6 +345,8 @@ and `flyToSite()`.
 - `login/+page.svelte` - Login form
 - `signup/+page.svelte` - Registration form
 - `auth/confirm/+page.svelte` - Email confirmation callback
+- `forgot-password/+page.svelte` - Requests a password reset email (linked from login). Shows the same "check your email" message whether or not the address has an account
+- `reset-password/+page.svelte` - Landing page for the reset email (`token_hash` + `type=recovery`, or a PKCE `code`), then a new-password form. Without a link it works only for a signed-in user, which is how the profile page's "Change password" row uses it. Email template: `supabase/templates/reset-password.html`; dashboard setup in `docs/DEPLOYMENT.md` → Auth email templates
 
 #### Protected Routes (`src/routes/(protected)/`)
 - `favorites/+page.svelte` - User's favorited establishments list

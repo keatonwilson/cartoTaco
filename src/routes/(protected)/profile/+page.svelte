@@ -6,6 +6,7 @@
   import UserCircle from 'phosphor-svelte/lib/UserCircle';
   import Envelope from 'phosphor-svelte/lib/Envelope';
   import CalendarBlank from 'phosphor-svelte/lib/CalendarBlank';
+  import Key from 'phosphor-svelte/lib/Key';
   import Heart from 'phosphor-svelte/lib/Heart';
   import UploadSimple from 'phosphor-svelte/lib/UploadSimple';
   import LinkSimple from 'phosphor-svelte/lib/LinkSimple';
@@ -249,6 +250,14 @@
             <span>Favorite Locations</span>
           </div>
           <div class="info-value">{$favoritesCount}</div>
+        </button>
+
+        <button class="info-item clickable" on:click={() => goto('/reset-password')}>
+          <div class="info-label">
+            {#if browser}<Key size={20} class="info-icon" />{/if}
+            <span>Password</span>
+          </div>
+          <div class="info-value">Change</div>
         </button>
       </div>
 
