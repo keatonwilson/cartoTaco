@@ -75,6 +75,13 @@
 	   overlays (filter bar, Mapbox controls) offset from this instead of
 	   hardcoding a copy of it. */
 	--header-h: 66px;
+
+	/* Frosted glass for surfaces that float over the map (spot panel, mobile
+	   sheet): mostly opaque so text stays crisp, with the map blurred through.
+	   Components apply it only under @supports, and drop it for
+	   prefers-reduced-transparency. */
+	--glass-bg: color-mix(in srgb, var(--surface-1) 82%, transparent);
+	--glass-filter: blur(22px) saturate(170%);
 }
 
 :root.dark {

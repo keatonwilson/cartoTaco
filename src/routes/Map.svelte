@@ -546,9 +546,26 @@
   }
 
   :global(.dark) .mobile-sheet {
-    background: #1f2937;
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5);
   }
+
+  /* A hint of the map through the sheet, Apple-style */
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .mobile-sheet {
+      background: var(--glass-bg);
+      -webkit-backdrop-filter: var(--glass-filter);
+      backdrop-filter: var(--glass-filter);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .mobile-sheet {
+      background: var(--surface-1);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+
 
   @keyframes sheet-slide-up {
     from { transform: translateY(100%); }

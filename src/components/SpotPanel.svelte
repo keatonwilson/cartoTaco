@@ -87,8 +87,25 @@
     flex-shrink: 0;
     padding: 18px 22px 16px;
     border-bottom: 1px solid var(--line-1);
-    background: var(--surface-1);
   }
+
+  /* A hint of the map through the panel, Apple-style */
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .spot-panel {
+      background: var(--glass-bg);
+      -webkit-backdrop-filter: var(--glass-filter);
+      backdrop-filter: var(--glass-filter);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .spot-panel {
+      background: var(--surface-1);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+
 
   .panel-body {
     flex: 1;

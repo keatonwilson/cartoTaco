@@ -33,12 +33,15 @@
 
   // With values printed under each label, the labels are two lines tall and
   // wider, so a percentage radius clips them in narrow boxes. Size the radar
-  // from the box instead: as big as fits with room left for the labels.
+  // from the box instead: as big as fits with room left for the labels. The
+  // vertical margin covers a full two-line label plus nameGap, because with an
+  // even number of axes one points straight down (and one straight up).
   function fittedRadius() {
     const w = container?.clientWidth || 300;
     const h = container?.clientHeight || 300;
     const labelW = labelSize * 5.8;
-    return Math.max(60, Math.min(h / 2 - labelSize * 2.6 - 12, w / 2 - labelW - 10));
+    const labelH = labelSize * 2.7 + 2;
+    return Math.max(60, Math.min(h / 2 - labelH - 8 - 6, w / 2 - labelW - 10));
   }
 
   function buildOption() {
@@ -79,7 +82,7 @@
         // Fill the container — the wrap/nameGap settings below keep axis
         // labels inside even at this radius (ECharts doesn't auto-fit them)
         radius: multiSeries ? '58%' : showValues ? fittedRadius() : '66%',
-        center: ['50%', multiSeries ? '48%' : showValues ? '54%' : '52%'],
+        center: ['50%', multiSeries ? '48%' : showValues ? '50%' : '52%'],
         nameGap: 8,
         axisName: {
           color: ink.strong,
