@@ -127,6 +127,69 @@ export async function signOut() {
 }
 
 /**
+ * Email a password reset link
+ * Supabase answers the same way whether or not the address has an account,
+ * so callers can't (and shouldn't) tell the user which it was.
+ * @param {string} email - Account email
+ * @returns {Promise<Object>} - { error }
+ */
+export async function requestPasswordReset(email) {
+  if (!browser) return { error: 'Not in browser' };
+
+  try {
+    const { error } = await supabaseBrowser.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`
+    });
+    return { error: error ?? null };
+  } catch (error) {
+    return { error };
+  }
+}
+
+/**
+ * Exchange a reset link for a recovery session
+ * Handles our template's token_hash link and the PKCE `code` that Supabase's
+ * default template sends (which only works in the browser that requested it).
+ * @param {Object} params - { tokenHash, type, code } from the link's query string
+ * @returns {Promise<Object>} - { error }
+ */
+export async function verifyRecoveryLink({ tokenHash, type, code }) {
+  if (!browser) return { error: 'Not in browser' };
+
+  try {
+    if (code) {
+      // The client exchanges a ?code= on its own while initializing; only retry
+      // (to surface the real error) if that didn't produce a session
+      const { data: { session } } = await supabaseBrowser.auth.getSession();
+      if (session) return { error: null };
+      const { error } = await supabaseBrowser.auth.exchangeCodeForSession(code);
+      return { error: error ?? null };
+    }
+
+    const { error } = await supabaseBrowser.auth.verifyOtp({ token_hash: tokenHash, type });
+    return { error: error ?? null };
+  } catch (error) {
+    return { error };
+  }
+}
+
+/**
+ * Set a new password for the signed-in (or recovering) user
+ * @param {string} password - New password
+ * @returns {Promise<Object>} - { error }
+ */
+export async function updatePassword(password) {
+  if (!browser) return { error: 'Not in browser' };
+
+  try {
+    const { error } = await supabaseBrowser.auth.updateUser({ password });
+    return { error: error ?? null };
+  } catch (error) {
+    return { error };
+  }
+}
+
+/**
  * Initialize auth state from current session
  * Auto-called on module load (like fetchSiteData)
  */

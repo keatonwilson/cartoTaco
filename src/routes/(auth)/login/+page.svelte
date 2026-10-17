@@ -90,7 +90,10 @@
 
       <!-- Password Input -->
       <div class="input-group">
-        <label for="password" class="label">Password</label>
+        <div class="label-row">
+          <label for="password" class="label">Password</label>
+          <a href="/forgot-password" class="forgot-link">Forgot password?</a>
+        </div>
         <div class="input-wrapper">
           {#if showPassword}
             <input
@@ -217,6 +220,22 @@
     font-size: 0.875rem;
     font-weight: 600;
     color: #374151;
+  }
+
+  .label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .forgot-link {
+    font-size: 0.75rem;
+    color: #FE795D;
+    text-decoration: none;
+  }
+
+  .forgot-link:hover {
+    text-decoration: underline;
   }
 
   .input-wrapper {

@@ -195,6 +195,30 @@ VITE_MAPBOX_KEY=your_mapbox_api_key
 
 ---
 
+## Auth email templates
+
+Supabase keeps auth emails and redirect URLs in dashboard settings, not in
+migrations, so set them by hand on **both** the staging and prod projects.
+The templates live in `supabase/templates/` (subject line in each file's header
+comment):
+
+| Template file | Dashboard → Authentication → Emails | Links to |
+|---|---|---|
+| `confirm-signup.html` | Confirm signup | `/auth/confirm` |
+| `reset-password.html` | Reset password | `/reset-password` |
+
+Both use `{{ .TokenHash }}`, so links work in any browser. Authentication → URL
+Configuration also needs:
+
+- **Site URL** — that environment's deploy URL (the templates build links from it)
+- **Redirect URLs** — `<site>/reset-password` for each environment, plus
+  `http://localhost:5175/reset-password` for local dev. This only matters while a
+  project still sends Supabase's default reset template: without the entry,
+  Supabase drops the `redirectTo` and the link lands on `/` instead of the
+  reset page.
+
+---
+
 ## Rollback
 
 **Frontend**: Vercel → Deployments → re-promote a previous deployment.
