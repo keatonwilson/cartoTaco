@@ -195,6 +195,9 @@
   .type-icons {
     flex-shrink: 0;
     padding-top: 2px;
+    /* Above the status/actions row, which the tooltip opens over */
+    position: relative;
+    z-index: 2;
   }
 
   .type-icons :global(.icons) {
