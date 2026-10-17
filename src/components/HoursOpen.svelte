@@ -8,6 +8,8 @@
   export let endHours;
   /** Hide the "Hours" heading when the surrounding section already labels it */
   export let showTitle = true;
+  /** Hide the status label when the surrounding card already shows it */
+  export let showStatus = true;
 
   const DAYS = [
     { key: 'mon', label: 'Mo', dow: 1 },
@@ -104,10 +106,12 @@
         </button>
       {/each}
     </div>
-    <div class="status" data-state={status.state}>
-      <span class="status-dot"></span>
-      {status.label}
-    </div>
+    {#if showStatus}
+      <div class="status" data-state={status.state}>
+        <span class="status-dot"></span>
+        {status.label}
+      </div>
+    {/if}
   </div>
 </div>
 

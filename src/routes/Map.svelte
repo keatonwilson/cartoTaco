@@ -306,10 +306,15 @@
 		}
 	}
 
-	// Back/Forward
+	// Back/Forward. Acts only when the entry's spot actually changes: $page can
+	// re-emit with the previous entry's state while a Back is landing, which
+	// would otherwise reopen the spot we just closed.
+	let lastHistorySpotId = null;
 	$: onSpotHistory($page.state?.spotId ?? null);
 	function onSpotHistory(id) {
-		if (typeof window === 'undefined' || id === urlSpotId) return;
+		if (typeof window === 'undefined' || id === lastHistorySpotId) return;
+		lastHistorySpotId = id;
+		if (id === urlSpotId) return;
 		urlSpotId = id;
 		if (id === null) {
 			pushedSpotEntry = false;

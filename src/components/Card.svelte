@@ -260,7 +260,7 @@
         <p class="panel-lede">{$selectedSite.shortDescription || 'No description available'}</p>
         {#if $selectedSite.longDescription}
           <div class="long-description" class:visible={showLongDescription}>
-            <p class="panel-body">{$selectedSite.longDescription}</p>
+            <p class="panel-long">{$selectedSite.longDescription}</p>
           </div>
           <button
             class="expand-button"
@@ -276,6 +276,7 @@
         <h3 class="panel-label">Hours</h3>
         <HoursOpen
           showTitle={false}
+          showStatus={false}
           startHours={$selectedSite.startHours || {}}
           endHours={$selectedSite.endHours || {}}
         />
@@ -668,7 +669,7 @@
     text-wrap: pretty;
   }
 
-  .panel-body {
+  .panel-long {
     margin: 8px 0 0;
     font-size: 14px;
     line-height: 1.6;

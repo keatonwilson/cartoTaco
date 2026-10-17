@@ -124,13 +124,13 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 - `isLoading` - Loading state from tacoStore
 - `hasError` - Error state from tacoStore
 - `processedTacoData` - Transforms raw site data into component-ready format with pre-computed values (top 5 menu items, proteins, percentages, and specialty items embedded from view). Each site carries `vettingStatus`/`isPending`/`sourceUrl` and `isClosed`/`closedAt`; pending (unvetted, web-scraped) spots skip the menu/protein/salsa pre-computation and get empty arrays, while closed spots keep everything recorded while they were open
-- `filteredTacoData` - Filters `processedTacoData` based on `filterConfig` (search, protein type, establishment type, spice level, open hours, favorites, pending visibility, closed visibility). Closed spots never pass the Open Now filter, whatever their stale hours say. Spots failing `hasValidCoordinates()` are dropped first — they can't be placed on the map, so they can't be a map result either
+- `filteredTacoData` - Filters `processedTacoData` based on `filterConfig` (search, protein type, establishment type, spice level, open hours on Tucson's clock via `isOpenNow`, favorites, pending visibility, closed visibility). Closed spots never pass the Open Now filter, whatever their stale hours say. Spots failing `hasValidCoordinates()` are dropped first — they can't be placed on the map, so they can't be a map result either
 - `summaryStats` - Computed from `processedTacoData` `{ maxSalsaNum, avgSalsaNum, maxHeatLevel, avgHeatLevel }` (open, vetted spots only)
 - `distributionStats` - `Map<est_id, { heatPercentile, salsaPercentile }>` percentile ranks within the city distribution (powers "Hotter than X% of Tucson spots" context lines); pending and closed spots get no entry and don't affect the pools
 - `recentlyAddedSites` - Spots added in the last 30 days, sorted newest first (used by NewSpotsBadge); excludes spots failing `hasValidCoordinates()`, since clicking one flies the map to it
 
 ### UI State Stores
-- `selectedSite` - Currently selected establishment (for popup)
+- `selectedSite` - Currently selected establishment (drives the side panel on desktop/tablet and the bottom sheet on mobile)
 - `filterConfig` - User's active filters: `{ searchText, proteins, types, spiceLevel, openNow, showFavoritesOnly, showPending, showClosed }`
 
 ### Authentication Store (src/lib/authStore.js)
@@ -202,6 +202,7 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 ### UI Store (src/lib/uiStore.js)
 - `filterPanelOpen` - Whether the FilterBar filter panel is expanded
 - `mobileNavOpen` - Whether the mobile navigation menu is open
+- `peekSite` - `{ site, lngLat } | null`: the spot the peek card is showing (set by mapping.js on pin hover, or first tap on touch tablets)
 
 ### Key Pattern
 Data flows: Raw DB → Store → Derived/Processed → Components. Components rarely transform data; they consume pre-processed values from derived stores.
@@ -231,17 +232,22 @@ The map implementation (src/lib/mapping.js) uses Mapbox GL with clustering:
 - `applyLens(map, lensId)` - Switch marker styling for the active map lens (visibility + data-driven paint on `heat`/`salsas` feature properties)
 - `resetListeners(map)` - Clean up all event handlers
 - `sitesToGeoJSON(processedSites)` - Convert sites to GeoJSON with embedded properties (incl. `closed`/`vetting_status` flags for data-driven styling); skips spots failing `hasValidCoordinates()`
-- `flyToSite(map, site)` - Animate to location and open popup
+- `flyToSite(map, site)` - Fly to a spot and open its card on arrival (side panel on desktop/tablet, bottom sheet on mobile)
+- `openSpot(map, site)` - Open a spot's card from outside the map handlers (the peek card)
+- `closeSpot(map)` - Close the open spot and give the map back its full width (see Interaction)
+- `computeMapPadding()` / `syncMapPadding(map)` - Camera padding for whatever covers the map (mobile sheet, spot panel, trail/comparison tray). Every overlay-aware camera move uses it; Map.svelte re-syncs on store/resize changes, skipping mid-animation
+- `spotPanelWidth(vw)` - The panel's width (340–440px, 32vw). SpotPanel renders at it and the camera pads by it
 - `updateTrailLayers(map, stops)` - Render numbered trail stops
 - `updateTrailRoute(map, routeGeojson)` - Render dashed route line from Mapbox Directions API
 - `clearTrailLayers(map)` - Remove all trail visualization
-- `createPopupContent(siteId)` - Create Card component instance for popup
-- `adjustPopupPosition(popup, map)` - Ensure popup stays within map bounds
 
 ### Interaction
 - Click cluster: Zoom to expansion zoom level
-- Click unclustered point: Show popup with `Card.svelte` OR add to trail (if trail mode active)
-- Hover point/cluster: Change cursor to pointer; increase marker radius
+- Click unclustered point: open the spot (side panel on desktop/tablet, bottom sheet on mobile) OR add to trail (if trail mode active). Touch tablets (no hover) peek on the first tap and open on the second
+- Hover point (hover-capable desktop/tablet): after 150ms show `PeekCard`; it stays while the pointer is on it. Cursor and marker radius change as before
+- Opening on desktop/tablet eases the spot into the middle of the uncovered map (`padding.left` = panel width, `top` = header) and zooms to 15 when further out than 13. Clicking another pin swaps the panel in place
+- Back to exploring: ×, Esc (closes the peek first), a click on empty map (no pin/cluster under it; a drag never counts), or browser Back. Closing returns to the pre-open view if opening zoomed in and the user hasn't moved the map since (a user `movestart` has an `originalEvent`); otherwise it drops the padding in place so nothing slides. Clearing `selectedSite` any other way (e.g. the header menu) releases the camera the same way
+- The open spot is in the URL as `?location=<id>` via SvelteKit shallow routing (`pushState`/`replaceState` in Map.svelte): one history entry per visit, swaps replace it, Back closes, Forward reopens. A `?location=` deep link opens the spot on its own entry, so closing rewrites the URL instead of leaving the app. Anything else writing the URL must keep `history.state` (see ComparisonTray)
 - Markers update reactively via `updateMarkers()` when `filteredTacoData` changes
 
 ### Supporting Map Libraries
@@ -276,13 +282,14 @@ and `flyToSite()`.
 
 - `src/lib/auth.js` - Server-side Supabase client with cookie handling (used by `hooks.server.js`)
 - `src/lib/censusStore.js` - `censusStats` derived store backing `/census`
+- `src/lib/hours.js` - Opening hours on Tucson's clock (`America/Phoenix`, no DST) whatever the browser's zone: `tucsonNow()`, `parseTime()`, `formatTime()`, `getOpenStatus(hours[, endHours], date)` → `{ isOpen, state: 'open'|'closing-soon'|'opens-later'|'closed'|'unknown', label }` with labels like "Open til 10 PM", "Closes soon · 9:30 PM" (≤60 min), "Opens at 8 AM", "Opens tomorrow at 8 AM", "Opens Mon at 11 AM". Overnight spans count after midnight. `minuteClock` ticks each minute so labels roll over live. `isOpenNow` (stores.js) and `HoursOpen` both use it
 - `src/lib/vibeVotes.js` - Vibe vote database operations (the store wraps these)
 - `src/lib/authErrors.js` - Maps Supabase auth errors to friendly messages (e.g. email rate limit, expired reset link, reused password)
 - `src/lib/favorites.js` - Favorites database operations (add, remove, fetch)
 - `src/lib/submissions.js` - Location submission handling and DB persistence
 - `src/lib/validation.js` - Form validation functions for submissions/auth forms
 - `src/lib/theme.js` - Dark/light mode management
-- `src/lib/chartTheme.js` - Shared chart styling: validated categorical palettes (light/dark), sequential coral ramp, ink/grid/tooltip helpers, `CHART_FONT`. All ECharts components build their options from these. Design tokens live as CSS variables in `src/app.css` (surfaces, inks, hairlines, accent, chart tokens) and map into Tailwind as `surface-*`/`ink-*`/`line-*`/`accent-*`; dark mode flips the tokens, so new components should not need `:global(.dark)` overrides. `--header-h` is a layout token: `Header.svelte` measures the real header bar and writes it to `:root`, and map-page overlays (FilterBar, Mapbox controls) offset from it rather than hardcoding a header height. Typography: Outfit Variable (display/headings) + Inter Variable (UI/body), self-hosted via `@fontsource-variable`.
+- `src/lib/chartTheme.js` - Shared chart styling: validated categorical palettes (light/dark), sequential coral ramp, ink/grid/tooltip helpers, `CHART_FONT`. All ECharts components build their options from these. Design tokens live as CSS variables in `src/app.css` (surfaces, inks, hairlines, accent, chart tokens) and map into Tailwind as `surface-*`/`ink-*`/`line-*`/`accent-*`; dark mode flips the tokens, so new components should not need `:global(.dark)` overrides. `--header-h` is a layout token: `Header.svelte` measures the real header bar and writes it to `:root`, and map-page overlays (FilterBar, Mapbox controls) offset from it rather than hardcoding a header height. Typography: Outfit Variable (display/headings) + Inter Variable (UI/body), self-hosted via `@fontsource-variable`. Fraunces Variable (`--font-serif`) is the editorial serif, used sparingly for spot names on the panel and peek card (the same face as the Salsa Atlas); `--font-mono` sets the uppercase kicker labels. `--spot-panel-offset` is set on `:root` by Map.svelte while the desktop panel is open, so MapLegend and the bottom trays start beside it.
 - `src/lib/deviceDetection.js` - Responsive device type detection (mobile/tablet/desktop)
 - `src/lib/supabaseBrowser.js` - Browser-side Supabase client using `@supabase/ssr` `createBrowserClient` with cookie support; exports `supabaseBrowser` client and `getAuthenticatedUser()` helper
 - `src/lib/profiles.js` - Profiles CRUD: `getOwnProfile()`, `getProfileByUsername()`, `updateProfile()`, `uploadAvatar()`. Public reads use only safe columns (no email). Avatar uploads write to `avatars/<user_id>/avatar.{ext}` and bust browser cache via `?t=` query param.
@@ -291,7 +298,9 @@ and `flyToSite()`.
 ## Component Organization
 
 ### Main Components (src/components/)
-- `Card.svelte` - Detailed popup card shown when clicking map markers
+- `Card.svelte` - Full spot card. `variant`: `'sheet'` (mobile bottom sheet) or `'panel'` (desktop/tablet side panel: one column of labelled sections split by hairlines with a staggered entrance, Menu/Protein radar behind a toggle). Defaults from `isMobile`
+- `SpotPanel.svelte` - Desktop/tablet spot panel docked left under the header, full height, own scroll. Sticky header: mono kicker (type · region), Fraunces name, Tucson-time status, favorite/compare/close. Renders `Card variant="panel"` or `PendingSpotCard hideHeader`, keyed by spot so swaps re-run the entrance
+- `PeekCard.svelte` - Small floating summary over the hovered pin (status, name, heat ladder, top 3 proteins; pending/closed notes). "Open card" opens the panel, morphing the name across with a view transition where supported; in trail mode it offers "Add as stop N"/"Remove stop N". Placed above the pin, flipped below near the top, kept clear of the panel
 - `CollapsibleSection.svelte` - Reusable accordion/collapsible section
 - `ContactInfo.svelte` - Displays contact links (phone, website, Instagram, Facebook)
 - `DirectionsButton.svelte` - Opens Google Maps directions to an establishment
@@ -301,7 +310,7 @@ and `flyToSite()`.
 - `LoadingState.svelte` - Shared loading indicator (bobbing taco + pulsing dots + message), reduced-motion aware; used by Map, census, and compare
 - `HandmadeBadge.svelte` - "Handmade Tortillas" pill shown on Card
 - `HoursInput.svelte` - Input component for hours data (used in submission form)
-- `HoursOpen.svelte` - Week Rhythm strip: 7 day pills with mini open-span bars on a shared 24h scale, today ring, calm open/closed status dot; overnight hours wrap
+- `HoursOpen.svelte` - Week Rhythm strip: 7 day pills with mini open-span bars on a shared 24h scale, today ring (Tucson's day), status dot with the `getOpenStatus` label; overnight hours wrap. `showTitle`/`showStatus` props hide the heading and label when the surrounding card has them
 - `IconHighlight.svelte` - Icon-based feature highlights
 - `LocationPicker.svelte` - Map-based location selection component
 - `MapLensPicker.svelte` - Map lens switcher (Spots / Heat / Salsas / Density) with inline legends; drives `mapLens` store. Data lenses exclude pending spots (no measurements) and closed spots (measurements are history). The density heatmap uses a deliberately wide `heatmap-radius` — Tucson's spots are sparse enough that the stock radius drew one blob per spot and nothing between them
@@ -391,7 +400,8 @@ Test files are co-located in src/lib/:
 - `src/lib/validation.test.js` - Tests for form validation functions
 - `src/lib/pendingSpots.test.js` - Tests for pending-spot processing/filtering
 - `src/lib/closedSpots.test.js` - Tests for closed-spot processing/filtering/map styling
-- `src/lib/mapping.test.js` - Tests for map layer/GeoJSON helpers and coordinate validation
+- `src/lib/mapping.test.js` - Tests for map layer/GeoJSON helpers, coordinate validation, and the spot panel's fly-to/close camera
+- `src/lib/hours.test.js` - Tests for Tucson-time open status (uses UTC instants so it passes in any runner time zone)
 - `src/lib/authErrors.test.js` - Tests for auth error message mapping
 
 Run all tests with `pnpm test`.
