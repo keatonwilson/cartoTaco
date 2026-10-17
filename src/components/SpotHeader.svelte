@@ -76,72 +76,79 @@
     </div>
   </div>
 
-  <p class="status-line">
-    {#if site.isClosed}
-      <span class="status" data-state="gone">✕ Permanently closed</span>
-    {:else}
-      <span class="status" data-state={status.state}><span class="status-dot"></span>{status.label}</span>
-    {/if}
-    {#if contact.address}
-      <span class="address">{contact.address}</span>
-    {/if}
-  </p>
-
-  <div class="actions">
-    {#if canNavigate}
-      <button type="button" class="action primary" on:click={() => openDirections(site)}>
-        <NavigationArrow size={16} weight="fill" /> Directions
-      </button>
-    {/if}
-    {#if phoneHref}
-      <a class="action" href={phoneHref} title="Call {contact.phone}">
-        <Phone size={16} weight="bold" /> Call
-      </a>
-    {/if}
-    {#if contact.website}
-      <a class="action" href={contact.website} target="_blank" rel="noopener noreferrer">
-        <Globe size={16} weight="bold" /> Website
-      </a>
-    {/if}
-    {#if contact.instagram}
-      <a
-        class="action icon-only"
-        href="https://instagram.com/{contact.instagram}"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Instagram"
-        title="Instagram"
-      >
-        <InstagramLogo size={18} weight="bold" />
-      </a>
-    {/if}
-    {#if contact.facebook}
-      <a
-        class="action icon-only"
-        href="https://facebook.com/{contact.facebook}"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Facebook"
-        title="Facebook"
-      >
-        <FacebookLogo size={18} weight="bold" />
-      </a>
-    {/if}
-    <span class="spacer"></span>
-    <FavoriteButton estId={site.est_id} size="sm" />
-    {#if !site.isClosed && !site.isPending}
-      <button
-        type="button"
-        class="action compare"
-        class:active={isInComparison}
-        disabled={comparisonFull}
-        on:click={toggleComparison}
-        title={isInComparison ? 'Remove from comparison' : comparisonFull ? 'Max 3 spots' : 'Add to comparison'}
-      >
-        {isInComparison ? '− Compare' : '+ Compare'}
-      </button>
-    {/if}
+  <!-- Keep it: favorite and compare, beside today's status (as before) -->
+  <div class="status-row">
+    <p class="status-line">
+      {#if site.isClosed}
+        <span class="status" data-state="gone">✕ Permanently closed</span>
+      {:else}
+        <span class="status" data-state={status.state}><span class="status-dot"></span>{status.label}</span>
+      {/if}
+      {#if contact.address}
+        <span class="address">{contact.address}</span>
+      {/if}
+    </p>
+    <div class="group">
+      <FavoriteButton estId={site.est_id} size="sm" />
+      {#if !site.isClosed && !site.isPending}
+        <button
+          type="button"
+          class="action compare"
+          class:active={isInComparison}
+          disabled={comparisonFull}
+          on:click={toggleComparison}
+          title={isInComparison ? 'Remove from comparison' : comparisonFull ? 'Max 3 spots' : 'Add to comparison'}
+        >
+          {isInComparison ? '− Compare' : '+ Compare'}
+        </button>
+      {/if}
+    </div>
   </div>
+
+  <!-- Go there / get in touch -->
+  {#if canNavigate || phoneHref || contact.website || contact.instagram || contact.facebook}
+    <div class="group contact">
+      {#if canNavigate}
+        <button type="button" class="action primary" on:click={() => openDirections(site)}>
+          <NavigationArrow size={16} weight="fill" /> Directions
+        </button>
+      {/if}
+      {#if phoneHref}
+        <a class="action" href={phoneHref} title="Call {contact.phone}">
+          <Phone size={16} weight="bold" /> Call
+        </a>
+      {/if}
+      {#if contact.website}
+        <a class="action" href={contact.website} target="_blank" rel="noopener noreferrer">
+          <Globe size={16} weight="bold" /> Website
+        </a>
+      {/if}
+      {#if contact.instagram}
+        <a
+          class="action icon-only"
+          href="https://instagram.com/{contact.instagram}"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Instagram"
+          title="Instagram"
+        >
+          <InstagramLogo size={18} weight="bold" />
+        </a>
+      {/if}
+      {#if contact.facebook}
+        <a
+          class="action icon-only"
+          href="https://facebook.com/{contact.facebook}"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Facebook"
+          title="Facebook"
+        >
+          <FacebookLogo size={18} weight="bold" />
+        </a>
+      {/if}
+    </div>
+  {/if}
 </header>
 
 <style>
@@ -214,11 +221,21 @@
     display: none;
   }
 
-  .status-line {
+  .status-row {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 16px;
+  }
+
+  .status-line {
+    display: flex;
+    flex: 1 1 200px;
+    flex-wrap: wrap;
     align-items: baseline;
-    gap: 4px 12px;
+    gap: 2px 12px;
+    min-width: 0;
     margin: 0;
     font-size: 15px;
   }
@@ -262,16 +279,16 @@
     color: var(--ink-2);
   }
 
-  .actions {
+  /* Each group wraps as a unit, so favorite and compare never split up */
+  .group {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-    padding-top: 2px;
   }
 
-  .spacer {
-    flex: 1;
+  .group.contact {
+    padding-top: 2px;
   }
 
   .action {
@@ -332,19 +349,14 @@
     outline-offset: 2px;
   }
 
-  /* FavoriteButton as a round heart beside Compare, matching the other
-     pills (outranks its own size-sm rules); its title says what it does */
-  .spot-head .actions :global(.favorite-button.size-sm) {
-    width: 36px;
+  /* Match FavoriteButton to the Compare pill (outranks its own size-sm
+     rules). It drops its label to a heart on narrow screens by itself. */
+  .spot-head .group :global(.favorite-button.size-sm) {
     height: 36px;
-    padding: 0;
-    justify-content: center;
+    padding: 0 14px;
     border-width: 1px;
     border-radius: 999px;
-  }
-
-  .spot-head .actions :global(.favorite-button .button-text) {
-    display: none;
+    font-size: 14px;
   }
 
   .close-btn {

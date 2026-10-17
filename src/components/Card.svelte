@@ -1,12 +1,12 @@
 <script>
   // The spot card body, the same on the desktop panel and the mobile sheet.
   // The name, status and actions live in SpotHeader above it. One reading
-  // column in decision order: what it's known for, the at-a-glance tiles,
-  // what they serve, hours, the description, then vibe votes. Components are
-  // sized to fill the column so numbers and labels read at a glance.
+  // column: hours and the description first, then the at-a-glance tiles,
+  // what they serve, vibe votes, and the specialties carousel. Components
+  // are sized to fill the column so numbers and labels read at a glance.
   import RadarChart from "./RadarChart.svelte";
   import HoursOpen from "./HoursOpen.svelte";
-  import SpecCard from "./SpecCard.svelte";
+  import SpecCarousel from "./SpecCarousel.svelte";
   import VibeVotes from "./VibeVotes.svelte";
   import VibeFingerprint from "./VibeFingerprint.svelte";
   import ClosedBanner from "./ClosedBanner.svelte";
@@ -33,12 +33,6 @@
   $: menuLabels = ($selectedSite?.topFiveMenuItems || []).map(capitalize);
   $: proteinLabels = ($selectedSite?.topFiveProteinItems || []).map(capitalize);
 
-  $: specialties = ($selectedSite?.specialties || []).map((s) => ({
-    name: s.item_name || s.protein_name || s.salsa_name || s.name || '',
-    short: s.short_descrip || s.description || '',
-    long: s.long_descrip || '',
-    type: s.type || 'Item'
-  }));
 
   $: today = $selectedSite
     ? todayHours($selectedSite.startHours || [], $selectedSite.endHours || [], $minuteClock)
@@ -68,22 +62,40 @@
       <ClosedBanner closedAt={$selectedSite.closedAt} />
     {/if}
 
-    {#if specialties.length > 0}
-      <section class="card-section" style="--i:0">
-        <h3 class="card-label">Known for</h3>
-        <div class="known-for">
-          {#each specialties as spec}
-            <SpecCard itemName={spec.name} shortDescrip={spec.short} longDescrip={spec.long} cardType={spec.type} />
-          {/each}
-        </div>
-      </section>
-    {/if}
+    <section class="card-section" style="--i:0">
+      <div class="card-label-row">
+        <h3 class="card-label">Hours</h3>
+        {#if today}
+          <span class="today">Today <strong>{today}</strong></span>
+        {/if}
+      </div>
+      <HoursOpen
+        size="lg"
+        showTitle={false}
+        showStatus={false}
+        startHours={$selectedSite.startHours || {}}
+        endHours={$selectedSite.endHours || {}}
+      />
+    </section>
 
     <section class="card-section" style="--i:1">
-      <SpotStats site={$selectedSite} />
+      <h3 class="card-label">About</h3>
+      <p class="card-lede">{$selectedSite.shortDescription || 'No description available'}</p>
+      {#if $selectedSite.longDescription}
+        <div class="long-description" class:visible={showLongDescription}>
+          <p class="card-long">{$selectedSite.longDescription}</p>
+        </div>
+        <button class="expand-button" on:click={toggleLongDescription} aria-expanded={showLongDescription}>
+          {showLongDescription ? 'Show less' : 'Read more'}
+        </button>
+      {/if}
     </section>
 
     <section class="card-section" style="--i:2">
+      <SpotStats site={$selectedSite} />
+    </section>
+
+    <section class="card-section" style="--i:3">
       <div class="card-label-row">
         <h3 class="card-label">What they serve</h3>
         <div class="radar-toggle" role="group" aria-label="Chart">
@@ -115,43 +127,24 @@
       {/if}
     </section>
 
-    <section class="card-section" style="--i:3">
-      <div class="card-label-row">
-        <h3 class="card-label">Hours</h3>
-        {#if today}
-          <span class="today">Today <strong>{today}</strong></span>
-        {/if}
-      </div>
-      <HoursOpen
-        size="lg"
-        showTitle={false}
-        showStatus={false}
-        startHours={$selectedSite.startHours || {}}
-        endHours={$selectedSite.endHours || {}}
-      />
-    </section>
-
-    <section class="card-section" style="--i:4">
-      <h3 class="card-label">About</h3>
-      <p class="card-lede">{$selectedSite.shortDescription || 'No description available'}</p>
-      {#if $selectedSite.longDescription}
-        <div class="long-description" class:visible={showLongDescription}>
-          <p class="card-long">{$selectedSite.longDescription}</p>
-        </div>
-        <button class="expand-button" on:click={toggleLongDescription} aria-expanded={showLongDescription}>
-          {showLongDescription ? 'Show less' : 'Read more'}
-        </button>
-      {/if}
-    </section>
-
     {#if !isClosed}
-      <section class="card-section" style="--i:5">
+      <section class="card-section" style="--i:4">
         <h3 class="card-label">Vibe check</h3>
         <p class="card-note">Tap what this spot does well. Everyone's votes build its vibe fingerprint.</p>
         <VibeVotes estId={$selectedSite.est_id} />
         <VibeFingerprint estId={$selectedSite.est_id} />
       </section>
     {/if}
+    <section class="card-section" style="--i:5">
+      <h3 class="card-label">Specialties</h3>
+      {#if $selectedSite.specialties && $selectedSite.specialties.length > 0}
+        <div class="specialties">
+          <SpecCarousel specialties={$selectedSite.specialties} />
+        </div>
+      {:else}
+        <p class="card-note">No specialty information for this spot yet.</p>
+      {/if}
+    </section>
   </div>
 {/if}
 
@@ -306,18 +299,16 @@
     color: var(--ink-1);
   }
 
-  /* ── Known for: every specialty, full width ── */
-  .known-for {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+  /* ── Specialties: the carousel, with cards filling most of the column ── */
+  .specialties :global(.carousel-item) {
+    flex-basis: 85%;
   }
 
-  .known-for :global(.card-title) {
+  .specialties :global(.card-title) {
     font-size: 17px;
   }
 
-  .known-for :global(.card-description) {
+  .specialties :global(.card-description) {
     font-size: 14px;
     line-height: 1.5;
   }

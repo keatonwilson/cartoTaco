@@ -232,9 +232,15 @@
     gap: 10px 16px;
   }
 
-  .tortilla-row :global(.icons) {
+  /* IconHighlight and HandmadeBadge carry their own top/bottom margins for
+     the old stacked card; zero them so the row centres on one line */
+  .tile .tortilla-row :global(.icons) {
     margin: 0;
     gap: 12px;
+  }
+
+  .tile .tortilla-row :global(.handmade-badge) {
+    margin: 0;
   }
 
   .tortilla-row :global(.tortilla-icon) {
