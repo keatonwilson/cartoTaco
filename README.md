@@ -2,7 +2,7 @@
 
 An interactive map-based application for exploring taco establishments in Tucson, AZ. Discover local taco shops, food trucks, and stands with detailed information on menu items, salsas, spice levels, and specialty offerings.
 
-![CartoTaco Logo](/static/color_light_bg.png)
+![CartoTaco Logo](static/color_light_bg.png)
 
 ## 🚀 Features
 
@@ -12,15 +12,20 @@ An interactive map-based application for exploring taco establishments in Tucson
 - **Detailed Information Cards**: Rich data visualizations including radar charts, spice gauges, and specialty carousels
 - **User Authentication**: Email/password auth via Supabase with protected routes
 - **Favorites System**: Save spots with a heart icon, filter by favorites, dedicated favorites page
-- **Taco Trail Route Builder**: Plan multi-stop taco crawls with walking/driving directions via Mapbox Directions API
+- **Taco Trail Route Builder**: Plan multi-stop taco crawls with walking/cycling/driving directions via Mapbox Directions API
 - **Spot Comparison Mode**: Compare up to 3 establishments side-by-side with shareable URLs at `/compare`
 - **Taste Profile & Personalization**: k-NN based recommendations from your favorites, 13 taste archetypes
 - **Taco Summit**: Shareable ranked-choice group vote — share a link, everyone ranks their picks, Borda count reveals the winner with a live rank-distribution chart at `/vote/[id]`
 - **Surprise Me**: One-tap random spot selection that respects active filters
-- **Onboarding Tour**: 10-step guided tour for first-time users
+- **Onboarding Tour**: 11-step guided tour for first-time users
 - **Dark Mode**: Light/dark/auto themes with time-based automatic switching
 - **Directions Deep-Link**: Smart links to Apple Maps (iOS), Google Maps (Android), or Google Maps web
 - **New Spots Badge**: Notification badge for recently added establishments
+- **Map Lenses**: Switch the map between spots, heat, salsa count, and density views
+- **Tucson Taco Census**: City-wide stats dashboard at `/census`
+- **Vibe Votes**: Four one-tap votes per spot (Heat Legit, Authentic, Value, Vibe) instead of star ratings
+- **Public Profiles**: Username, bio, and avatar at `/u/[username]`
+- **Pending & Closed Spots**: Unvetted, web-scraped spots and permanently closed ones are shown but clearly marked
 - **Community Location Submissions**: Geocoded submission form with moderation queue
 - **Contact Information**: Direct links to phone, website, Instagram, and Facebook
 - **Specialty Highlights**: Discover unique specialty items at each location
@@ -30,25 +35,25 @@ An interactive map-based application for exploring taco establishments in Tucson
 ## 🔧 Tech Stack
 
 - **Frontend**: [SvelteKit](https://kit.svelte.dev/) v2 with [Vite](https://vitejs.dev/)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/) with [Flowbite Svelte](https://flowbite-svelte.com/) UI components
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/) with CSS-variable design tokens and [Phosphor](https://phosphoricons.com/) icons
 - **Backend**: [Supabase](https://supabase.com/) for database, authentication, and SSR (`@supabase/ssr`)
 - **Mapping**: [Mapbox GL](https://docs.mapbox.com/mapbox-gl-js/api/) with geocoding and directions
-- **Data Visualization**: [ECharts](https://echarts.apache.org/), [Chart.js](https://www.chartjs.org/), and [svg-gauge](https://github.com/nicollash/svg-gauge)
+- **Data Visualization**: [ECharts](https://echarts.apache.org/)
 - **Testing**: [Vitest](https://vitest.dev/)
-- **Deployment**: [Vercel](https://vercel.com/) with adapter-vercel
+- **Deployment**: [Vercel](https://vercel.com/) with adapter-vercel; GitHub Actions for CI and database migrations
 
 ## 📋 Prerequisites
 
 Before you begin, ensure you have:
 
-- [Node.js](https://nodejs.org/) (v16 or newer)
+- [Node.js](https://nodejs.org/) 24 (see `.nvmrc`)
 - [pnpm](https://pnpm.io/) package manager
 - A Supabase account for backend services
 - A Mapbox account for map rendering
 
 ## 🔑 Environment Variables
 
-Create a `.env` file in the root directory with the following variables:
+Copy `.env.example` to `.env` and fill in:
 
 ```
 VITE_SUPABASE_URL=your_supabase_url
@@ -88,61 +93,33 @@ VITE_MAPBOX_KEY=your_mapbox_api_key
 
 ## 📚 Documentation
 
-Detailed documentation for all features:
-
-- **[Improvements Roadmap](docs/IMPROVEMENTS.md)** - Planned features and enhancements
-- **[Query Optimization](docs/QUERY_OPTIMIZATION.md)** - Database view implementation
-- **[Search & Filter](docs/SEARCH_FILTER.md)** - Filter system documentation
-- **[Marker Clustering](docs/MARKER_CLUSTERING.md)** - Clustering implementation
-- **[Visualization Improvements](docs/VISUALIZATION_IMPROVEMENTS.md)** - Chart and UI enhancements
-- **[User Submissions](docs/USER_SUBMISSIONS.md)** - Location submission feature design
+- **[CLAUDE.md](CLAUDE.md)** - Architecture reference: stores, components, routes, mapping, migrations
+- **[Deployment](docs/DEPLOYMENT.md)** - Branch flow, CI/CD, migrations, secrets, rollback
+- **[Improvements Roadmap](docs/IMPROVEMENTS.md)** - Shipped and planned features
+- **[User Submissions](docs/USER_SUBMISSIONS.md)** - Submission design and approval process
+- **[Unvetted Spots](docs/UNVETTED_SPOTS_PLAN.md)** - Pending-spot design (scraping pipeline lives in `cartoTacoMenuExtract`)
 
 ## 📁 Project Structure
 
 ```
 src/
-├── components/              # UI components
-│   ├── Card.svelte          # Popup/bottom-sheet card for establishment details
-│   ├── ComparisonTray.svelte # Floating tray for spot comparison selection
-│   ├── FilterBar.svelte     # Search and filter controls
-│   ├── TasteProfile.svelte  # Personal taste profile visualization
-│   ├── TourOverlay.svelte   # Onboarding tour overlay
-│   ├── TrailTray.svelte     # Taco trail route builder interface
-│   ├── RadarChart.svelte    # Menu/protein distribution chart (ECharts)
-│   ├── SpiceGauge.svelte    # Heat level gauge (svg-gauge)
-│   ├── NewSpotsBadge.svelte # Recently added spots notification
-│   ├── DirectionsButton.svelte # Native maps deep-link
-│   ├── FavoriteButton.svelte   # Heart toggle for favorites
-│   ├── Header.svelte        # App header with auth, theme, navigation
-│   ├── ThemeToggle.svelte   # Dark/light/auto mode toggle
-│   └── ...                  # ContactInfo, HoursOpen, SpecCarousel, etc.
-├── lib/                     # Stores, utilities, and data handling
-│   ├── stores.js            # Core data stores (tacoStore, processedTacoData, filteredTacoData)
-│   ├── authStore.js         # Authentication state
-│   ├── favoritesStore.js    # Favorites state
-│   ├── trailStore.js        # Trail builder state
-│   ├── comparisonStore.js   # Spot comparison state
-│   ├── tasteProfileStore.js # k-NN taste profile derivation
-│   ├── tourStore.js         # Onboarding tour state
-│   ├── uiStore.js           # UI state (filter panel, mobile nav)
-│   ├── newSpotsStore.js     # New spots notification state
-│   ├── mapping.js           # Mapbox GL rendering with clustering
-│   ├── mapStore.js          # Mapbox map instance holder
-│   ├── dataWrangling.js     # Data transformation utilities
-│   ├── supabase.js          # Supabase server client
-│   ├── supabaseBrowser.js   # Supabase browser client (SSR cookie support)
-│   └── ...                  # geocoding, validation, theme, deviceDetection
-├── routes/                  # SvelteKit routes
-│   ├── +page.svelte         # Main map page
-│   ├── Map.svelte           # Map component
-│   ├── compare/             # Spot comparison page (shareable via ?ids=)
-│   ├── (auth)/              # Login, signup, email confirmation
-│   └── (protected)/         # Favorites, profile, submit (requires auth)
-├── app.css                  # Global styles
-docs/                        # Feature documentation
-supabase/migrations/         # Database migrations, applied by CI
-schema/                      # Canonical view definitions
+├── components/          # Svelte components (Card, FilterBar, charts, trays, ...)
+├── lib/                 # Stores, Mapbox rendering, Supabase clients, utilities, unit tests
+├── routes/              # SvelteKit routes
+│   ├── +page.svelte     # Main map page
+│   ├── census/          # City-wide stats dashboard
+│   ├── compare/         # Spot comparison (shareable via ?ids=)
+│   ├── vote/            # Taco Summit creation and voting
+│   ├── u/[username]/    # Public profiles
+│   ├── (auth)/          # Login, signup, email confirmation
+│   └── (protected)/     # Favorites, profile, submit (requires auth)
+├── app.css              # Global styles and design tokens
+docs/                    # Feature documentation
+supabase/migrations/     # Database migrations, applied by CI
+schema/                  # Canonical sites_complete view definition
 ```
+
+[CLAUDE.md](CLAUDE.md) has the file-by-file breakdown.
 
 ## 🗃️ Database Setup
 
@@ -156,6 +133,8 @@ The application uses Supabase with the following main tables:
 - `protein` - Protein options and ratings
 - `item_spec`, `protein_spec`, `salsa_spec` - Specialty item information
 - `sites_complete` - Optimized view joining all site-related tables
+- `profiles`, `user_favorites`, `vibe_votes`, `location_submissions` - User data, protected by row-level security
+- `group_sessions`, `group_votes` - Taco Summit sessions and ballots
 
 ### Running Migrations
 
@@ -163,49 +142,14 @@ Migrations are applied by CI: merge to `staging` to apply them there, then `stag
 
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — the full branch/deploy/migration workflow
 - [supabase/migrations/README.md](supabase/migrations/README.md) — writing a migration
-- [CLAUDE.md](CLAUDE.md) — what each of the 34 migrations does
+- [CLAUDE.md](CLAUDE.md) — what each migration does
 
-For a brand-new database, point `supabase db push --db-url` at it once to run all 34 in order.
+For a brand-new database, point `supabase db push --db-url` at it once to run them all in order.
 
 ## 🌟 Roadmap
 
-See [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md) for the complete feature roadmap.
-
-**Completed:**
-- ✅ Query optimization (60-70% faster load times)
-- ✅ Search and filter system
-- ✅ Marker clustering
-- ✅ Mobile-first responsive design
-- ✅ User authentication & favorites
-- ✅ Community location submissions
-- ✅ Dark mode with auto switching
-- ✅ Taco trail route builder
-- ✅ Spot comparison mode
-- ✅ Taste profile & personalization
-- ✅ Onboarding tour
-- ✅ Directions deep-link
-- ✅ New spots badge
-- ✅ Vercel deployment
-
-**Next Up:**
-- "Surprise Me" random spot picker
-- Taco Tuesday Tracker
-- Tucson Taco Census stats page
-- Community ratings & reviews
-- PWA support
-- Accessibility audit
+See [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md) for what has shipped and what's planned. Next up: geo-fenced check-ins and aficionado tiers.
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
+Branch off `staging`, open a PR into `staging`, and verify on the staging deploy; `staging` → `main` ships it. CI runs `pnpm check`, `pnpm test`, and `pnpm build` on every PR. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).

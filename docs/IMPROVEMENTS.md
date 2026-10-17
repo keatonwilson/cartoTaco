@@ -25,7 +25,7 @@ This document outlines potential improvements to enhance CartoTaco's functionali
 19. **Toast Notification System** - Tiny non-blocking notification store + `ToastHost` mounted once in `+layout`. Phosphor icons for success/error/info; auto-dismiss; dismissable.
 20. **iPad Header Layout Fix** - Bumped desktop-nav breakpoint from 768px → 1100px so iPad portrait and split-view widths get the hamburger menu instead of an overflowing 8-item nav.
 
-See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARCH_FILTER.md), [MARKER_CLUSTERING.md](./MARKER_CLUSTERING.md), and [USER_SUBMISSIONS.md](./USER_SUBMISSIONS.md) for details.
+See [USER_SUBMISSIONS.md](./USER_SUBMISSIONS.md) for the submission design. The write-ups for query optimization, search/filter, clustering, and the UI refresh plan were removed once shipped (they're in git history); `CLAUDE.md` describes the current implementation.
 
 ---
 
@@ -50,7 +50,7 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 **Status**: Noted
 
 **Details**:
-- `svelte.config.js` uses `runtime: 'nodejs20.x'` which is valid but deprecated
+- `svelte.config.js` pins `runtime: 'nodejs24.x'`; the explicit option is deprecated
 - In a future adapter-vercel release, this option will be removed in favor of Vercel project-level Node version config
 - No immediate action needed, but should be tracked for when the adapter is updated
 
@@ -87,7 +87,9 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 
 ---
 
-### V1. Tucson Taco Census Page
+### V1. Tucson Taco Census Page ✅
+**Status**: Shipped at `/census` (UI refresh, PR #46).
+
 **Feature**: A public stats page at `/census` showing aggregate data: total spots on the map, most popular protein city-wide, average spice level, newest additions this month, neighborhood with most spots, etc.
 
 **Impact**: Press-worthy, shareable, positions CartoTaco as the authority on Tucson tacos. Zero new data needed — all derived from existing DB.
@@ -126,7 +128,9 @@ See [QUERY_OPTIMIZATION.md](./QUERY_OPTIMIZATION.md), [SEARCH_FILTER.md](./SEARC
 
 ## 🎨 Visualization & Layout Enhancements
 
-### 5. Heat Map View Toggle
+### 5. Heat Map View Toggle ✅
+**Status**: Shipped as map lenses (Spots / Heat / Salsas / Density) via `MapLensPicker`.
+
 **Feature**: Toggle between marker view and heat map showing:
 - Concentration of taco spots
 - Average spice level by area
@@ -616,7 +620,7 @@ Sample challenges:
 23. **Follow / Feed / Reactions** — Planned (Social Arc Phase 5)
 24. **Challenges / Badges** — Stretch (Social Arc Phase 6)
 25. **Taco Tuesday Tracker (S2)** — Weekly engagement, low effort
-26. **Tucson Taco Census page (V1)** — Press-worthy, no new data needed
+26. ✅ **Tucson Taco Census page (V1)** — COMPLETED
 27. **Accessibility audit (P1)** — Important for inclusivity
 28. **SEO/Open Graph tags (P5)** — Low effort, better sharing
 29. **Analytics integration (P6)** — Data-driven decisions
@@ -630,7 +634,7 @@ Sample challenges:
 37. **Neighborhood Mode (D2)** — Hyper-local differentiation
 38. **Share Card generator (S1)** — Organic growth
 39. **Photo gallery (P7)** — Visual appeal
-40. **Heat map view (#5)** — Alternative visualization
+40. ✅ **Heat map view (#5)** — COMPLETED (map lenses)
 41. **Tour improvements (P10)** — Better onboarding
 42. **Owner Portal (O1)** — Long-term data sustainability
 43. **AI menu extraction (#11)** — Advanced automation
