@@ -3,14 +3,18 @@
   // context. Replaces the old ECharts needle gauge (V2 of the UI refresh).
   import { SEQUENTIAL } from '$lib/chartTheme';
   import { describeHeat } from '$lib/dataWrangling';
+  import { contextLine } from '$lib/distribution';
 
   export let spiceValue = 0;
   /** 0–100 share of spots this one is hotter than; null hides the line */
   export let percentile = null;
+  /** 0–100 share of spots hotter than this one (drives "Milder than") */
+  export let percentileAbove = null;
   /** Context line shown when no percentile is provided */
   export let explanation = 'Overall heat level across all salsas';
 
   $: spiceDescription = describeHeat(spiceValue);
+  $: context = contextLine('heat', percentile, percentileAbove);
   $: filled = Math.max(0, Math.min(10, Math.round(spiceValue)));
 
   // Notch i (0-based) wears its own step of the sequential coral ramp, so the
@@ -45,11 +49,7 @@
   </div>
   <div class="spice-description">{spiceDescription}</div>
   <div class="spice-explanation">
-    {#if percentile !== null}
-      Hotter than {percentile}% of Tucson spots
-    {:else}
-      {explanation}
-    {/if}
+    {context ?? explanation}
   </div>
 </div>
 

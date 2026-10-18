@@ -6,9 +6,10 @@
   import SalsaLineup from './SalsaLineup.svelte';
   import IconHighlight from './IconHighlight.svelte';
   import HandmadeBadge from './HandmadeBadge.svelte';
-  import { summaryStats, distributionStats, processedTacoData } from '$lib/stores';
+  import { summaryStats, distributionStats, distributionPool } from '$lib/stores';
   import { SEQUENTIAL } from '$lib/chartTheme';
   import { describeHeat } from '$lib/dataWrangling';
+  import { contextLine } from '$lib/distribution';
 
   /** processedSite */
   export let site;
@@ -21,7 +22,12 @@
   $: heat = site.heatOverall || 0;
   $: filled = Math.max(0, Math.min(10, Math.round(heat)));
   $: stats = $distributionStats.get(site.est_id);
-  $: cityHeats = $processedTacoData.map((s) => s.heatOverall || 0);
+  $: heatContext = stats
+    ? contextLine('heat', stats.heatPercentile, stats.heatPercentileAbove)
+    : null;
+  $: salsaContext = stats
+    ? contextLine('salsa', stats.salsaPercentile, stats.salsaPercentileAbove)
+    : null;
 
   $: salsas = site.salsaCount || 0;
   $: salsaMax = Math.max($summaryStats.maxSalsaNum || 0, salsas, 1);
@@ -49,18 +55,23 @@
         <span class="notch" style:background={i < filled ? notchColor(i) : null}></span>
       {/each}
     </div>
-    {#if stats}
-      <p class="context">Hotter than {stats.heatPercentile}% of Tucson spots</p>
+    {#if heatContext}
+      <p class="context">{heatContext}</p>
     {/if}
-    <div class="strip">
-      <ContextStrip
-        values={cityHeats}
-        value={heat}
-        min={0}
-        max={10}
-        label="Every Tucson spot's heat, this one highlighted"
-      />
-    </div>
+    <!-- Closed spots aren't in the pool, so they'd ring a bin that doesn't count them -->
+    {#if stats}
+      <div class="strip">
+        <ContextStrip
+          values={$distributionPool.heats}
+          value={heat}
+          min={0}
+          max={10}
+          step={0.5}
+          binLabel={(v) => `at heat ${v}`}
+          label="Tucson spots by heat — this one ringed"
+        />
+      </div>
+    {/if}
   </section>
 
   <section class="tile">
@@ -78,8 +89,20 @@
       <span class="avg" style:left="{(salsaAvg / salsaMax) * 100}%"></span>
     </div>
     <p class="scale">City average {Math.round(salsaAvg)} · most {salsaMax}</p>
+    {#if salsaContext}
+      <p class="context">{salsaContext}</p>
+    {/if}
     {#if stats}
-      <p class="context">More salsa variety than {stats.salsaPercentile}% of Tucson spots</p>
+      <div class="strip">
+        <ContextStrip
+          values={$distributionPool.salsas}
+          value={salsas}
+          min={0}
+          max={$summaryStats.maxSalsaNum || null}
+          binLabel={(v) => `with ${v} ${v === 1 ? 'salsa' : 'salsas'}`}
+          label="Tucson spots by salsa count — this one ringed"
+        />
+      </div>
     {/if}
     <div class="lineup">
       <SalsaLineup salsaVarieties={site.salsaVarieties || []} otherSalsas={site.otherSalsas || []} />
