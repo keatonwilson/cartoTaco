@@ -11,11 +11,12 @@
 	import ChartBar from 'phosphor-svelte/lib/ChartBar';
 	import Pepper from 'phosphor-svelte/lib/Pepper';
 	import CaretDown from 'phosphor-svelte/lib/CaretDown';
+	import MagnifyingGlass from 'phosphor-svelte/lib/MagnifyingGlass';
 	import { fly } from 'svelte/transition';
 	import ThemeToggle from './ThemeToggle.svelte';
 	import NewSpotsBadge from './NewSpotsBadge.svelte';
 	import { startTour } from '$lib/tourStore.js';
-	import { mobileNavOpen } from '$lib/uiStore.js';
+	import { mobileNavOpen, quickSearchOpen } from '$lib/uiStore.js';
 	import { selectedSite } from '$lib/stores.js';
 
   function toggleMobileMenu() {
@@ -27,6 +28,11 @@
 
   function closeMobileMenu() {
     mobileNavOpen.set(false);
+  }
+
+  function openQuickSearch() {
+    closeMobileMenu();
+    quickSearchOpen.set(true);
   }
 
   async function handleSignOut() {
@@ -121,6 +127,9 @@
 
     <!-- Desktop Navigation -->
     <nav class="desktop-nav">
+			<button class="help-button search-button" data-tour="quick-search" on:click={openQuickSearch} title="Search spots (⌘K or /)" aria-label="Search spots">
+				{#if browser}<MagnifyingGlass size={16} />{/if}
+			</button>
 			<ThemeToggle />
 			<NewSpotsBadge on:spotSelected={closeMobileMenu} on:panelOpened={closeMobileMenu} />
 			<button class="help-button" on:click={startTour} title="Take a tour" aria-label="Take a tour">
@@ -215,6 +224,9 @@
 
     <!-- Mobile-only controls (always visible in header bar) -->
     <div class="mobile-header-controls">
+      <button class="help-button search-button" on:click={openQuickSearch} title="Search spots" aria-label="Search spots">
+        {#if browser}<MagnifyingGlass size={16} />{/if}
+      </button>
       <ThemeToggle />
       <NewSpotsBadge on:spotSelected={closeMobileMenu} />
       <button class="help-button" on:click={startTour} title="Take a tour" aria-label="Take a tour">

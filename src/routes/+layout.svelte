@@ -11,6 +11,7 @@
 	import Header from '$lib/../components/Header.svelte';
 	import TourOverlay from '$lib/../components/TourOverlay.svelte';
 	import ToastHost from '$lib/../components/ToastHost.svelte';
+	import QuickSearch from '$lib/../components/QuickSearch.svelte';
 	import { shouldAutoStart, startTour } from '$lib/tourStore.js';
 
 	$: isMapPage = $page.url.pathname === '/';
@@ -65,6 +66,7 @@
   <Header />
   <TourOverlay />
   <ToastHost />
+  <QuickSearch />
   <main class:map-page={isMapPage}>
     <slot></slot>
   </main>
