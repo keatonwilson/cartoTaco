@@ -4,6 +4,8 @@
 import { derived } from 'svelte/store';
 import { favoriteIds } from './favoritesStore';
 import { processedTacoData, summaryStats } from './stores';
+import { favoriteSalsas } from './salsaFavoritesStore';
+import { AXES, salsaAffinity, flavourVector } from './salsa';
 
 const K = 5; // number of k-NN recommendations
 
@@ -203,25 +205,39 @@ function centroid(vectors) {
 	return result.map(x => x / vectors.length);
 }
 
-function knnRecommend(targetVector, candidates, maxSalsa) {
-	const MAX_DIST = Math.sqrt(7);
+// Each favourited salsa a spot actually serves pulls it this much closer (up to two)
+const SERVES_FAVOURITE_PULL = 0.85;
+
+/**
+ * Nearest spots to the user's taste. With favourite salsas, the 7 spot
+ * dimensions are joined by how close the spot's salsas come to the user's
+ * salsa taste (see salsaAffinity), and serving a favourite outright pulls a
+ * spot closer still. Without any, this is the original 7-dimension k-NN.
+ */
+function knnRecommend(targetVector, candidates, maxSalsa, favouriteSalsas) {
+	const withSalsas = favouriteSalsas.length > 0;
+	const MAX_DIST = Math.sqrt(withSalsas ? 7 + AXES.length : 7);
 	return candidates
 		.map(site => {
 			const fv = buildFeatureVector(site, maxSalsa);
-			const dist = euclideanDistance(targetVector, fv);
+			let dist = euclideanDistance(targetVector, fv);
+			const affinity = salsaAffinity(site.salsaStyles, favouriteSalsas);
+			if (affinity) {
+				dist = Math.hypot(dist, affinity.distance) * SERVES_FAVOURITE_PULL ** Math.min(affinity.matched.length, 2);
+			}
 			const similarity = Math.round(Math.max(0, (1 - dist / MAX_DIST)) * 100);
-			return { site, dist, similarity };
+			return { site, dist, similarity, matchedSalsas: affinity?.matched ?? [] };
 		})
 		.sort((a, b) => a.dist - b.dist)
 		.slice(0, K)
-		.map(({ site, similarity }) => ({ ...site, similarity }));
+		.map(({ site, similarity, matchedSalsas }) => ({ ...site, similarity, matchedSalsas }));
 }
 
 // ─── Main derived store ───────────────────────────────────────────────────────
 
 export const tasteProfile = derived(
-	[favoriteIds, processedTacoData, summaryStats],
-	([$favoriteIds, $allTacoData, $summaryStats]) => {
+	[favoriteIds, processedTacoData, summaryStats, favoriteSalsas],
+	([$favoriteIds, $allTacoData, $summaryStats, $favoriteSalsas]) => {
 		// Pending (unvetted) spots have all-zero feature vectors and closed spots
 		// must never be recommended — exclude both from favorites math,
 		// thresholds, k-NN candidates, and the scatter plot
@@ -284,7 +300,14 @@ export const tasteProfile = derived(
 
 		// k-NN recommendations
 		const nonFavSites   = $processedTacoData.filter(s => !$favoriteIds.has(s.est_id));
-		const recommendations = knnRecommend(userVector, nonFavSites, maxSalsa);
+		const recommendations = knnRecommend(userVector, nonFavSites, maxSalsa, $favoriteSalsas);
+
+		// Salsa taste: the centre of the user's favourite salsas on each flavour
+		// axis (0–10), or null if they haven't favourited any
+		const salsaTaste = $favoriteSalsas.length === 0 ? null : AXES.map((axis, i) => ({
+			...axis,
+			value: Math.round($favoriteSalsas.reduce((sum, s) => sum + flavourVector(s)[i], 0) / $favoriteSalsas.length * 100) / 10
+		}));
 
 		// Scatter data for visualization
 		const recIds = new Set(recommendations.map(r => r.est_id));
@@ -312,6 +335,8 @@ export const tasteProfile = derived(
 			runnerUp,
 			thresholds,
 			recommendations,
+			salsaTaste,
+			favoriteSalsasCount: $favoriteSalsas.length,
 			scatterPoints,
 			userHeat:  avgSpice,
 			userSalsa: avgSalsaCount

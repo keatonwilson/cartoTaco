@@ -104,7 +104,7 @@
       </div>
     {/if}
     <div class="lineup">
-      <SalsaLineup salsaVarieties={site.salsaVarieties || []} otherSalsas={site.otherSalsas || []} />
+      <SalsaLineup styles={site.salsaStyles || []} salsaVarieties={site.salsaVarieties || []} otherSalsas={site.otherSalsas || []} />
     </div>
   </section>
 

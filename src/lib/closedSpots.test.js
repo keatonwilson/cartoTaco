@@ -272,3 +272,34 @@ describe('closed spot gating', () => {
     });
   });
 });
+
+describe('salsa styles', () => {
+  const withStyles = (s, slugs) => ({
+    ...s,
+    salsa: { ...s.salsa, styles: slugs.map((slug) => ({ slug, name: slug, color: '#000000' })) }
+  });
+
+  beforeEach(() => {
+    resetFilters();
+    tacoStore.setData([
+      withStyles(site(1), ['verde', 'macha']),
+      withStyles(site(2), ['verde']),
+      site(3), // row from a database without salsa.styles
+      withStyles(site(4, { vetting: 'pending' }), ['macha'])
+    ]);
+  });
+
+  it('carries catalog styles onto vetted spots only', () => {
+    const byId = Object.fromEntries(get(processedTacoData).map((s) => [s.est_id, s.salsaStyles]));
+    expect(byId[1].map((s) => s.slug)).toEqual(['verde', 'macha']);
+    expect(byId[3]).toEqual([]);
+    expect(byId[4]).toEqual([]);
+  });
+
+  it('filters the map to spots serving a style', () => {
+    filterConfig.update((cfg) => ({ ...cfg, salsaStyle: 'macha' }));
+    expect(get(filteredTacoData).map((s) => s.est_id)).toEqual([1]);
+    filterConfig.update((cfg) => ({ ...cfg, salsaStyle: 'verde' }));
+    expect(get(filteredTacoData).map((s) => s.est_id)).toEqual([1, 2]);
+  });
+});

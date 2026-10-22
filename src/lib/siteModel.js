@@ -143,6 +143,10 @@ export function processSite(site) {
       salsaVarieties: isPending ? [] : SALSA_VARIETIES
         .filter(v => site.salsa[`${v.key}_yes`] === true)
         .map(v => ({ name: v.label })),
+      // Catalog styles from site_salsas (migration 037): slug, name,
+      // definitive hex colour, and optional per-spot heat / note. Each
+      // links to /salsa/[slug].
+      salsaStyles: isPending ? [] : (site.salsa.styles || []),
       otherSalsas: isPending ? [] : [1, 2, 3]
         .map(n => ({
           name: cleanNA(site.salsa[`other_${n}_name`]),
@@ -313,6 +317,12 @@ export function matchesFilters(site, cfg, favIds = new Set(), now = new Date()) 
   // Closed spots — shown by default so users learn a spot closed rather
   // than finding nothing, hideable via toggle
   if (!cfg.showClosed && site.isClosed) {
+    return false;
+  }
+
+  // Salsa style filter ("Show on the map" from a Salsa Atlas page)
+  if (cfg.salsaStyle &&
+      !(site.salsaStyles || []).some(s => s.slug === cfg.salsaStyle)) {
     return false;
   }
 

@@ -127,6 +127,7 @@ export const filterConfig = writable({
   showFavoritesOnly: false,
   showPending: true,
   showClosed: true,
+  salsaStyle: null, // salsa_styles slug; set from /?salsa=<slug> by the Salsa Atlas
   styleFilters: {
     chicken: [],
     beef: [],
