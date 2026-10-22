@@ -3,12 +3,17 @@
     import * as echarts from "echarts";
     import { effectiveTheme } from '$lib/theme';
     import { accent, chartInk, tooltipStyle } from '$lib/chartTheme';
+    import { contextLine } from '$lib/distribution';
 
     export let value;
     export let meanValue;
     export let maxValue;
     /** 0–100 share of spots this one has more salsas than; null keeps the generic line */
     export let percentile = null;
+    /** 0–100 share of spots with more salsas than this one (drives "Fewer salsas than") */
+    export let percentileAbove = null;
+
+    $: context = contextLine('salsa', percentile, percentileAbove);
 
     let container;
     let chart;
@@ -109,11 +114,7 @@
       <span class="stat-item">Max: <strong>{maxValue}</strong></span>
     </div>
     <div class="salsa-explanation">
-      {#if percentile !== null}
-        More salsa variety than {percentile}% of Tucson spots
-      {:else}
-        Number of different salsas available at this location
-      {/if}
+      {context ?? 'Number of different salsas available at this location'}
     </div>
   </div>
 

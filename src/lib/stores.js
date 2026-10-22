@@ -240,33 +240,54 @@ export const summaryStats = derived(
   }
 );
 
-// Derived store for per-spot percentile ranks within the city distribution
-// (powers "Hotter than X% of Tucson spots" context lines).
-// Percentile = share of all spots with a strictly lower value.
-export const distributionStats = derived(
+// The city distribution the percentiles and the Card context strip are drawn
+// from. Pending (unvetted) spots have no measurements and closed spots are no
+// longer part of the city: neither may shift anyone's rank.
+export const distributionPool = derived(
   processedTacoData,
   ($processedTacoData) => {
-    const stats = new Map();
-    // Pending (unvetted) spots have no measurements and closed spots are no
-    // longer part of the city: neither gets a percentile entry, and neither
-    // may shift everyone else's rank
     const vettedSites = ($processedTacoData || []).filter(s => !s.isPending && !s.isClosed);
-    if (vettedSites.length < 2) {
+    return {
+      ids: vettedSites.map(s => s.est_id),
+      heats: vettedSites.map(s => s.heatOverall || 0),
+      salsas: vettedSites.map(s => s.salsaCount || 0)
+    };
+  }
+);
+
+// Derived store for per-spot percentile ranks within the city distribution
+// (powers "Hotter than X%" / "Milder than Y%" context lines).
+// *Percentile = share of spots strictly lower; *PercentileAbove = share
+// strictly higher. Ties count as neither, so Above is not 100 - Percentile.
+// *Tied = another spot shares this value ("Tied for hottest").
+export const distributionStats = derived(
+  distributionPool,
+  ({ ids, heats, salsas }) => {
+    const stats = new Map();
+    if (heats.length < 2) {
       return stats;
     }
 
-    const heats = vettedSites.map(s => s.heatOverall || 0);
-    const salsas = vettedSites.map(s => s.salsaCount || 0);
+    // 0 and 100 are reserved for "no spot on that side", so a tiny share
+    // never rounds into a false "hottest" / "mildest"
+    const share = (count, n) =>
+      count === 0 ? 0 : count === n ? 100 : Math.min(99, Math.max(1, Math.round((count / n) * 100)));
+    const below = (values, v) => share(values.filter(x => x < v).length, values.length);
+    const above = (values, v) => share(values.filter(x => x > v).length, values.length);
+    const tied = (values, v) => values.filter(x => x === v).length > 1;
 
-    const percentile = (values, v) =>
-      Math.round((values.filter(x => x < v).length / values.length) * 100);
-
-    for (const site of vettedSites) {
-      stats.set(site.est_id, {
-        heatPercentile: percentile(heats, site.heatOverall || 0),
-        salsaPercentile: percentile(salsas, site.salsaCount || 0)
+    ids.forEach((id, i) => {
+      const heat = heats[i];
+      const salsa = salsas[i];
+      stats.set(id, {
+        heatPercentile: below(heats, heat),
+        heatPercentileAbove: above(heats, heat),
+        heatTied: tied(heats, heat),
+        salsaPercentile: below(salsas, salsa),
+        salsaPercentileAbove: above(salsas, salsa),
+        salsaTied: tied(salsas, salsa)
       });
-    }
+    });
     return stats;
   }
 );
