@@ -275,7 +275,8 @@
   .trail-tray {
     position: fixed;
     bottom: 0;
-    left: 0;
+    /* Starts beside the desktop spot panel when it's open (set by Map.svelte) */
+    left: var(--spot-panel-offset, 0px);
     right: 0;
     z-index: 50;
     background: white;

@@ -1,61 +1,19 @@
 <script>
   import { isMobile } from '$lib/deviceDetection';
+  import { openDirections } from '$lib/directions';
 
   export let latitude;
   export let longitude;
   export let name;
 
-  // Detect platform
-  function getPlatform() {
-    if (typeof navigator === 'undefined') return 'desktop';
-
-    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-
-    // iOS detection
-    if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
-      return 'ios';
-    }
-
-    // Android detection
-    if (/android/i.test(userAgent)) {
-      return 'android';
-    }
-
-    return 'desktop';
-  }
-
-  function openDirections() {
-    const platform = getPlatform();
-    const encodedName = encodeURIComponent(name);
-
-    let url;
-
-    switch (platform) {
-      case 'ios':
-        // Apple Maps deeplink
-        url = `maps://?q=${encodedName}&ll=${latitude},${longitude}`;
-        break;
-
-      case 'android':
-        // Google Maps intent (geo: URI)
-        url = `geo:${latitude},${longitude}?q=${latitude},${longitude}(${encodedName})`;
-        break;
-
-      case 'desktop':
-      default:
-        // Google Maps web
-        url = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
-        break;
-    }
-
-    // Open in new tab/window or trigger native app
-    window.open(url, '_blank');
+  function handleClick() {
+    openDirections({ latitude, longitude, name });
   }
 </script>
 
 <button
   class="directions-button"
-  on:click={openDirections}
+  on:click={handleClick}
   class:mobile={$isMobile}
   title="Get Directions"
   aria-label="Get Directions"
