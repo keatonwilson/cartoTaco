@@ -9,3 +9,6 @@ export const mobileNavOpen = writable(false);
 // Peek card for the pin under the cursor (or tapped, on touch tablets):
 // { site, lngLat: [lng, lat] } | null. Set by mapping.js, drawn by PeekCard.svelte.
 export const peekSite = writable(null);
+
+// Whether the QuickSearch palette (⌘K or /) is open
+export const quickSearchOpen = writable(false);

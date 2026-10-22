@@ -203,6 +203,10 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 - `filterPanelOpen` - Whether the FilterBar filter panel is expanded
 - `mobileNavOpen` - Whether the mobile navigation menu is open
 - `peekSite` - `{ site, lngLat } | null`: the spot the peek card is showing (set by mapping.js on pin hover, or first tap on touch tablets)
+- `quickSearchOpen` - Whether the QuickSearch palette is open (header search button, ⌘K/Ctrl+K, or `/`)
+
+### Site Model (src/lib/siteModel.js)
+The pure logic behind the stores, with no stores or Supabase client, so the server and offline evals can share it (see `docs/AI_CONCIERGE_PLAN.md`): `processSite(row)` / `processSites(rows)` (the body of `processedTacoData`), `computeSummaryStats`, `computeDistributionPool`, `computeDistributionStats`, `hasValidCoordinates`, `isOpenNow(hours, now)`, and `matchesFilters(site, cfg, favIds, now)` (the `filteredTacoData` predicate). `stores.js` derives from these and re-exports `hasValidCoordinates`/`isOpenNow`. Change the logic here, not in the stores.
 
 ### Key Pattern
 Data flows: Raw DB → Store → Derived/Processed → Components. Components rarely transform data; they consume pre-processed values from derived stores.
@@ -263,6 +267,13 @@ Located in src/lib/dataWrangling.js:
 - `percentageOfMaxArray(arr)` - Convert array values to percentages of max
 - `convertHoursData(startTimes, endTimes)` - Transform hours data into component-ready format (Mon–Sun order with abbreviations)
 - `describeHeat(value)` - Words for a 0–10 heat level ("Medium-Hot"), shared by `SpiceGauge` and `SpotStats`
+
+## Search & Intent (model-free)
+
+The free first tier of the planned AI concierge (`docs/AI_CONCIERGE_PLAN.md`). No model and no network.
+- `src/lib/search.js` - `searchSpots(query, sites, { limit })` → `[{ site, score, matchedOn: { field, label } }]`. Accent-insensitive (`normalize()`), typo-tolerant (Damerau `editDistance()`; 1 typo from 4 letters, 2 from 7, none below), weighted by field (name > specialty > protein style/protein > menu > region/type > address > description), with Spanish protein synonyms. Every query word must match something. Closed spots rank after open ones and unplaceable spots are skipped. Field text is cached per spot object in a WeakMap
+- `src/lib/intentRules.js` - `parseIntent(query)` → `{ filters, extras, matched, remainder, covered }`: proteins, types (with negation: "no trucks" selects every other type), spice ("spicy" 7+, "very spicy" 8+, "mild"/"not spicy" ≤4; "hot dog" protected), open now, favorites, plus `extras.handmadeTortillas` / `extras.near`. English and Spanish. `covered` means no words were left over. `applyIntentFilters(cfg, filters)` merges the parsed filters into a filterConfig
+- `src/lib/voice.js` - Web Speech API wrapper: `speechSupported()`, `listen({ onResult, onEnd, onError, lang })` → stop fn, `describeVoiceError(code)`. There is no Firefox support, so callers hide the mic
 
 ## Coordinate Validation
 
@@ -336,6 +347,7 @@ and `flyToSite()`.
 - `VibeVotes.svelte` - Anti-review chip row on each Card: 🔥 Heat Legit · 🌮 Authentic · 💸 Value · 🎭 Vibe. Click toggles your vote (anonymous users redirected to login); displays aggregate counts. Accepts `compact` prop for tight desktop layouts.
 - `VibeFingerprint.svelte` - Compact 4-bar profile of a spot's vibe votes (normalized to its own total) so vibe shapes compare across spots; hidden with no votes unless `showEmpty`. On Card beside the chips and as a `/compare` row.
 - `ContextStrip.svelte` - City-distribution dot strip: every spot as a faint dot on a shared scale with this spot highlighted (used in the `SpotStats` heat tile).
+- `QuickSearch.svelte` - ⌘K / `/` command palette, mounted once in `+layout.svelte`. Results from `searchSpots` update on every keystroke, each showing type, Tucson-time status and why it matched. A "Filter the map" row appears when `parseIntent` finds filters: its results are the remainder searched within the matching spots, and choosing it sets `filterConfig` and opens the filter panel. A mic button appears where speech recognition exists. Picking a spot sets `flyToTarget` on the map page, or goes to `/?location=<id>` elsewhere. Esc is handled on the dialog so it never also closes the open spot. On phones it's a full-screen sheet
 - `EmptyState.svelte` - Shared empty state (emoji + headline + message + optional CTA); used by favorites, compare, and census.
 - `ToastHost.svelte` - Renders the `toasts` store as a stack of dismissable notifications, mounted once in `+layout.svelte`. Uses Phosphor `CheckCircle/WarningCircle/Info/X` icons.
 
@@ -408,6 +420,8 @@ Test files are co-located in src/lib/:
 - `src/lib/hours.test.js` - Tests for Tucson-time open status and today's hours (uses UTC instants so it passes in any runner time zone)
 - `src/lib/directions.test.js` - Tests for the per-platform directions link
 - `src/lib/authErrors.test.js` - Tests for auth error message mapping
+- `src/lib/search.test.js` - Quick Search golden queries (query → expected top spot), ranking and edge cases. Add a golden row when a real query ranks wrong
+- `src/lib/intentRules.test.js` - Filter parsing (English/Spanish, negation, hot dog vs heat, remainder)
 
 Run all tests with `pnpm test`.
 
@@ -418,3 +432,4 @@ Detailed feature documentation in docs/:
 - `IMPROVEMENTS.md` - Roadmap and planned features
 - `UNVETTED_SPOTS_PLAN.md` - Pending/unvetted spots plan (shipped in this repo; scraping pipeline lives in `cartoTacoMenuExtract`)
 - `USER_SUBMISSIONS.md` - Location submission design and the manual approval process
+- `AI_CONCIERGE_PLAN.md` - Cost-first AI concierge: tiered router (rules → Haiku router → Haiku agent → Sonnet escalation) on LangChain/LangGraph, LangSmith tracing, golden-dataset evals. Phase 1 (search/intent/voice) shipped
