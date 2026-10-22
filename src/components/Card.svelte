@@ -1,83 +1,46 @@
 <script>
-  import { onMount, tick } from 'svelte';
+  // The spot card body, the same on the desktop panel and the mobile sheet.
+  // The name, status and actions live in SpotHeader above it. One reading
+  // column: hours and the description first, then the at-a-glance tiles,
+  // what they serve, vibe votes, and the specialties carousel. Components
+  // are sized to fill the column so numbers and labels read at a glance.
   import RadarChart from "./RadarChart.svelte";
   import HoursOpen from "./HoursOpen.svelte";
-  import SpiceGauge from "./SpiceGauge.svelte";
-  import IconHighlight from "./IconHighlight.svelte";
-  import SalsaCount from "./SalsaCount.svelte";
   import SpecCarousel from "./SpecCarousel.svelte";
-  import SpecCard from "./SpecCard.svelte";
-  import ContactInfo from "./ContactInfo.svelte";
-  import CollapsibleSection from "./CollapsibleSection.svelte";
-  import FavoriteButton from "./FavoriteButton.svelte";
   import VibeVotes from "./VibeVotes.svelte";
   import VibeFingerprint from "./VibeFingerprint.svelte";
-  import HandmadeBadge from "./HandmadeBadge.svelte";
-  import SalsaLineup from "./SalsaLineup.svelte";
-  import ContextStrip from "./ContextStrip.svelte";
   import ClosedBanner from "./ClosedBanner.svelte";
-  import { selectedSite, summaryStats, distributionStats, processedTacoData } from "$lib/stores";
+  import SpotStats from "./SpotStats.svelte";
+  import { selectedSite } from "$lib/stores";
   import { radarMax } from "$lib/chartTheme";
-  import { isMobile } from "$lib/deviceDetection";
-  import {
-    comparisonSites,
-    comparisonCount,
-    addToComparison,
-    removeFromComparison
-  } from "$lib/comparisonStore.js";
+  import { todayHours, minuteClock } from "$lib/hours";
 
   // Local state
   let showLongDescription = false;
+  /** Which radar shows */
+  let radarView = 'menu';
 
   // Closed spots keep their recorded data as a historical record, but lose the
   // affordances that assume you might go: vibe voting, comparison, directions.
   $: isClosed = !!$selectedSite?.isClosed;
-
-  // Comparison state for this card
-  $: isInComparison = $comparisonSites.some(s => s.est_id === $selectedSite?.est_id);
-  $: comparisonFull = $comparisonCount >= 3 && !isInComparison;
-
-  // City-percentile context for the heat ladder and salsa bullet
-  $: heatPercentile = $selectedSite
-    ? $distributionStats.get($selectedSite.est_id)?.heatPercentile ?? null
-    : null;
-  $: salsaPercentile = $selectedSite
-    ? $distributionStats.get($selectedSite.est_id)?.salsaPercentile ?? null
-    : null;
-
-  // City heat distribution for the mobile context strip
-  $: cityHeats = $processedTacoData.map((s) => s.heatOverall || 0);
 
   // Radar scales fit this spot's own values so the polygon fills the plot;
   // cross-spot comparison happens on /compare, which shares a scale there
   $: menuRadarMax = radarMax($selectedSite?.topFiveMenuValues);
   $: proteinRadarMax = radarMax($selectedSite?.topFiveProteinValues);
 
-  async function toggleComparison() {
-    if (!$selectedSite) return;
-    if (isInComparison) {
-      removeFromComparison($selectedSite.est_id);
-    } else {
-      addToComparison($selectedSite);
-    }
-    // iOS Safari caches the scroll container's GPU texture and won't repaint
-    // a text-color change until a scroll event forces a flush. Nudging
-    // scrollTop by 1px and back directly mimics what the user manually does
-    // to make the white text appear, guaranteeing a repaint.
-    await tick();
-    if (typeof document !== 'undefined') {
-      const el = document.querySelector('.sheet-content');
-      if (el) {
-        const prev = el.scrollTop;
-        el.scrollTop = prev + 1;
-        requestAnimationFrame(() => { el.scrollTop = prev; });
-      }
-    }
-  }
+  const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+  $: menuLabels = ($selectedSite?.topFiveMenuItems || []).map(capitalize);
+  $: proteinLabels = ($selectedSite?.topFiveProteinItems || []).map(capitalize);
+
+
+  $: today = $selectedSite
+    ? todayHours($selectedSite.startHours || [], $selectedSite.endHours || [], $minuteClock)
+    : null;
+
   let errorState = false;
   let errorMessage = "Unable to display data";
 
-  // Toggle long description
   function toggleLongDescription() {
     showLongDescription = !showLongDescription;
   }
@@ -92,320 +55,97 @@
     <p>{errorMessage}</p>
   </div>
 {:else}
-  {#if $isMobile}
-    <!-- ========== MOBILE LAYOUT (unchanged) ========== -->
-    <div id="popup-content">
-      <div class="left-panel">
-        {#if isClosed}
-          <ClosedBanner closedAt={$selectedSite.closedAt} />
+  <!-- Each section is a labelled band split by a hairline; --i staggers the
+       entrance -->
+  <div id="popup-content" class="card-body">
+    {#if isClosed}
+      <ClosedBanner closedAt={$selectedSite.closedAt} />
+    {/if}
+
+    <section class="card-section" style="--i:0">
+      <div class="card-label-row">
+        <h3 class="card-label">Hours</h3>
+        {#if today}
+          <span class="today">Today <strong>{today}</strong></span>
         {/if}
-        <div class="header-section">
-          <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">
-            {$selectedSite.name || 'Unknown Location'}
-          </h2>
-          <div class="header-actions">
-            <FavoriteButton estId={$selectedSite.est_id} size="sm" />
-            {#if !isClosed}
-              <button
-                class="compare-btn"
-                class:compare-active={isInComparison}
-                disabled={!isInComparison && comparisonFull}
-                on:click={toggleComparison}
-                title={isInComparison ? 'Remove from comparison' : comparisonFull ? 'Max 3 spots' : 'Add to comparison'}
-              >
-                {isInComparison ? '− Compare' : '+ Compare'}
-              </button>
-            {/if}
-          </div>
-        </div>
-        <HoursOpen
-          startHours={$selectedSite.startHours || {}}
-          endHours={$selectedSite.endHours || {}}
-        />
-        <ContactInfo
-          showDirections={!isClosed}
-          phone={$selectedSite.site?.phone}
-          website={$selectedSite.site?.website}
-          instagram={$selectedSite.site?.instagram}
-          facebook={$selectedSite.site?.facebook}
-          address={$selectedSite.site?.address}
-          latitude={$selectedSite.latitude}
-          longitude={$selectedSite.longitude}
-          name={$selectedSite.name || 'Taco Location'}
-        />
-        <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Type</h2>
-        <IconHighlight type="siteType" data={$selectedSite.type || 'unknown'} />
-        <div class="description">
-          <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Description</h2>
-          <p class="dark:text-gray-300">{$selectedSite.shortDescription || 'No description available'}</p>
-          <div class="long-description" class:visible={showLongDescription}>
-            <p class="dark:text-gray-300">{$selectedSite.longDescription || 'No detailed description available'}</p>
-          </div>
-          <button
-            class="expand-button"
-            on:click={toggleLongDescription}
-            aria-expanded={showLongDescription}
-            aria-label={showLongDescription ? "Show less description" : "Read more description"}
-          >
-            {showLongDescription ? "Show less" : "Read more"}
-          </button>
-        </div>
-        {#if !isClosed}
-          <div class="vibe-section">
-            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Vibe Check</h2>
-            <p class="vibe-subtitle">Tap any chip to vote on what this spot does well. Your vote, plus everyone else's, builds a vibe fingerprint — no stars, no essays.</p>
-            <VibeVotes estId={$selectedSite.est_id} />
-            <div class="vibe-fingerprint-wrap">
-              <VibeFingerprint estId={$selectedSite.est_id} />
-            </div>
-          </div>
-        {/if}
-        <CollapsibleSection title="Menu Summary" defaultOpen={false}>
-          <div class="radar-chart-container">
-            <RadarChart
-              labels={$selectedSite.topFiveMenuItems || []}
-              data={$selectedSite.topFiveMenuValues || []}
-              max={menuRadarMax}
-            />
-          </div>
-        </CollapsibleSection>
       </div>
-      <div class="right-panel" id="chart">
-        <CollapsibleSection title="Protein" defaultOpen={false}>
-          <div class="protein-chart-container">
-            <RadarChart
-              labels={$selectedSite.topFiveProteinItems || []}
-              data={$selectedSite.topFiveProteinValues || []}
-              max={proteinRadarMax}
-            />
-          </div>
-          {#if $selectedSite.proteinStyles && Object.keys($selectedSite.proteinStyles).length > 0}
-            <div class="protein-styles">
-              {#each Object.entries($selectedSite.proteinStyles) as [protein, styles]}
-                <div class="protein-style-row">
-                  <span class="protein-label">{protein}</span>
-                  <div class="style-chips">
-                    {#each styles as style}
-                      <span class="style-chip">{style}</span>
-                    {/each}
-                  </div>
-                </div>
-              {/each}
-            </div>
-          {/if}
-        </CollapsibleSection>
+      <HoursOpen
+        size="lg"
+        showTitle={false}
+        showStatus={false}
+        startHours={$selectedSite.startHours || {}}
+        endHours={$selectedSite.endHours || {}}
+      />
+    </section>
 
-        <CollapsibleSection title="Spiciness & Details" defaultOpen={true}>
-          <div class="right-box">
-            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1" id="spicy-label">Spiciness</h2>
-            <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} percentile={heatPercentile} />
-            <ContextStrip
-              values={cityHeats}
-              value={$selectedSite.heatOverall || 0}
-              min={0}
-              max={10}
-              label="Every Tucson spot's heat — this one highlighted"
-            />
-            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Tortilla Type</h2>
-            <div class="tortilla-row">
-              <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
-              {#if $selectedSite.handmadeTortilla}
-                <HandmadeBadge />
-              {/if}
-            </div>
-          </div>
-          <div class='salsa-container'>
-            <SalsaCount
-              value={$selectedSite.salsaCount || 0}
-              meanValue={$summaryStats.avgSalsaNum || 0}
-              maxValue={$summaryStats.maxSalsaNum || 0}
-              percentile={salsaPercentile}
-            />
-          </div>
-          <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 my-1">Salsa Lineup</h2>
-          <SalsaLineup
-            styles={$selectedSite.salsaStyles || []}
-            salsaVarieties={$selectedSite.salsaVarieties || []}
-            otherSalsas={$selectedSite.otherSalsas || []}
-          />
-        </CollapsibleSection>
-
-        <div class="specialties-section">
-          <CollapsibleSection title="Specialties" defaultOpen={true}>
-            {#if $selectedSite.specialties && $selectedSite.specialties.length > 0}
-              <SpecCarousel specialties={$selectedSite.specialties} />
-            {:else}
-              <p class="text-sm text-gray-500 dark:text-gray-400 italic">No specialty information available for this location.</p>
-            {/if}
-          </CollapsibleSection>
-        </div>
-      </div>
-    </div>
-  {:else}
-    <!-- ========== DESKTOP LAYOUT (compact, no-scroll) ========== -->
-    <div id="popup-content" class="desktop-layout">
-      {#if isClosed}
-        <ClosedBanner closedAt={$selectedSite.closedAt} />
-      {/if}
-
-      <!-- Row 1: Header bar -->
-      <div class="desktop-header">
-        <div class="desktop-header-left">
-          <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">
-            {$selectedSite.name || 'Unknown Location'}
-          </h2>
-          <IconHighlight type="siteType" data={$selectedSite.type || 'unknown'} />
-        </div>
-        <div class="desktop-header-actions">
-          <FavoriteButton estId={$selectedSite.est_id} size="sm" />
-          {#if !isClosed}
-            <button
-              class="compare-btn"
-              class:compare-active={isInComparison}
-              disabled={!isInComparison && comparisonFull}
-              on:click={toggleComparison}
-              title={isInComparison ? 'Remove from comparison' : comparisonFull ? 'Max 3 spots' : 'Add to comparison'}
-            >
-              {isInComparison ? '− Compare' : '+ Compare'}
-            </button>
-          {/if}
-        </div>
-      </div>
-
-      <!-- Row 2: Description (full width, short with expand) -->
-      <div class="description desktop-description">
-        <p class="dark:text-gray-300">{$selectedSite.shortDescription || 'No description available'}</p>
+    <section class="card-section" style="--i:1">
+      <h3 class="card-label">About</h3>
+      <p class="card-lede">{$selectedSite.shortDescription || 'No description available'}</p>
+      {#if $selectedSite.longDescription}
         <div class="long-description" class:visible={showLongDescription}>
-          <p class="dark:text-gray-300">{$selectedSite.longDescription || 'No detailed description available'}</p>
+          <p class="card-long">{$selectedSite.longDescription}</p>
         </div>
-        <button
-          class="expand-button"
-          on:click={toggleLongDescription}
-          aria-expanded={showLongDescription}
-          aria-label={showLongDescription ? "Show less description" : "Read more description"}
-        >
-          {showLongDescription ? "Show less" : "Read more"}
+        <button class="expand-button" on:click={toggleLongDescription} aria-expanded={showLongDescription}>
+          {showLongDescription ? 'Show less' : 'Read more'}
         </button>
-      </div>
-
-      <!-- Row 3: Hours (always visible, unchanged) + quick contact actions beside it -->
-      <div class="desktop-hours-row">
-        <div class="desktop-hours">
-          <HoursOpen
-            startHours={$selectedSite.startHours || {}}
-            endHours={$selectedSite.endHours || {}}
-          />
-        </div>
-        <div class="desktop-contact">
-          <ContactInfo
-            compact={true}
-            showDirections={!isClosed}
-            phone={$selectedSite.site?.phone}
-            website={$selectedSite.site?.website}
-            instagram={$selectedSite.site?.instagram}
-            facebook={$selectedSite.site?.facebook}
-            address={$selectedSite.site?.address}
-            latitude={$selectedSite.latitude}
-            longitude={$selectedSite.longitude}
-            name={$selectedSite.name || 'Taco Location'}
-          />
-        </div>
-      </div>
-
-      <!-- Row 4: Vibe votes (anti-review) + aggregate fingerprint, centered -->
-      {#if !isClosed}
-        <div class="desktop-vibe-row">
-          <span class="desktop-vibe-label">Vibe Check:</span>
-          <VibeVotes estId={$selectedSite.est_id} compact={true} />
-          <VibeFingerprint estId={$selectedSite.est_id} />
-        </div>
       {/if}
+    </section>
 
-      <!-- Row 5: Two radar charts side by side. Protein prep styles sit
-           directly under the Protein radar so they read as belonging to it;
-           the Menu radar is vertically centered to match the column height. -->
-      <div class="desktop-charts-row">
-        <div class="desktop-chart-col">
-          <h2 class="text-xs font-semibold text-gray-800 dark:text-gray-100 text-center">Menu</h2>
-          <div class="desktop-radar-center">
-            <div class="desktop-radar-container">
-              <RadarChart
-                labels={$selectedSite.topFiveMenuItems || []}
-                data={$selectedSite.topFiveMenuValues || []}
-                max={menuRadarMax}
-              />
-            </div>
-          </div>
-        </div>
-        <div class="desktop-chart-col">
-          <h2 class="text-xs font-semibold text-gray-800 dark:text-gray-100 text-center">Protein</h2>
-          <div class="desktop-radar-container">
-            <RadarChart
-              labels={$selectedSite.topFiveProteinItems || []}
-              data={$selectedSite.topFiveProteinValues || []}
-              max={proteinRadarMax}
-            />
-          </div>
-          {#if $selectedSite.proteinStyles && Object.keys($selectedSite.proteinStyles).length > 0}
-            <div class="desktop-protein-styles">
-              {#each Object.entries($selectedSite.proteinStyles) as [protein, styles]}
-                <div class="protein-style-row">
-                  <span class="protein-label">{protein}</span>
-                  <div class="style-chips">
-                    {#each styles as style}
-                      <span class="style-chip">{style}</span>
-                    {/each}
-                  </div>
-                </div>
-              {/each}
-            </div>
-          {/if}
+    <section class="card-section" style="--i:2">
+      <SpotStats site={$selectedSite} />
+    </section>
+
+    <section class="card-section" style="--i:3">
+      <div class="card-label-row">
+        <h3 class="card-label">What they serve</h3>
+        <div class="radar-toggle" role="group" aria-label="Chart">
+          <button type="button" aria-pressed={radarView === 'menu'} on:click={() => (radarView = 'menu')}>Menu</button>
+          <button type="button" aria-pressed={radarView === 'protein'} on:click={() => (radarView = 'protein')}>Protein</button>
         </div>
       </div>
-
-      <!-- Row 6: Spice + Tortilla + Salsa in one compact strip -->
-      <div class="desktop-stats-row">
-        <div class="desktop-stat-item">
-          <SpiceGauge spiceValue={$selectedSite.heatOverall || 0} percentile={heatPercentile} />
-        </div>
-        <div class="desktop-stat-item desktop-tortilla-item">
-          <h2 class="text-xs font-semibold text-gray-800 dark:text-gray-100 mb-1">Tortilla</h2>
-          <IconHighlight type="tortilla" data={$selectedSite.tortillaType || 'unknown'} />
-          {#if $selectedSite.handmadeTortilla}
-            <HandmadeBadge />
-          {/if}
-        </div>
-        <div class="desktop-stat-item desktop-salsa-item">
-          <SalsaCount
-            value={$selectedSite.salsaCount || 0}
-            meanValue={$summaryStats.avgSalsaNum || 0}
-            maxValue={$summaryStats.maxSalsaNum || 0}
-            percentile={salsaPercentile}
-          />
-        </div>
-      </div>
-
-      <!-- Row 7: Salsa lineup (per-salsa data from the salsa table) -->
-      <div class="desktop-salsa-lineup">
-        <span class="desktop-lineup-label">Salsas:</span>
-        <SalsaLineup
-          styles={$selectedSite.salsaStyles || []}
-          salsaVarieties={$selectedSite.salsaVarieties || []}
-          otherSalsas={$selectedSite.otherSalsas || []}
-        />
-      </div>
-
-      <!-- Row 8: Specialties -->
-      <div class="desktop-specialties">
-        <h2 class="text-xs font-semibold text-gray-800 dark:text-gray-100 mb-1">Specialties</h2>
-        {#if $selectedSite.specialties && $selectedSite.specialties.length > 0}
-          <SpecCarousel specialties={$selectedSite.specialties} />
+      <div class="card-radar">
+        {#if radarView === 'menu'}
+          <RadarChart labels={menuLabels} data={$selectedSite.topFiveMenuValues || []} max={menuRadarMax} labelSize={13} showValues />
         {:else}
-          <p class="text-sm text-gray-500 italic">No specialty information available for this location.</p>
+          <RadarChart labels={proteinLabels} data={$selectedSite.topFiveProteinValues || []} max={proteinRadarMax} labelSize={13} showValues />
         {/if}
       </div>
-    </div>
-  {/if}
+      <p class="card-note">Share of what they serve, by item</p>
+      {#if radarView === 'protein' && $selectedSite.proteinStyles && Object.keys($selectedSite.proteinStyles).length > 0}
+        <div class="protein-styles">
+          {#each Object.entries($selectedSite.proteinStyles) as [protein, styles]}
+            <div class="protein-style-row">
+              <span class="protein-label">{protein}</span>
+              <div class="style-chips">
+                {#each styles as style}
+                  <span class="style-chip">{style}</span>
+                {/each}
+              </div>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </section>
+
+    {#if !isClosed}
+      <section class="card-section" style="--i:4">
+        <h3 class="card-label">Vibe check</h3>
+        <p class="card-note">Tap what this spot does well. Everyone's votes build its vibe fingerprint.</p>
+        <VibeVotes estId={$selectedSite.est_id} />
+        <VibeFingerprint estId={$selectedSite.est_id} />
+      </section>
+    {/if}
+    <section class="card-section" style="--i:5">
+      <h3 class="card-label">Specialties</h3>
+      {#if $selectedSite.specialties && $selectedSite.specialties.length > 0}
+        <div class="specialties">
+          <SpecCarousel specialties={$selectedSite.specialties} />
+        </div>
+      {:else}
+        <p class="card-note">No specialty information for this spot yet.</p>
+      {/if}
+    </section>
+  </div>
 {/if}
 
 <style>
@@ -417,137 +157,30 @@
     border-radius: 8px;
     margin: 10px;
   }
-
   :global(.dark) #error-content {
     background-color: #7f1d1d;
     border-color: #991b1b;
     color: #fecaca;
   }
-
-  /* ========== MOBILE STYLES (unchanged) ========== */
-
-  .header-section {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-
-  @media (min-width: 768px) {
-    .header-section {
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .header-section h2 {
-      margin-bottom: 0;
-    }
-  }
-
-  #popup-content {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    gap: 6px;
-  }
-
-  .left-panel,
-  .right-panel {
-    padding: 8px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-    display: flex;
-    flex-direction: column;
-    border-radius: 6px;
-    width: 100%;
-    background: white;
-  }
-
-  :global(.dark) .left-panel,
-  :global(.dark) .right-panel {
-    background: #1f2937;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  }
-
-  .description {
-    margin-top: 6px;
-    color: #34495e;
-    background-color: #ecf0f1;
-    padding: 10px 12px;
-    border-radius: 8px;
-    text-align: left;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-    transition: background-color 0.2s;
-    font-size: 13px;
-    line-height: 1.45;
-  }
-
-  :global(.dark) .description {
-    background-color: #374151;
-    color: #d1d5db;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-  }
-
   .long-description {
     display: none;
     margin-top: 6px;
   }
-
   .long-description.visible {
     display: block;
   }
-
-  .expand-button {
-    cursor: pointer;
-    color: #FE795D;
-    text-decoration: underline;
-    display: inline-block;
-    padding: 6px 4px;
-    margin-top: 2px;
-    font-size: 12px;
-    transition: color 0.15s ease;
-  }
-
-  .expand-button:hover {
-    color: #d66548;
-  }
-
-  :global(.dark) .expand-button {
-    color: #FF9E80;
-  }
-
-  :global(.dark) .expand-button:hover {
-    color: #FFB28F;
-  }
-
-  .protein-chart-container {
-    display: flex;
-    justify-content: center;
-    padding: 2%;
-    height: 200px;
-  }
-
-  .radar-chart-container {
-    display: flex;
-    justify-content: center;
-    height: 200px;
-  }
-
   .protein-styles {
     display: flex;
     flex-direction: column;
     gap: 6px;
     padding: 4px 0;
   }
-
   .protein-style-row {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
   }
-
   .protein-label {
     font-size: 11px;
     font-weight: 700;
@@ -556,11 +189,9 @@
     min-width: 52px;
     flex-shrink: 0;
   }
-
   :global(.dark) .protein-label {
     color: var(--accent);
   }
-
   .style-chip {
     font-size: 11px;
     padding: 2px 8px;
@@ -570,390 +201,161 @@
     background: var(--accent-soft);
     white-space: nowrap;
   }
-
   :global(.dark) .style-chip {
     color: var(--accent);
   }
 
-  .salsa-container {
-    display: flex;
-  }
-
-  .specialties-section {
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid lightgray;
+  #popup-content {
     display: flex;
     flex-direction: column;
+    width: 100%;
   }
 
-  .tortilla-row {
+  .card-section {
     display: flex;
-    flex-direction: row;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .tortilla-row :global(.handmade-badge) {
-    margin-top: 0;
-  }
-
-  .vibe-section {
-    margin-top: 12px;
-    margin-bottom: 8px;
-    padding-top: 10px;
-    border-top: 1px solid #e5e7eb;
-  }
-
-  :global(.dark) .vibe-section {
-    border-top-color: #374151;
-  }
-
-  .vibe-subtitle {
-    font-size: 11px;
-    line-height: 1.35;
-    color: #6b7280;
-    margin: 0 0 6px 0;
-  }
-
-  .vibe-fingerprint-wrap {
-    margin-top: 6px;
-  }
-
-  :global(.dark) .vibe-subtitle {
-    color: #9ca3af;
-  }
-
-  .desktop-vibe-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 5px 0;
-    margin-top: 2px;
-    flex-wrap: wrap;
-    border-top: 1px solid #e5e7eb;
-  }
-
-  :global(.dark) .desktop-vibe-row {
-    border-top-color: #374151;
-  }
-
-  .desktop-vibe-label {
-    font-size: 11px;
-    font-weight: 600;
-    color: #6b7280;
-    flex-shrink: 0;
-  }
-
-  :global(.dark) .desktop-vibe-label {
-    color: #9ca3af;
-  }
-
-  /* ========== DESKTOP LAYOUT STYLES ========== */
-
-  .desktop-layout {
-    gap: 4px;
-  }
-
-  /* Row 1: Header — right padding avoids overlap with popup close button */
-  .desktop-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 4px 40px 4px 0;
-  }
-
-  .desktop-header-left {
-    display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 12px;
-    flex: 1;
-    min-width: 0;
+    padding: 20px 0;
+    border-top: 1px solid var(--line-1);
+    animation: card-section-in 0.36s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation-delay: calc(var(--i, 0) * 40ms);
   }
 
-  .desktop-header-left h2 {
-    margin: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .card-section:first-of-type {
+    border-top: none;
+    padding-top: 8px;
   }
 
-  /* Make type icons smaller inline in desktop header */
-  .desktop-header-left :global(.icons) {
-    margin: 0;
-    gap: 6px;
-  }
-
-  .desktop-header-left :global(.site-icon) {
-    width: 26px;
-    height: 26px;
-  }
-
-  /* Show type tooltips below icons; styled to match the card surface */
-  .desktop-header .desktop-header-left :global(.tooltip) {
-    bottom: auto;
-    top: calc(100% + 5px);
-    background: white;
-    color: #374151;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-    z-index: 10;
-  }
-
-  :global(.dark) .desktop-header .desktop-header-left :global(.tooltip) {
-    background: #374151;
-    color: #e5e7eb;
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  }
-
-  /* Row 2: Description (full width) */
-  .desktop-description {
-    margin-top: 0;
-    padding: 7px 10px;
-  }
-
-  .desktop-description .expand-button {
-    padding: 3px 4px;
-    margin-top: 1px;
-  }
-
-  /* Row 3: Hours (kept at natural width so the custom grid renders exactly as
-     designed) + quick contact actions filling the space beside it */
-  .desktop-hours-row {
-    display: flex;
-    gap: 14px;
-    align-items: center;
-    padding: 2px 0;
-  }
-
-  .desktop-hours {
-    flex: 0 0 auto;
-  }
-
-  .desktop-contact {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-  }
-
-  /* Row 5: Two radar charts side by side */
-  .desktop-charts-row {
-    display: flex;
-    gap: 4px;
-    padding: 2px 0;
-  }
-
-  .desktop-chart-col {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 0;
-  }
-
-  .desktop-radar-container {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-    /* Radar size is bound by container height (ECharts uses the smaller
-       dimension) — grow with the viewport so tall screens get full-bodied
-       charts while short laptops keep the no-scroll card fit */
-    height: clamp(150px, 24vh, 260px);
-    position: relative;
-    overflow: visible;
-  }
-
-  /* Vertically centers the Menu radar so it lines up with the taller Protein
-     column (radar + prep-style chips) instead of leaving a dead gap below it. */
-  .desktop-radar-center {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-  }
-
-  /* Protein prep styles — sit under the Protein radar, centered in the column */
-  .desktop-protein-styles {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    gap: 4px 12px;
-    padding: 4px 0 0;
-  }
-
-  .desktop-protein-styles .protein-label {
-    font-size: 10px;
-    min-width: auto;
-  }
-
-  .desktop-protein-styles .style-chip {
-    font-size: 10px;
-    padding: 1px 6px;
-  }
-
-  /* Row 6: Spice + Tortilla + Salsa strip */
-  .desktop-stats-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 5px 8px;
-    background: #f9fafb;
-    border-radius: 6px;
-  }
-
-  :global(.dark) .desktop-stats-row {
-    background: #1f2937;
-  }
-
-  .desktop-stat-item {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 0;
-  }
-
-  .desktop-stat-item :global(.gauge-wrapper) {
-    gap: 2px;
-  }
-
-  .desktop-stat-item :global(.hero-number) {
-    font-size: 20px;
-  }
-
-  .desktop-stat-item :global(.spice-description) {
-    font-size: 11px;
-  }
-
-  /* Salsa lineup row */
-  .desktop-salsa-lineup {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 5px 0 2px;
-  }
-
-  .desktop-lineup-label {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--ink-2);
-    flex-shrink: 0;
-    padding-top: 3px;
-  }
-
-  .desktop-tortilla-item :global(.icons) {
-    margin: 0;
-    gap: 8px;
-  }
-
-  .desktop-tortilla-item :global(.tortilla-icon) {
-    width: 28px;
-    height: 28px;
-    max-width: 28px;
-    max-height: 28px;
-  }
-
-  .desktop-salsa-item :global(.chart-container) {
-    max-height: 50px;
-  }
-
-  .desktop-salsa-item :global(.salsa-explanation) {
-    font-size: 9px;
-  }
-
-  /* Row 7: Specialties */
-  .desktop-specialties {
-    padding-top: 4px;
-    border-top: 1px solid lightgray;
-  }
-
-  :global(.dark) .desktop-specialties {
-    border-top-color: #374151;
-  }
-
-  /* Compact the specialty card on desktop so the popup fits without scrolling */
-  .desktop-specialties :global(.compact-card) {
-    min-height: 94px;
-  }
-
-  /* Header action groups */
-  .header-actions,
-  .desktop-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-  }
-
-  /* Compare button */
-  .compare-btn {
-    display: inline-flex;
-    align-items: center;
-    width: fit-content;
-    flex-shrink: 0;
-    padding: 4px 10px;
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    background: #f9fafb;
-    color: #374151;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-    white-space: nowrap;
-    -webkit-tap-highlight-color: transparent;
-    outline: none;
-    -webkit-touch-callout: none;
-    user-select: none;
-    -webkit-appearance: none;
-    appearance: none;
-    /* Always keep button on its own GPU compositing layer so iOS Safari
-       repaints it independently of the parent scroll container's cached texture */
-    transform: translateZ(0);
-  }
-
-  /* Hover only on real pointer devices — touch screens leave :hover sticky
-     after a tap, making a just-deselected button look still-active */
-  @media (hover: hover) {
-    .compare-btn:hover:not(:disabled) {
-      border-color: #FE795D;
-      color: #FE795D;
+  @keyframes card-section-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
     }
   }
 
-  /* Active state uses orange text on light-orange tint instead of white-on-orange.
-     This sidesteps an iOS Safari GPU texture cache bug where white text on a
-     newly-painted dark background is invisible until a scroll event forces a
-     repaint flush. Orange text on a light background remains visible regardless
-     of whether iOS repaints the cached scroll layer. */
-  .compare-btn.compare-active {
-    background: rgba(254, 121, 93, 0.12);
-    color: #FE795D;
-    border-color: #FE795D;
+  @media (prefers-reduced-motion: reduce) {
+    .card-section {
+      animation: none;
+    }
   }
 
-  .compare-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
+  /* Mono caps label, the Salsa Atlas kicker voice */
+  .card-label {
+    margin: 0;
+    font: 600 12px/1.3 var(--font-mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-2);
   }
 
-  :global(.dark) .compare-btn {
-    background: #374151;
-    border-color: #4b5563;
-    color: #d1d5db;
+  .card-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
   }
 
-  :global(.dark) .compare-btn.compare-active {
-    background: rgba(254, 121, 93, 0.18);
-    color: #FE795D;
-    border-color: #FE795D;
+  .card-lede {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--ink-1);
+    text-wrap: pretty;
+  }
+
+  .card-long {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+
+  .card-note {
+    margin: -4px 0 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--ink-3);
+  }
+
+  .expand-button {
+    align-self: flex-start;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--accent-hover);
+    font: 600 14px/1.4 var(--font-text);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+
+  .today {
+    font-size: 15px;
+    color: var(--ink-2);
+  }
+
+  .today strong {
+    color: var(--ink-1);
+  }
+
+  /* ── Specialties: the carousel, with cards filling most of the column ── */
+  .specialties :global(.carousel-item) {
+    flex-basis: 85%;
+  }
+
+  .specialties :global(.card-title) {
+    font-size: 17px;
+  }
+
+  .specialties :global(.card-description) {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ── Radar ── */
+  .card-radar {
+    height: 340px;
+  }
+
+  .radar-toggle {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 999px;
+    border: 1px solid var(--line-1);
+    background: var(--surface-2);
+  }
+
+  .radar-toggle button {
+    padding: 5px 14px;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    font: 600 14px/1.4 var(--font-text);
+    color: var(--ink-2);
+    cursor: pointer;
+  }
+
+  .radar-toggle button[aria-pressed='true'] {
+    background: var(--surface-1);
+    color: var(--ink-1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  }
+
+  .radar-toggle button:focus-visible,
+  .expand-button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Bigger prep-style chips under the protein radar */
+  .card-body .protein-label {
+    font-size: 14px;
+    min-width: 64px;
+  }
+
+  .card-body .style-chip {
+    font-size: 13px;
+    padding: 3px 10px;
   }
 </style>

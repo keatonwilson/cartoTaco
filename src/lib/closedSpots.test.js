@@ -16,6 +16,7 @@ import {
   processedTacoData,
   summaryStats,
   distributionStats,
+  distributionPool,
   filterConfig,
   filteredTacoData
 } from './stores.js';
@@ -112,6 +113,61 @@ describe('closed spot gating', () => {
       expect(stats.get(2).heatPercentile).toBe(50);
     });
 
+    it('feeds the context strip from the same pool as the percentiles', () => {
+      tacoStore.setData([
+        site(1, { heat: 4, salsas: 3 }),
+        site(2, { heat: 8, salsas: 6 }),
+        site(3, { heat: 10, salsas: 12, closedAt: '2026-03-15T00:00:00Z' }),
+        site(4, { heat: 1, salsas: 1, vetting: 'pending' })
+      ]);
+      expect(get(distributionPool)).toEqual({ ids: [1, 2], heats: [4, 8], salsas: [3, 6] });
+    });
+  });
+
+  // "Milder than Y%" needs the share strictly above, which isn't 100 - X when
+  // spots tie (issue #80)
+  describe('distributionStats above/below split', () => {
+    beforeEach(() => {
+      tacoStore.setData([
+        site(1, { heat: 2, salsas: 3 }),
+        site(2, { heat: 5, salsas: 3 }),
+        site(3, { heat: 5, salsas: 3 }),
+        site(4, { heat: 5, salsas: 8 }),
+        site(5, { heat: 9, salsas: 10 })
+      ]);
+    });
+
+    it('counts ties as neither above nor below', () => {
+      const tied = get(distributionStats).get(2);
+      expect(tied.heatPercentile).toBe(20);
+      expect(tied.heatPercentileAbove).toBe(20);
+      expect(tied.salsaPercentile).toBe(0);
+      expect(tied.salsaPercentileAbove).toBe(40);
+      expect(tied.heatTied).toBe(true);
+      expect(get(distributionStats).get(5).heatTied).toBe(false);
+    });
+
+    it('reports exactly 0 / 100 only at the extremes', () => {
+      const stats = get(distributionStats);
+      expect(stats.get(5).heatPercentileAbove).toBe(0);
+      expect(stats.get(5).heatPercentile).toBe(80);
+      expect(stats.get(1).heatPercentile).toBe(0);
+      expect(stats.get(1).heatPercentileAbove).toBe(80);
+    });
+
+    it('never rounds a non-empty share down to 0', () => {
+      tacoStore.setData([
+        ...Array.from({ length: 300 }, (_, i) => site(i + 1, { heat: 5 })),
+        site(301, { heat: 9 })
+      ]);
+      const stats = get(distributionStats);
+      // 1 of 301 spots is hotter — 0.3% must still read as "not the hottest"
+      expect(stats.get(1).heatPercentileAbove).toBe(1);
+      expect(stats.get(301).heatPercentileAbove).toBe(0);
+    });
+  });
+
+  describe('census', () => {
     it('leaves closed sites out of the census and reports them separately', () => {
       const stats = get(censusStats);
       expect(stats.totalSpots).toBe(2);

@@ -1,6 +1,8 @@
 <script>
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import mapboxgl from 'mapbox-gl';
+	import { pushState, replaceState } from '$app/navigation';
+	import { page } from '$app/stores';
 	import {
 		tacoStore,
 		isLoading,
@@ -14,10 +16,25 @@
 	import { isMobile, screenWidth } from '../lib/deviceDetection';
 	import Card from '../components/Card.svelte';
 	import PendingSpotCard from '../components/PendingSpotCard.svelte';
+	import SpotHeader from '../components/SpotHeader.svelte';
+	import SpotPanel from '../components/SpotPanel.svelte';
+	import PeekCard from '../components/PeekCard.svelte';
 	import MapLegend from '../components/MapLegend.svelte';
-	import { filterPanelOpen, mobileNavOpen } from '../lib/uiStore.js';
+	import { filterPanelOpen, mobileNavOpen, peekSite } from '../lib/uiStore.js';
+	import { tourActive } from '../lib/tourStore.js';
 	import 'mapbox-gl/dist/mapbox-gl.css';
-	import { updateMarkers, resetListeners, updateTrailLayers, updateTrailRoute, clearTrailLayers, flyToSite, applyLens } from '../lib/mapping.js';
+	import {
+		updateMarkers,
+		resetListeners,
+		updateTrailLayers,
+		updateTrailRoute,
+		clearTrailLayers,
+		flyToSite,
+		applyLens,
+		closeSpot,
+		syncMapPadding,
+		spotPanelWidth
+	} from '../lib/mapping.js';
 	import { mapInstance } from '../lib/mapStore.js';
 	import { mapLens } from '../lib/mapLensStore.js';
 	import FilterBar from '../components/FilterBar.svelte';
@@ -124,6 +141,9 @@
 		});
 		map.addControl(geoLocateControl, 'top-right');
 
+		// Pick up any padding change that landed while the camera was moving
+		map.on('moveend', () => syncMapPadding(map));
+
 		// Wait for map to fully load before adding markers
 		map.on('load', () => {
 			currentTheme = $effectiveTheme; // Set initial theme to prevent reactive trigger
@@ -214,23 +234,98 @@
 	// When trail mode exits, explicitly remove all trail layers and sources from the map
 	$: if (map && mapLoaded && !$trailModeActive) clearTrailLayers(map);
 
-	// Map padding: account for mobile sheet and trail tray.
-	// $screenWidth is referenced so this re-runs on resize/rotation, keeping
-	// the padding in sync with the landscape-aware sheet height.
+	// Map padding: room for the mobile sheet, the desktop spot panel, or an open
+	// trail/comparison tray (computeMapPadding in mapping.js). The stores are
+	// referenced so this re-runs when any of them, or the window size, changes.
 	$: if (map && mapLoaded) {
-		const landscape = $screenWidth > 0 && typeof window !== 'undefined'
-			&& window.innerWidth > window.innerHeight && window.innerHeight < 500;
-		let bottomPadding = 0;
-		if ($isMobile && $selectedSite) {
-			bottomPadding = typeof window !== 'undefined'
-				? Math.round(window.innerHeight * (landscape ? 0.45 : 0.65))
-				: 300;
-		} else if ($trailModeActive) {
-			bottomPadding = 280;
-		} else if ($comparisonActive) {
-			bottomPadding = 160;
+		void [$isMobile, $selectedSite, $trailModeActive, $comparisonActive, $screenWidth];
+		syncMapPadding(map);
+	}
+
+	// ── Desktop/tablet spot panel ──
+	$: panelOpen = !$isMobile && !!$selectedSite;
+	$: panelWidth = spotPanelWidth($screenWidth);
+
+	// The legend and the bottom trays start beside the panel instead of under it
+	$: if (typeof document !== 'undefined') {
+		document.documentElement.style.setProperty('--spot-panel-offset', panelOpen ? `${panelWidth}px` : '0px');
+	}
+	onDestroy(() => {
+		if (typeof document !== 'undefined') document.documentElement.style.removeProperty('--spot-panel-offset');
+	});
+
+	function closeOpenSpot() {
+		closeSpot(map);
+	}
+
+	// Esc steps back: peek first, then the open spot. Left alone while typing
+	// or during the tour, which has its own keys.
+	function handleKeydown(e) {
+		if (e.key !== 'Escape' || $tourActive) return;
+		const t = e.target;
+		if (t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+		if ($peekSite) {
+			peekSite.set(null);
+		} else if ($selectedSite) {
+			closeOpenSpot();
 		}
-		map.setPadding({ bottom: bottomPadding });
+	}
+
+	// ── The open spot lives in the URL (?location=<id>) ──
+	// Opening a spot adds one history entry; switching spots replaces it, so a
+	// single Back always leaves the spot, however many pins you clicked. The
+	// link is shareable, and the same param is what /salsa and favorites link to.
+	let urlSpotId = null; // the spot the current history entry describes
+	let pushedSpotEntry = false; // whether that entry is one we pushed
+
+	function spotUrl(id) {
+		const url = new URL(window.location.href);
+		if (id === null) url.searchParams.delete('location');
+		else url.searchParams.set('location', String(id));
+		return url.pathname + url.search + url.hash;
+	}
+
+	$: syncSpotUrl($selectedSite?.est_id ?? null);
+	function syncSpotUrl(id) {
+		if (typeof window === 'undefined' || id === urlSpotId) return;
+		const previous = urlSpotId;
+		urlSpotId = id;
+		try {
+			if (id !== null && previous === null) {
+				pushState(spotUrl(id), { spotId: id });
+				pushedSpotEntry = true;
+			} else if (id !== null) {
+				replaceState(spotUrl(id), { spotId: id });
+			} else if (pushedSpotEntry) {
+				// Closing from the page (×, Esc, empty map): step back off our entry
+				pushedSpotEntry = false;
+				history.back();
+			} else {
+				replaceState(spotUrl(null), {});
+			}
+		} catch {
+			// Router not ready yet; the URL just won't track this one
+		}
+	}
+
+	// Back/Forward. Acts only when the entry's spot actually changes: $page can
+	// re-emit with the previous entry's state while a Back is landing, which
+	// would otherwise reopen the spot we just closed.
+	let lastHistorySpotId = null;
+	$: onSpotHistory($page.state?.spotId ?? null);
+	function onSpotHistory(id) {
+		if (typeof window === 'undefined' || id === lastHistorySpotId) return;
+		lastHistorySpotId = id;
+		if (id === urlSpotId) return;
+		urlSpotId = id;
+		if (id === null) {
+			pushedSpotEntry = false;
+			closeSpot(map);
+			return;
+		}
+		pushedSpotEntry = true;
+		const site = $processedTacoData.find((s) => s.est_id === id);
+		if (site && map) flyToSite(map, site);
 	}
 
 	// Reconstruct trail from URL params once processedTacoData is available
@@ -263,13 +358,14 @@
 		if (locationParam) {
 			const site = $processedTacoData.find((s) => s.est_id === Number(locationParam));
 			if (site && map) {
-				selectedSite.set(site);
+				// The link's own entry describes this spot, so closing it later
+				// rewrites the URL rather than stepping Back out of the app
+				urlSpotId = site.est_id;
+				pushedSpotEntry = false;
+				try {
+					replaceState(spotUrl(site.est_id), { spotId: site.est_id });
+				} catch {}
 				flyToSite(map, site);
-				// Clean up the URL param without navigating
-				const newParams = new URLSearchParams(window.location.search);
-				newParams.delete('location');
-				const newUrl = newParams.toString() ? `?${newParams}` : window.location.pathname;
-				history.replaceState({}, '', newUrl);
 			}
 		}
 	}
@@ -313,9 +409,15 @@
 	}
 </script>
 
+<svelte:window on:keydown={handleKeydown} />
+
 <!-- Map wrapper: keeps Mapbox container separate from Svelte-managed overlays -->
 <div class="map-wrapper">
 	<div bind:this={mapContainer} id="map" data-tour="map"></div>
+
+	{#if mapLoaded}
+		<PeekCard {map} />
+	{/if}
 
 	{#if $isLoading}
 		<div class="loading-container">
@@ -340,7 +442,12 @@
 	<MapLegend />
 {/if}
 
-<!-- Mobile Bottom Sheet: replaces Mapbox popup on small screens -->
+<!-- Desktop/tablet: the spot panel docked on the left -->
+{#if panelOpen}
+	<SpotPanel width={panelWidth} on:close={closeOpenSpot} />
+{/if}
+
+<!-- Mobile Bottom Sheet -->
 {#if $isMobile && $selectedSite}
 	<div class="mobile-sheet" bind:this={sheetEl}>
 		<!-- Drag handle bar — touch here to swipe-dismiss -->
@@ -362,11 +469,16 @@
 		</div>
 		<!-- Scrollable card content: pending spots get the lightweight preliminary card -->
 		<div class="sheet-content" bind:this={sheetContentEl}>
-			{#if $selectedSite.isPending}
-				<PendingSpotCard />
-			{:else}
-				<Card />
-			{/if}
+			<!-- Same header and body as the desktop panel; pending spots get the
+			     lightweight preliminary card. Keyed so a new spot starts fresh. -->
+			{#key $selectedSite.est_id}
+				<div class="sheet-head"><SpotHeader site={$selectedSite} showClose={false} /></div>
+				{#if $selectedSite.isPending}
+					<PendingSpotCard hideHeader />
+				{:else}
+					<Card />
+				{/if}
+			{/key}
 		</div>
 	</div>
 {/if}
@@ -390,108 +502,6 @@
     top: calc(var(--header-h) + 10px) !important;
   }
 
-  /* Mobile-first responsive popup styles */
-  :global(.mapboxgl-popup) {
-    /* Mobile: Nearly full width with breathing room */
-    width: calc(100vw - 20px) !important;
-    max-width: calc(100vw - 20px) !important;
-  }
-
-  /* Tablet: 90vw centered, max 700px */
-  @media (min-width: 768px) {
-    :global(.mapboxgl-popup) {
-      width: 90vw !important;
-      max-width: 700px !important;
-    }
-  }
-
-  /* Desktop: Fixed 800px as before */
-  @media (min-width: 1024px) {
-    :global(.mapboxgl-popup) {
-      width: 800px !important;
-      max-width: 800px !important;
-    }
-  }
-
-  :global(.mapboxgl-popup-content) {
-    padding: 10px;
-    font-size: 14px;
-    border-radius: 2%;
-    opacity: 0.95;
-    /* Mobile: Constrain height and enable scrolling */
-    max-height: 80vh;
-    overflow-y: auto;
-    background: white;
-  }
-
-  :global(.dark) :global(.mapboxgl-popup-content) {
-    background: #1f2937;
-  }
-
-  /* Desktop: Allow more height */
-  @media (min-width: 1024px) {
-    :global(.mapboxgl-popup-content) {
-      max-height: 90vh;
-    }
-  }
-
-  :global(.mapboxgl-popup-tip) {
-    border-width: 10px;
-  }
-
-  /* Improved close button styling */
-  :global(.mapboxgl-popup-close-button) {
-    position: absolute;
-    right: 8px;
-    top: 8px;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.95);
-    border: 2px solid #e0e0e0;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-    font-size: 20px;
-    font-weight: 600;
-    color: #666;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    z-index: 1000;
-    padding: 0 0 2px 0; /* Shift × up slightly */
-    line-height: 0; /* Better vertical centering */
-  }
-
-  :global(.dark) :global(.mapboxgl-popup-close-button) {
-    background: rgba(31, 41, 55, 0.95);
-    border-color: #4b5563;
-    color: #9ca3af;
-  }
-
-  :global(.mapboxgl-popup-close-button):hover {
-    background: #fff;
-    border-color: #FE795D;
-    color: #FE795D;
-    transform: scale(1.1);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
-  }
-
-  :global(.mapboxgl-popup-close-button):active {
-    transform: scale(0.95);
-  }
-
-  /* Mobile: Larger touch target */
-  @media (max-width: 768px) {
-    :global(.mapboxgl-popup-close-button) {
-      width: 36px;
-      height: 36px;
-      right: 6px;
-      top: 6px;
-      font-size: 22px;
-    }
-  }
-  
   .loading-container, .error-container {
     position: absolute;
     top: 50%;
@@ -527,7 +537,7 @@
     left: 0;
     right: 0;
     height: 65dvh; /* dvh excludes iOS Safari address bar */
-    background: white;
+    background: var(--surface-1);
     border-radius: 16px 16px 0 0;
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.18);
     z-index: 150;
@@ -551,9 +561,26 @@
   }
 
   :global(.dark) .mobile-sheet {
-    background: #1f2937;
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5);
   }
+
+  /* A hint of the map through the sheet, Apple-style */
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .mobile-sheet {
+      background: var(--glass-bg);
+      -webkit-backdrop-filter: var(--glass-filter);
+      backdrop-filter: var(--glass-filter);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .mobile-sheet {
+      background: var(--surface-1);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+
 
   @keyframes sheet-slide-up {
     from { transform: translateY(100%); }
@@ -627,6 +654,16 @@
     color: #FE795D;
   }
 
+  .sheet-head {
+    padding: 2px 0 16px;
+    border-bottom: 1px solid var(--line-1);
+  }
+
+  /* The name is a touch smaller on a phone */
+  .sheet-head :global(.spot-head .spot-name) {
+    font-size: 28px;
+  }
+
   /* Scrollable content inside the sheet */
   .sheet-content {
     flex: 1;
@@ -634,7 +671,7 @@
     /* Prevent scroll from propagating to the map at top/bottom boundaries */
     overscroll-behavior: contain;
     /* Bottom padding accounts for the home-indicator bar on iPhone X+ */
-    padding: 0 10px max(20px, env(safe-area-inset-bottom));
+    padding: 0 18px max(24px, env(safe-area-inset-bottom));
     /* iOS Safari: force this scroll container onto its own persistent GPU
        compositing layer. Without this, iOS caches the scroll layer as a
        stale texture and won't repaint text-color changes (e.g. compare

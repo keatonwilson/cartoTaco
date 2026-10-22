@@ -1,8 +1,17 @@
 <script>
   // Week Rhythm strip — 7 day pills with mini open-span bars on a shared 24h
-  // scale, plus a calm open/closed status dot (V4 of the UI refresh).
+  // scale, plus a calm status dot with a Tucson-time label ("Open til 10 PM",
+  // "Opens at 8 AM"). Days and "today" are Tucson's, whatever the browser's zone.
+  import { getOpenStatus, parseTime, tucsonNow, minuteClock } from '$lib/hours';
+
   export let startHours;
   export let endHours;
+  /** Hide the "Hours" heading when the surrounding section already labels it */
+  export let showTitle = true;
+  /** Hide the status label when the surrounding card already shows it */
+  export let showStatus = true;
+  /** 'lg' stretches the days across the full width with taller bars (spot card) */
+  export let size = 'md';
 
   const DAYS = [
     { key: 'mon', label: 'Mo', dow: 1 },
@@ -14,21 +23,8 @@
     { key: 'sun', label: 'Su', dow: 0 }
   ];
 
-  // Current day for the "today" ring (stable for the session)
-  const currentDow = new Date().getDay();
-
-  /** "11:00 AM" / "23:30" → minutes since midnight, or null */
-  function parseTime(s) {
-    if (!s || s === 'NA') return null;
-    const [time, period] = String(s).trim().split(' ');
-    let [h, m] = time.split(':').map(Number);
-    if (isNaN(h)) return null;
-    if (period) {
-      if (period.toUpperCase() === 'PM' && h !== 12) h += 12;
-      if (period.toUpperCase() === 'AM' && h === 12) h = 0;
-    }
-    return h * 60 + (m || 0);
-  }
+  // Tucson's day for the "today" ring; follows the clock past midnight
+  $: currentDow = tucsonNow($minuteClock).dow;
 
   // Reactive — re-runs whenever props change so the display updates on site switch
   $: dayData = (() => {
@@ -74,30 +70,14 @@
     pinnedDay = pinnedDay === i ? null : i;
   }
 
-  /**
-   * Open right now? Mirrors the isOpenNow() logic in stores.js (minute
-   * precision, overnight-aware).
-   */
-  $: openNow = (() => {
-    const dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-    const now = new Date();
-    const todayKey = dayKeys[now.getDay()];
-    const startObj = Object.fromEntries(startHours || []);
-    const endObj = Object.fromEntries(endHours || []);
-
-    const start = parseTime(startObj[`${todayKey}_start`]);
-    const end = parseTime(endObj[`${todayKey}_end`]);
-    if (start === null || end === null) return false;
-
-    const current = now.getHours() * 60 + now.getMinutes();
-    if (end < start) return current >= start || current <= end;
-    return current >= start && current <= end;
-  })();
+  $: status = getOpenStatus(startHours || [], endHours || [], $minuteClock);
 </script>
 
 <div>
-  <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">Hours</h2>
-  <div class="container">
+  {#if showTitle}
+    <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">Hours</h2>
+  {/if}
+  <div class="container" class:lg={size === 'lg'}>
     <div class="days">
       {#each dayData as day, i}
         <button
@@ -128,10 +108,12 @@
         </button>
       {/each}
     </div>
-    <div class="status" class:open={openNow}>
-      <span class="status-dot"></span>
-      {openNow ? 'Open Now' : 'Closed Now'}
-    </div>
+    {#if showStatus}
+      <div class="status" data-state={status.state}>
+        <span class="status-dot"></span>
+        {status.label}
+      </div>
+    {/if}
   </div>
 </div>
 
@@ -291,11 +273,53 @@
     flex-shrink: 0;
   }
 
-  .status.open {
+  .status[data-state='open'] {
     color: var(--success);
   }
 
-  .status.open .status-dot {
+  .status[data-state='open'] .status-dot {
     background: var(--success);
+  }
+
+  .status[data-state='closing-soon'] {
+    color: var(--warning);
+  }
+
+  .status[data-state='closing-soon'] .status-dot {
+    background: var(--warning);
+  }
+
+  .status[data-state='unknown'] .status-dot {
+    background: var(--ink-3);
+  }
+
+  /* ── Large: the spot card, where the strip has the full column ── */
+  .container.lg {
+    padding: 10px 12px;
+  }
+
+  .container.lg .days {
+    flex: 1;
+    gap: 6px;
+  }
+
+  .container.lg .day-pill {
+    flex: 1;
+    gap: 6px;
+    padding: 6px 4px 5px;
+  }
+
+  .container.lg .track {
+    width: 12px;
+    height: 48px;
+    border-radius: 6px;
+  }
+
+  .container.lg .day-letter {
+    font-size: 13px;
+  }
+
+  .container.lg .time-tip {
+    font-size: 13px;
   }
 </style>

@@ -87,4 +87,25 @@ describe('friendlyAuthError', () => {
 			'Could not create your account.'
 		);
 	});
+
+	it('explains a reused password on reset', () => {
+		expect(
+			friendlyAuthError({
+				code: 'same_password',
+				message: 'New password should be different from the old password.'
+			})
+		).toBe('That is already your password. Pick a new one.');
+	});
+
+	it('explains an expired or reused reset link', () => {
+		expect(friendlyAuthError({ code: 'otp_expired', message: 'Email link is invalid or has expired' })).toBe(
+			'That link is invalid or has expired. Request a new one and use the newest email.'
+		);
+	});
+
+	it('explains a PKCE link opened in another browser', () => {
+		expect(
+			friendlyAuthError({ message: 'invalid request: both auth code and code verifier should be non-empty' })
+		).toBe('Open the link in the same browser you requested it from, or request a new one.');
+	});
 });
