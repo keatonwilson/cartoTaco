@@ -8,8 +8,26 @@ function recognitionClass() {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
 }
 
+/**
+ * iPhone or iPad, in any browser (they're all WebKit there). iPadOS asks for
+ * desktop sites by default and calls itself a Mac, so a touch screen gives it
+ * away: no real Mac has one.
+ */
+export function isAppleMobile(nav = typeof navigator !== 'undefined' ? navigator : null) {
+  if (!nav) return false;
+  const ua = nav.userAgent || '';
+  return /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && nav.maxTouchPoints > 1);
+}
+
+/**
+ * Whether we offer our own mic. Not on iPhone or iPad, even though WebKit has
+ * the API there: it records once, then every later start() turns the mic
+ * indicator on and never delivers a result, error or end (an open WebKit bug;
+ * no reliable workaround). The keyboard's own dictation mic types into the
+ * search box instead, and works every time.
+ */
 export function speechSupported() {
-  return recognitionClass() !== null;
+  return recognitionClass() !== null && !isAppleMobile();
 }
 
 // The session in progress, if any. Browsers allow one at a time: starting a

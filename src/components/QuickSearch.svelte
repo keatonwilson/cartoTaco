@@ -18,7 +18,7 @@
   import { favoriteIds } from '$lib/favoritesStore';
   import { searchSpots } from '$lib/search';
   import { parseIntent, applyIntentFilters } from '$lib/intentRules';
-  import { listen, speechSupported, describeVoiceError } from '$lib/voice';
+  import { listen, speechSupported, describeVoiceError, isAppleMobile } from '$lib/voice';
   import { getOpenStatus, minuteClock } from '$lib/hours';
   import { quickSearchOpen, filterPanelOpen } from '$lib/uiStore';
 
@@ -43,7 +43,19 @@
   let stopListening = null;
   let voiceError = null;
 
-  $: if (browser) canSpeak = speechSupported();
+  // iPhone/iPad get no mic of ours (see speechSupported); point them at the
+  // keyboard's dictation key instead
+  let dictateHint = false;
+  $: if (browser) {
+    canSpeak = speechSupported();
+    dictateHint = isAppleMobile();
+  }
+
+  $: placeholder = listening
+    ? 'Listening…'
+    : dictateHint
+      ? 'Search, or tap 🎤 on the keyboard'
+      : 'Search spots, dishes, or “spicy pork open now”';
 
   // ── What the query means ──
   $: intent = parseIntent(query);
@@ -227,7 +239,7 @@
         bind:value={query}
         on:input={onInput}
         type="text"
-        placeholder={listening ? 'Listening…' : 'Search spots, dishes, or “spicy pork open now”'}
+        {placeholder}
         aria-label="Search spots"
         role="combobox"
         aria-expanded={rows.length > 0}

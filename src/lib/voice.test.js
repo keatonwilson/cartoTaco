@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { listen, speechSupported, describeVoiceError } from './voice.js';
+import { listen, speechSupported, describeVoiceError, isAppleMobile } from './voice.js';
 
 // A stand-in for the browser's SpeechRecognition that tests drive by hand
 class FakeRecognition {
@@ -140,6 +140,41 @@ describe('listen', () => {
     const { calls } = session();
     expect(calls.errors).toEqual(['unsupported']);
     expect(calls.ends).toBe(1);
+  });
+});
+
+describe('isAppleMobile', () => {
+  const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1';
+  const CHROME_IOS = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/138.0 Mobile/15E148 Safari/604.1';
+  const MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Safari/605.1.15';
+  const ANDROID = 'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0 Mobile Safari/537.36';
+
+  it('spots iPhones in any browser', () => {
+    expect(isAppleMobile({ userAgent: IPHONE, maxTouchPoints: 5 })).toBe(true);
+    expect(isAppleMobile({ userAgent: CHROME_IOS, maxTouchPoints: 5 })).toBe(true);
+  });
+
+  it('spots an iPad that calls itself a Mac', () => {
+    expect(isAppleMobile({ userAgent: MAC, maxTouchPoints: 5 })).toBe(true);
+  });
+
+  it('leaves real Macs and Android alone', () => {
+    expect(isAppleMobile({ userAgent: MAC, maxTouchPoints: 0 })).toBe(false);
+    expect(isAppleMobile({ userAgent: ANDROID, maxTouchPoints: 5 })).toBe(false);
+  });
+});
+
+describe('speechSupported', () => {
+  const realNavigator = globalThis.navigator;
+  const setNavigator = (value) =>
+    Object.defineProperty(globalThis, 'navigator', { value, configurable: true, writable: true });
+  afterEach(() => setNavigator(realNavigator));
+
+  it('offers the mic where the API exists, except on iPhone and iPad', () => {
+    setNavigator({ userAgent: 'Mozilla/5.0 (Windows NT 10.0) Chrome/138.0', maxTouchPoints: 0 });
+    expect(speechSupported()).toBe(true);
+    setNavigator({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X)', maxTouchPoints: 5 });
+    expect(speechSupported()).toBe(false);
   });
 });
 
