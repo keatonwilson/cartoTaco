@@ -2,6 +2,7 @@
   // Heat Ladder — a 10-notch meter with hero number and optional city-percentile
   // context. Replaces the old ECharts needle gauge (V2 of the UI refresh).
   import { SEQUENTIAL } from '$lib/chartTheme';
+  import { describeHeat } from '$lib/dataWrangling';
 
   export let spiceValue = 0;
   /** 0–100 share of spots this one is hotter than; null hides the line */
@@ -9,17 +10,7 @@
   /** Context line shown when no percentile is provided */
   export let explanation = 'Overall heat level across all salsas';
 
-  // Helper function to get spice level description
-  function getSpiceDescription(value) {
-    if (value === 0) return 'No Heat';
-    if (value <= 2) return 'Mild';
-    if (value <= 4) return 'Medium';
-    if (value <= 6) return 'Medium-Hot';
-    if (value <= 8) return 'Hot';
-    return 'Very Hot';
-  }
-
-  $: spiceDescription = getSpiceDescription(spiceValue);
+  $: spiceDescription = describeHeat(spiceValue);
   $: filled = Math.max(0, Math.min(10, Math.round(spiceValue)));
 
   // Notch i (0-based) wears its own step of the sequential coral ramp, so the

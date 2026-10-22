@@ -5,6 +5,7 @@ import { writable, derived } from "svelte/store";
 import { supabaseBrowser } from "./supabaseBrowser";
 import { filterObjectByKeySubstring, getTopFive, extractProteinStyles } from "./dataWrangling";
 import { favoriteIds } from "./favoritesStore";
+import { getOpenStatus } from "./hours";
 
 // Create store that includes data and loading/error state
 function createDataStore() {
@@ -365,45 +366,10 @@ export const filterConfig = writable({
   }
 });
 
-// Helper function to check if a location is currently open
+// Helper function to check if a location is currently open, on Tucson's clock
 // Accepts the raw hours object from the view (keys like mon_start, mon_end)
 export function isOpenNow(hours) {
-  if (!hours) return false;
-  const now = new Date();
-  const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-  const today = days[now.getDay()];
-
-  const startTime = hours[`${today}_start`];
-  const endTime = hours[`${today}_end`];
-
-  if (!startTime || !endTime) return false;
-
-  // Parse time strings (assuming format like "11:00" or "11:00 AM")
-  const parseTime = (timeStr) => {
-    if (!timeStr) return null;
-    const [time, period] = timeStr.split(' ');
-    let [hours, minutes] = time.split(':').map(Number);
-
-    if (period) {
-      if (period.toUpperCase() === 'PM' && hours !== 12) hours += 12;
-      if (period.toUpperCase() === 'AM' && hours === 12) hours = 0;
-    }
-
-    return hours * 60 + minutes;
-  };
-
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const startMinutes = parseTime(startTime);
-  const endMinutes = parseTime(endTime);
-
-  if (startMinutes === null || endMinutes === null) return false;
-
-  // Handle times that cross midnight
-  if (endMinutes < startMinutes) {
-    return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
-  }
-
-  return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  return getOpenStatus(hours).isOpen;
 }
 
 // Derived store for filtered taco data
