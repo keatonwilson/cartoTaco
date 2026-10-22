@@ -155,33 +155,42 @@
   }
 
   // ── Voice ──
+  // Each mic tap is a new session. Callbacks from an older one (aborted when
+  // this one started) are ignored, so they can't flip this one's state.
+  let voiceSession = 0;
+
   function toggleVoice() {
     if (listening) {
       stopVoice();
       return;
     }
+    const session = ++voiceSession;
+    const isCurrent = () => session === voiceSession;
     voiceError = null;
     listening = true;
     stopListening = listen({
       onResult: (text) => {
+        if (!isCurrent() || !text) return;
         query = text;
         active = 0;
       },
       onError: (code) => {
-        voiceError = describeVoiceError(code);
+        if (isCurrent()) voiceError = describeVoiceError(code);
       },
       onEnd: () => {
+        if (!isCurrent()) return;
         listening = false;
         stopListening = null;
-        inputEl?.focus();
       }
     });
   }
 
   function stopVoice() {
-    stopListening?.();
+    const stop = stopListening;
+    voiceSession++;
     stopListening = null;
     listening = false;
+    stop?.();
   }
 
   onDestroy(stopVoice);

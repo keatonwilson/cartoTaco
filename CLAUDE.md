@@ -273,7 +273,7 @@ Located in src/lib/dataWrangling.js:
 The free first tier of the planned AI concierge (`docs/AI_CONCIERGE_PLAN.md`). No model and no network.
 - `src/lib/search.js` - `searchSpots(query, sites, { limit })` → `[{ site, score, matchedOn: { field, label } }]`. Accent-insensitive (`normalize()`), typo-tolerant (Damerau `editDistance()`; 1 typo from 4 letters, 2 from 7, none below), weighted by field (name > specialty > protein style/protein > menu > region/type > address > description), with Spanish protein synonyms. Every query word must match something. Closed spots rank after open ones and unplaceable spots are skipped. Field text is cached per spot object in a WeakMap
 - `src/lib/intentRules.js` - `parseIntent(query)` → `{ filters, extras, matched, remainder, covered }`: proteins, types (with negation: "no trucks" selects every other type), spice ("spicy" 7+, "very spicy" 8+, "mild"/"not spicy" ≤4; "hot dog" protected), open now, favorites, plus `extras.handmadeTortillas` / `extras.near`. English and Spanish. `covered` means no words were left over. `applyIntentFilters(cfg, filters)` merges the parsed filters into a filterConfig
-- `src/lib/voice.js` - Web Speech API wrapper: `speechSupported()`, `listen({ onResult, onEnd, onError, lang })` → stop fn, `describeVoiceError(code)`. There is no Firefox support, so callers hide the mic
+- `src/lib/voice.js` - Web Speech API wrapper: `speechSupported()`, `listen({ onResult, onEnd, onError, lang })` → stop fn, `describeVoiceError(code)`. There is no Firefox support, so callers hide the mic. One session at a time (a new `listen()` aborts the old one), and a session ends on our side, with `onEnd` exactly once, on its final result, an error, a stop, or a 15s watchdog. Never wait on the browser's `end` event: Safari often doesn't send it, which once left the mic stuck after one use
 
 ## Coordinate Validation
 
@@ -422,6 +422,7 @@ Test files are co-located in src/lib/:
 - `src/lib/authErrors.test.js` - Tests for auth error message mapping
 - `src/lib/search.test.js` - Quick Search golden queries (query → expected top spot), ranking and edge cases. Add a golden row when a real query ranks wrong
 - `src/lib/intentRules.test.js` - Filter parsing (English/Spanish, negation, hot dog vs heat, remainder)
+- `src/lib/voice.test.js` - Voice session lifecycle against a fake SpeechRecognition (missing `end` events, stale events, start failures, watchdog)
 
 Run all tests with `pnpm test`.
 
