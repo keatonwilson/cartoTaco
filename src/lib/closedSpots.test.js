@@ -120,7 +120,7 @@ describe('closed spot gating', () => {
         site(3, { heat: 10, salsas: 12, closedAt: '2026-03-15T00:00:00Z' }),
         site(4, { heat: 1, salsas: 1, vetting: 'pending' })
       ]);
-      expect(get(distributionPool)).toEqual({ heats: [4, 8], salsas: [3, 6] });
+      expect(get(distributionPool)).toEqual({ ids: [1, 2], heats: [4, 8], salsas: [3, 6] });
     });
   });
 
@@ -143,6 +143,8 @@ describe('closed spot gating', () => {
       expect(tied.heatPercentileAbove).toBe(20);
       expect(tied.salsaPercentile).toBe(0);
       expect(tied.salsaPercentileAbove).toBe(40);
+      expect(tied.heatTied).toBe(true);
+      expect(get(distributionStats).get(5).heatTied).toBe(false);
     });
 
     it('reports exactly 0 / 100 only at the extremes', () => {

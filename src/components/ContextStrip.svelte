@@ -15,8 +15,8 @@
   export let binLabel = (v) => `at ${v}`;
 
   // Largest dot radius (px); the floor keeps a one-spot bin visible
-  const MAX_R = 6;
-  const MIN_R = 2;
+  const MAX_R = 8;
+  const MIN_R = 1.5;
 
   $: bins = binValues(values, step);
   $: maxCount = Math.max(0, ...bins.map((b) => b.count));
@@ -68,7 +68,7 @@
     position: relative;
     width: 100%;
     max-width: 170px;
-    height: 18px;
+    height: 20px;
   }
 
   .strip-track::before {

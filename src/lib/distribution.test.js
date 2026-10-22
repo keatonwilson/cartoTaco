@@ -54,6 +54,16 @@ describe('contextLine', () => {
     expect(contextLine('heat', 30, 50)).toBe('Milder than 50% of Tucson spots');
   });
 
+  it('leads with the larger side when a tie group straddles the median', () => {
+    // 40% milder, 50% tied, 10% hotter: "Milder than 10%" would undersell it
+    expect(contextLine('heat', 40, 10)).toBe('Hotter than 40% of Tucson spots');
+  });
+
+  it('says "tied for" when the extreme is shared', () => {
+    expect(contextLine('heat', 92, 0, true)).toBe('Tied for hottest in Tucson');
+    expect(contextLine('salsa', 0, 92, true)).toBe('Tied for fewest salsas in Tucson');
+  });
+
   it('names the extremes instead of 0% / 100%', () => {
     expect(contextLine('heat', 90, 0)).toBe('Hottest in Tucson');
     expect(contextLine('heat', 30, 0)).toBe('Hottest in Tucson');

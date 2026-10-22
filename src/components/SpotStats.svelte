@@ -23,10 +23,10 @@
   $: filled = Math.max(0, Math.min(10, Math.round(heat)));
   $: stats = $distributionStats.get(site.est_id);
   $: heatContext = stats
-    ? contextLine('heat', stats.heatPercentile, stats.heatPercentileAbove)
+    ? contextLine('heat', stats.heatPercentile, stats.heatPercentileAbove, stats.heatTied)
     : null;
   $: salsaContext = stats
-    ? contextLine('salsa', stats.salsaPercentile, stats.salsaPercentileAbove)
+    ? contextLine('salsa', stats.salsaPercentile, stats.salsaPercentileAbove, stats.salsaTied)
     : null;
 
   $: salsas = site.salsaCount || 0;
@@ -66,7 +66,6 @@
           value={heat}
           min={0}
           max={10}
-          step={0.5}
           binLabel={(v) => `at heat ${v}`}
           label="Tucson spots by heat — this one ringed"
         />

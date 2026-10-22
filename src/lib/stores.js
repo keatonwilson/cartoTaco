@@ -248,6 +248,7 @@ export const distributionPool = derived(
   ($processedTacoData) => {
     const vettedSites = ($processedTacoData || []).filter(s => !s.isPending && !s.isClosed);
     return {
+      ids: vettedSites.map(s => s.est_id),
       heats: vettedSites.map(s => s.heatOverall || 0),
       salsas: vettedSites.map(s => s.salsaCount || 0)
     };
@@ -258,9 +259,10 @@ export const distributionPool = derived(
 // (powers "Hotter than X%" / "Milder than Y%" context lines).
 // *Percentile = share of spots strictly lower; *PercentileAbove = share
 // strictly higher. Ties count as neither, so Above is not 100 - Percentile.
+// *Tied = another spot shares this value ("Tied for hottest").
 export const distributionStats = derived(
-  [processedTacoData, distributionPool],
-  ([$processedTacoData, { heats, salsas }]) => {
+  distributionPool,
+  ({ ids, heats, salsas }) => {
     const stats = new Map();
     if (heats.length < 2) {
       return stats;
@@ -272,18 +274,20 @@ export const distributionStats = derived(
       count === 0 ? 0 : count === n ? 100 : Math.min(99, Math.max(1, Math.round((count / n) * 100)));
     const below = (values, v) => share(values.filter(x => x < v).length, values.length);
     const above = (values, v) => share(values.filter(x => x > v).length, values.length);
+    const tied = (values, v) => values.filter(x => x === v).length > 1;
 
-    for (const site of $processedTacoData) {
-      if (site.isPending || site.isClosed) continue;
-      const heat = site.heatOverall || 0;
-      const salsa = site.salsaCount || 0;
-      stats.set(site.est_id, {
+    ids.forEach((id, i) => {
+      const heat = heats[i];
+      const salsa = salsas[i];
+      stats.set(id, {
         heatPercentile: below(heats, heat),
         heatPercentileAbove: above(heats, heat),
+        heatTied: tied(heats, heat),
         salsaPercentile: below(salsas, salsa),
-        salsaPercentileAbove: above(salsas, salsa)
+        salsaPercentileAbove: above(salsas, salsa),
+        salsaTied: tied(salsas, salsa)
       });
-    }
+    });
     return stats;
   }
 );
