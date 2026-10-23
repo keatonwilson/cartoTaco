@@ -3,7 +3,7 @@
 // everything we know about a spot. Pure and model-free, so it runs on every
 // keystroke in QuickSearch and backs the agent's search tool on the server.
 
-import { hasValidCoordinates } from './siteModel';
+import { hasValidCoordinates } from './siteModel.js';
 
 // How much a hit in each field counts toward a spot's score
 const FIELD_WEIGHTS = {
