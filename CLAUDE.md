@@ -101,6 +101,7 @@ Historical order, as originally applied:
 36. `036_create_salsa_styles.sql` - Salsa Atlas backend: `salsa_styles` catalog (ingredients, history, palette of hex codes, optional photo), `site_salsas` join table (per-spot heat/house name/note, no cap), `sync_site_salsas()` trigger, `salsas` storage bucket, and the seed of ~20 styles
 37. `037_add_salsa_styles_to_view.sql` - Rebuilds `sites_complete` exposing `salsa.styles` (`[{slug, name, color, heat, house_name, note}]` plus the style's flavour scores, so the taste profile can match on them)
 38. `038_create_user_favorite_salsas.sql` - `user_favorite_salsas` (user_id, style_id) with own-rows-only RLS, for favouriting salsas from the atlas
+39. `039_salsa_field_sightings.sql` - Field sightings and draft styles: `site_salsas` gains `photo_url`/`palette`/`observed_at` (written by cartoTacoMenuExtract's Salsa Field Notes page) and `synced` (backfilled true for links to keyed styles); `salsa_styles` gains `status` (`draft`/`published`, public reads see published only); `sync_site_salsas()` now removes only links it created and keeps those carrying curated data; view exposes the sighting fields
 
 ### Data Health (self-healing)
 Migration 034 makes the database repair specialty links itself. Cards only show specials whose `spec_id_N` FK is set; cartoTacoMenuExtract promotion writes the spec *name* into `specialty_item_N` / `protein_spec_N` / `salsa_spec_N` (re-added by that repo's migration 009 after 017 dropped them, so they exist in production) and links the id.
@@ -113,15 +114,15 @@ Migration 034 makes the database repair specialty links itself. Cards only show 
 - All functions are revoked from `anon`/`authenticated`
 
 ### Salsa Atlas (salsa catalog)
-Migrations 036/037. `salsa_styles` is the catalog behind `/salsa`; `site_salsas` says which spot serves which style.
+Migrations 036/037/039. `salsa_styles` is the catalog behind `/salsa`; `site_salsas` says which spot serves which style.
 - A style is tied to legacy data by `variety_key` (`verde` → `salsa.verde_yes`) or `spec_id` (→ `salsa_spec`). Styles with neither are hand-curated
-- The `salsa` row is still what cartoTacoMenuExtract writes. `sync_site_salsas()` (AFTER trigger on `salsa`) adds/removes `site_salsas` rows for keyed styles to match it, never touches hand-curated links, and never overwrites a hand-set `heat`/`house_name`/`note`. To add a salsa to a spot that has no boolean or spec for it, insert the `site_salsas` row directly
+- The `salsa` row is still what cartoTacoMenuExtract writes. `sync_site_salsas()` (AFTER trigger on `salsa`) adds `site_salsas` rows for keyed styles (marked `synced`) and removes only synced rows the salsa row no longer implies, and only while they carry no curated data (sighting photo/palette/date or a hand-set `heat`/`house_name`/`note`). Hand-made links (`synced = false`) are never touched. To add a salsa to a spot that has no boolean or spec for it, insert the `site_salsas` row directly
 - Inserting or re-keying a style re-syncs every spot (statement trigger on `salsa_styles`), so a new keyed style picks up existing spots by itself
 - `smoke`/`acid`/`sweet`/`chunk`/`rich` are 0–10 flavour scores (editorial estimates). With typical heat they are the six `AXES` in `src/lib/salsa.js`: they place a salsa on `SalsaMap` and `neighbours()` ranks relatives by distance across them
 - `region` is a coarse bucket (`north`/`west`/`central`/`south`/`everywhere`) used only to cluster the atlas; `origin` is the display text
 - `palette` is 3–5 lowercase hex codes, first one definitive (CHECK-enforced). Any palette colour can become a page background; `inkFor()` picks black or white text, and `salsa.test.js` asserts 4.5:1 against every seeded colour
-- Photos: upload to the `salsas` bucket through the dashboard and set `img_url` (+ `img_credit`); until then `SalsaArt.svelte` draws a bowl from the palette
-- Editorial text lives in the 036 seed; later edits are new migrations (`UPDATE salsa_styles …`)
+- Curation happens in cartoTacoMenuExtract's Salsa Field Notes page (service role): the Sightings tab turns a photo with a grey card into a `site_salsas` sighting (photo, white-balanced palette, date); the Catalog tab edits a style's text, ingredients, flavour scores, palette, hero photo (`img_url` + `img_credit`) and `status`. New styles start as drafts, hidden from the public API (and from the view, which is security_invoker) until published. Until a style has a photo, `SalsaArt.svelte` draws a bowl from the palette
+- The 036 seed is only the starting text; edits made in Field Notes live in the database, not in migrations
 
 ### Schema Management
 - **`schema/sites_complete_view.sql`** is the single source of truth for the `sites_complete` view definition

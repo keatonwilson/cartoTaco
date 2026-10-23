@@ -2,7 +2,7 @@
 -- This file is the SINGLE SOURCE OF TRUTH for the view schema.
 -- Any migration that rebuilds the view should copy from this file.
 --
--- Last updated: Migration 037 (added salsa.styles)
+-- Last updated: Migration 039 (added salsa.styles[].photo_url/palette/observed_at)
 
 DROP VIEW IF EXISTS public.sites_complete;
 
@@ -147,6 +147,7 @@ SELECT
       SELECT jsonb_agg(
                jsonb_build_object('slug', st.slug, 'name', st.name, 'color', st.palette[1],
                                   'heat', ss.heat, 'house_name', ss.house_name, 'note', ss.note,
+                                  'photo_url', ss.photo_url, 'palette', ss.palette, 'observed_at', ss.observed_at,
                                   -- the style's flavour profile, for taste-profile matching
                                   'heat_min', st.heat_min, 'heat_max', st.heat_max, 'smoke', st.smoke,
                                   'acid', st.acid, 'sweet', st.sweet, 'chunk', st.chunk, 'rich', st.rich)
@@ -218,4 +219,4 @@ LEFT JOIN public.salsa_spec   ss2  ON sa.spec_id_2 = ss2.id;
 GRANT SELECT ON public.sites_complete TO anon;
 GRANT SELECT ON public.sites_complete TO authenticated;
 
-COMMENT ON VIEW public.sites_complete IS 'Optimized view combining all site-related tables into a single query. Specialty data embedded as JSONB arrays via FK joins. burro aliased to burrito; unused site fields removed; spec FK columns normalized to spec_id_N. snacks_yes/snacks_perc added in migration 023. quesadilla_yes/quesadilla_perc added in migration 026. vetting_status/source/source_url added in migration 031 (unvetted spots feature). closed_at added in migration 033 (closed spots). salsa.styles added in migration 037 (Salsa Atlas).';
+COMMENT ON VIEW public.sites_complete IS 'Optimized view combining all site-related tables into a single query. Specialty data embedded as JSONB arrays via FK joins. burro aliased to burrito; unused site fields removed; spec FK columns normalized to spec_id_N. snacks_yes/snacks_perc added in migration 023. quesadilla_yes/quesadilla_perc added in migration 026. vetting_status/source/source_url added in migration 031 (unvetted spots feature). closed_at added in migration 033 (closed spots). salsa.styles added in migration 037 (Salsa Atlas); field-sighting photo_url/palette/observed_at added in migration 039.';

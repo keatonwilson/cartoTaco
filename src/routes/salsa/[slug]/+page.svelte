@@ -169,6 +169,9 @@
       <ul class="spot-list">
         {#each spots as { site, link } (site.est_id)}
           <li class="reveal" class:closed={site.isClosed}>
+            {#if link.photo_url}
+              <img class="spot-photo" src={link.photo_url} alt="{style.name} at {site.name}" loading="lazy" />
+            {/if}
             <a class="spot-main" href="/?location={site.est_id}">
               <span class="spot-name">{site.name}</span>
               <span class="spot-detail">
@@ -177,6 +180,11 @@
               </span>
             </a>
             <span class="spot-side">
+              {#if link.palette?.length}
+                <span class="spot-palette" title="Colours sampled from this spot's version">
+                  {#each link.palette as hex}<span style="background:{hex}"></span>{/each}
+                </span>
+              {/if}
               {#if link.heat != null}
                 <span class="spot-heat" title="This spot's version: heat {link.heat}/10">{link.heat}/10</span>
               {/if}
@@ -606,6 +614,27 @@
     padding: 16px 0;
     color: inherit;
     text-decoration: none;
+  }
+
+  .spot-photo {
+    width: 56px;
+    height: 56px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  /* This spot's own colours, as sampled from its photo */
+  .spot-palette {
+    display: inline-flex;
+    overflow: hidden;
+    border-radius: 4px;
+    box-shadow: 0 0 0 1px var(--line-2);
+  }
+
+  .spot-palette span {
+    width: 12px;
+    height: 20px;
   }
 
   .spot-name {
