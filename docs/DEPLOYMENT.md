@@ -77,6 +77,12 @@ dump: Supabase owns the auth/storage/realtime schemas and restores into them
 fail. User-generated rows (favorites, votes, profiles, submissions) stay as
 staging had them, since they reference `auth.users`.
 
+The Salsa Atlas (`salsa_styles`, `site_salsas`, `user_favorite_salsas`) is
+curated on staging, so the seed keeps it: it copies those tables aside, replaces
+the content, and puts them back, all in one transaction. Keyed links are then
+re-synced to prod's salsa rows. If a recorded sighting belongs to a spot prod
+doesn't have, the job fails and changes nothing; add the spot to prod first.
+
 Run it after a big data-entry session in production, not routinely.
 
 ### `schema-parity.yml` — prod vs staging schema diff
