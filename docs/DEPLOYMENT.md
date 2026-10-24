@@ -208,7 +208,7 @@ Settings → Environment Variables, scoped per environment:
 | `ANTHROPIC_API_KEY` | Concierge (`/api/agent`). Server-only. Give it its own Anthropic workspace with a monthly spend limit: that limit is the global kill switch, and when it trips the endpoint answers from the free rules tier |
 | `LANGSMITH_TRACING` | `true` to trace concierge runs |
 | `LANGSMITH_API_KEY` | LangSmith key (traces and 👍/👎 feedback) |
-| `LANGSMITH_PROJECT` | e.g. `cartotaco-concierge-staging` / `cartotaco-concierge-prod` |
+| `LANGSMITH_PROJECT` | `cartotaco-staging` (Preview) / `cartotaco-production` (Production). Set it explicitly: the SDK ignores `LANGSMITH_AGENT_ENVIRONMENT` |
 | `LANGSMITH_TRACING_BACKGROUND` | `false`: serverless functions freeze after responding, so traces must flush before the response |
 | `AI_DAILY_TOKENS` | Optional per-user daily token budget (default 200000); over it the concierge goes rules-only |
 

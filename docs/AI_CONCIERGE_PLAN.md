@@ -71,7 +71,7 @@ Also extract `computeTasteProfile(favIds, sites, stats)` and the k-NN helpers fr
   - English or Spanish
 
 ## Tracing (LangSmith)
-- **Env** (server-only, documented in `docs/DEPLOYMENT.md`): `ANTHROPIC_API_KEY`, `LANGSMITH_TRACING=true`, `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT=cartotaco-concierge-{dev|staging|prod}`.
+- **Env** (server-only, documented in `docs/DEPLOYMENT.md`): `ANTHROPIC_API_KEY`, `LANGSMITH_TRACING=true`, `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT=cartotaco-{local|staging|production}`.
 - **Metadata on each trace**:
   - `thread_id`
   - `user_hash` (never the email)
