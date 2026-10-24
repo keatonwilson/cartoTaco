@@ -28,12 +28,16 @@ Full detail in `docs/DEPLOYMENT.md`.
 - `pnpm check:watch` - Run type checking in watch mode
 - `pnpm test` - Run unit tests (vitest)
 - `pnpm test:watch` - Run tests in watch mode
+- `pnpm eval` - Run the concierge golden set (needs `ANTHROPIC_API_KEY`; `--limit`, `--category`, `--judge`, `--matrix`, `--local`). With `LANGSMITH_API_KEY` it syncs the golden file to the LangSmith dataset and runs each config as an experiment
+- `pnpm eval:sync` - Sync `evals/golden/concierge.jsonl` to the LangSmith dataset without running anything
+- `pnpm agent:chat` - Concierge REPL against the eval fixture (`--fan` signs in a user with favorites)
+- `pnpm eval:fixture` - Refresh `evals/fixtures/sites_snapshot.json` from Supabase
 
 CI (`.github/workflows/ci.yml`) runs check, test, and build on every PR. Node 24 (`.nvmrc`, CI, and the Vercel runtime agree).
 
 ## Environment Setup
 
-Required environment variables in `.env`:
+Required environment variables in `.env` (`.env.example` also lists the optional concierge keys: `ANTHROPIC_API_KEY`, `LANGSMITH_*`, per-tier model overrides):
 ```
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
@@ -228,7 +232,7 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 - `quickSearchOpen` - Whether the QuickSearch palette is open (header search button, ⌘K/Ctrl+K, or `/`)
 
 ### Site Model (src/lib/siteModel.js)
-The pure logic behind the stores, with no stores or Supabase client, so the server and offline evals can share it (see `docs/AI_CONCIERGE_PLAN.md`): `processSite(row)` / `processSites(rows)` (the body of `processedTacoData`), `computeSummaryStats`, `computeDistributionPool`, `computeDistributionStats`, `hasValidCoordinates`, `isOpenNow(hours, now)`, and `matchesFilters(site, cfg, favIds, now)` (the `filteredTacoData` predicate). `stores.js` derives from these and re-exports `hasValidCoordinates`/`isOpenNow`. Change the logic here, not in the stores.
+The pure logic behind the stores, with no stores or Supabase client, so the server and offline evals can share it (see `docs/AI_CONCIERGE_PLAN.md`): `processSite(row)` / `processSites(rows)` (the body of `processedTacoData`), `computeSummaryStats`, `computeDistributionPool`, `computeDistributionStats`, `hasValidCoordinates`, `isOpenNow(hours, now)`, `matchesFilters(site, cfg, favIds, now)` (the `filteredTacoData` predicate), and `defaultFilterConfig()` (the `filterConfig` starting value). `stores.js` derives from these and re-exports `hasValidCoordinates`/`isOpenNow`. Change the logic here, not in the stores.
 
 ### Key Pattern
 Data flows: Raw DB → Store → Derived/Processed → Components. Components rarely transform data; they consume pre-processed values from derived stores.
@@ -296,6 +300,16 @@ The free first tier of the planned AI concierge (`docs/AI_CONCIERGE_PLAN.md`). N
 - `src/lib/search.js` - `searchSpots(query, sites, { limit })` → `[{ site, score, matchedOn: { field, label } }]`. Accent-insensitive (`normalize()`), typo-tolerant (Damerau `editDistance()`; 1 typo from 4 letters, 2 from 7, none below), weighted by field (name > specialty > protein style/protein > menu > region/type > address > description), with Spanish protein synonyms. Every query word must match something. Closed spots rank after open ones and unplaceable spots are skipped. Field text is cached per spot object in a WeakMap
 - `src/lib/intentRules.js` - `parseIntent(query)` → `{ filters, extras, matched, remainder, covered }`: proteins, types (with negation: "no trucks" selects every other type), spice ("spicy" 7+, "very spicy" 8+, "mild"/"not spicy" ≤4; "hot dog" protected), open now, favorites, plus `extras.handmadeTortillas` / `extras.near`. English and Spanish. `covered` means no words were left over. `applyIntentFilters(cfg, filters)` merges the parsed filters into a filterConfig
 - `src/lib/voice.js` - Web Speech API wrapper: `speechSupported()`, `listen({ onResult, onEnd, onError, lang })` → stop fn, `describeVoiceError(code)`. There is no Firefox support, so callers hide the mic. `speechSupported()` is also false on iPhone/iPad (`isAppleMobile()`, which also catches iPadOS posing as a Mac via `maxTouchPoints`): WebKit there records once, then every later `start()` goes deaf with no result, error or end (open WebKit bug), so QuickSearch points people at the keyboard's dictation mic instead. One session at a time (a new `listen()` aborts the old one), and a session ends on our side, with `onEnd` exactly once, on its final result, an error, a stop, or a 15s watchdog. Never wait on the browser's `end` event: Safari often doesn't send it, which once left the mic stuck after one use
+
+## AI Concierge harness (phase 2, headless)
+
+`src/lib/server/agent/`, server-only, no UI or endpoint yet (phase 3). Plan and deviations in `docs/AI_CONCIERGE_PLAN.md` → "Phase 2 as built".
+- `concierge.js` - `runConcierge({ query, history, catalog, now, user, models, llm, allowEscalation })` → `{ reply, actions, tier, route, escalation_reason, calls, cost }`. Tiers: T0 rules (`parseIntent` fully covers the query, or the query is a spot name) → T1 Haiku router (structured output) with deterministic handlers for chitchat/off_topic/find_spot/filter → T2 Haiku tool loop (intent-scoped tools, 4 steps) → T3 Sonnet when T2 hits the cap, replies empty, or cites an `[#est_id]` no tool returned. Wrapped in LangSmith `traceable`; the tier/route go on the run's metadata
+- `tools.js` - `makeTools({ catalog, now, user })` → `{ fns, tools, actions }`: `search_spots`, `get_spot`, `city_stats` (read), `show_spot`, `apply_filters` (record actions; unknown est_ids throw `ToolError`). `fns` are the plain functions, `tools` the LangChain wrappers
+- `prompt.js` - router/agent system prompts and `PROMPT_VERSION` (bump on any wording change). `models.js` - model ids per tier (env-overridable) and `callCost()`
+- Replies cite spots as `Name [#est_id]`; evals and the T2 check parse that
+- `evals/` - `run.js` (runner + evaluators; LangSmith `evaluate()` when keyed, local loop otherwise), `sync-dataset.js` (upserts the golden file into the `cartotaco-concierge-golden` dataset by golden id, category as split; the repo file is the source of truth), `chat.js`, `refresh-fixture.js`, `golden/concierge.jsonl` (one example per line: `query`, `category`, optional `user`/`now`, `expect.{tiers,intent (string or list of accepted intents),actions,must_ids,must_any_ids,must_not_ids,reply_matches}`, `rubric`), `fixtures/sites_snapshot.json`. Results in `evals/results/` (gitignored)
+- The harness imports `siteModel`/`search`/`intentRules`/`hours`/`dataWrangling` from plain Node, so imports among those use explicit `.js` extensions; keep it that way or `pnpm eval` breaks
 
 ## Coordinate Validation
 
@@ -451,6 +465,7 @@ Test files are co-located in src/lib/:
 - `src/lib/search.test.js` - Quick Search golden queries (query → expected top spot), ranking and edge cases. Add a golden row when a real query ranks wrong
 - `src/lib/intentRules.test.js` - Filter parsing (English/Spanish, negation, hot dog vs heat, remainder)
 - `src/lib/voice.test.js` - Voice session lifecycle against a fake SpeechRecognition (missing `end` events, stale events, start failures, watchdog)
+- `src/lib/server/agent/concierge.test.js` - Concierge tier routing with scripted fake models (T0 hits, router handlers, tool loop, escalation reasons) and tool behaviour, against the eval fixture. No API calls
 
 Run all tests with `pnpm test`.
 
@@ -461,4 +476,4 @@ Detailed feature documentation in docs/:
 - `IMPROVEMENTS.md` - Roadmap and planned features
 - `UNVETTED_SPOTS_PLAN.md` - Pending/unvetted spots plan (shipped in this repo; scraping pipeline lives in `cartoTacoMenuExtract`)
 - `USER_SUBMISSIONS.md` - Location submission design and the manual approval process
-- `AI_CONCIERGE_PLAN.md` - Cost-first AI concierge: tiered router (rules → Haiku router → Haiku agent → Sonnet escalation) on LangChain/LangGraph, LangSmith tracing, golden-dataset evals. Phase 1 (search/intent/voice) shipped
+- `AI_CONCIERGE_PLAN.md` - Cost-first AI concierge: tiered router (rules → Haiku router → Haiku agent → Sonnet escalation) on LangChain/LangGraph, LangSmith tracing, golden-dataset evals. Phase 1 (search/intent/voice) shipped; phase 2 harness built

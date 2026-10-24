@@ -1,0 +1,40 @@
+{"id":"name-01","category":"name","query":"tacos apson","expect":{"tiers":["t0"],"actions":[{"type":"show_spot","est_id":4}]}}
+{"id":"name-02","category":"name","query":"Karamelo King","expect":{"tiers":["t0"],"actions":[{"type":"show_spot","est_id":8}]}}
+{"id":"name-03","category":"name","query":"el chivo de oro","expect":{"tiers":["t0"],"actions":[{"type":"show_spot","est_id":2}]}}
+{"id":"name-04","category":"name","query":"tacos apsn","expect":{"tiers":["t0"],"actions":[{"type":"show_spot","est_id":4}]}}
+{"id":"name-05","category":"name","query":"carnitas la yoca","expect":{"tiers":["t0"],"actions":[{"type":"show_spot","est_id":10}]}}
+{"id":"name-06","category":"name","query":"take me to Tacos Apson","expect":{"intent":"find_spot","tiers":["t1"],"actions":[{"type":"show_spot","est_id":4}]}}
+{"id":"name-07","category":"name","query":"show me where Chalypau is","expect":{"intent":"find_spot","tiers":["t1","t2"],"actions":[{"type":"show_spot","est_id":11}]}}
+{"id":"name-08","category":"spanish","query":"llévame a El Chivo de Oro","expect":{"intent":"find_spot","tiers":["t1","t2"],"actions":[{"type":"show_spot","est_id":2}]}}
+{"id":"filter-01","category":"filter","query":"spicy pork open now, no trucks","expect":{"tiers":["t0"],"actions":[{"type":"apply_filters","filters":{"proteins":{"pork":true},"openNow":true,"types":{"Truck":false}}}]}}
+{"id":"filter-02","category":"filter","query":"fish stands","expect":{"tiers":["t0"],"actions":[{"type":"apply_filters","filters":{"proteins":{"fish":true},"types":{"Stand":true,"Truck":false}}}]}}
+{"id":"filter-03","category":"filter","query":"mild chicken","expect":{"tiers":["t0"],"actions":[{"type":"apply_filters","filters":{"proteins":{"chicken":true},"spiceLevel":{"min":0,"max":4}}}]}}
+{"id":"filter-04","category":"filter","query":"trucks open now","expect":{"tiers":["t0"],"actions":[{"type":"apply_filters","filters":{"types":{"Truck":true},"openNow":true}}]}}
+{"id":"filter-05","category":"spanish","query":"puerco picante","expect":{"tiers":["t0"],"actions":[{"type":"apply_filters","filters":{"proteins":{"pork":true},"spiceLevel":{"min":7}}}]}}
+{"id":"filter-06","category":"filter","query":"I want seafood somewhere that isn't a sit-down restaurant","expect":{"intent":"filter","tiers":["t1","t2"],"actions":[{"type":"apply_filters","filters":{"proteins":{"fish":true},"types":{"Brick and Mortar":false}}}]}}
+{"id":"filter-07","category":"filter","query":"which beef places are open right now and really spicy","expect":{"intent":"filter","tiers":["t0","t1","t2"],"actions":[{"type":"apply_filters","filters":{"proteins":{"beef":true},"openNow":true}}]}}
+{"id":"filter-08","category":"filter","query":"my favorites","user":"fan","expect":{"tiers":["t0"],"actions":[{"type":"apply_filters","filters":{"showFavoritesOnly":true}}]}}
+{"id":"filter-09","category":"trap","query":"my favorites","expect":{"tiers":["t1","t2","t3"],"actions":[],"reply_matches":"sign"},"rubric":"Explains that the user needs to sign in to have favorites. Does not filter the map."}
+{"id":"fact-01","category":"spot_fact","query":"is Tacos Apson open right now?","expect":{"intent":"spot_fact","tiers":["t2","t3"],"must_ids":[4],"reply_matches":"midnight"},"rubric":"Says Tacos Apson is open, until midnight."}
+{"id":"fact-02","category":"spot_fact","query":"what salsas does Karamelo King have?","expect":{"intent":"spot_fact","tiers":["t2","t3"],"must_ids":[8]},"rubric":"Lists Karamelo King's salsas from get_spot. Mentions no salsa that isn't in its lineup."}
+{"id":"fact-03","category":"spot_fact","query":"does El Antojo Poblano make their own tortillas?","expect":{"intent":"spot_fact","tiers":["t2","t3"],"must_ids":[1]},"rubric":"Says the tortillas are not handmade (they offer corn and flour)."}
+{"id":"fact-04","category":"spot_fact","query":"what's good at Carnitas La Yoca?","expect":{"intent":"spot_fact","tiers":["t2","t3"],"must_ids":[10]},"rubric":"Names specialties such as carnitas, chavindeca, cueritos or buche, from the tool result."}
+{"id":"fact-05","category":"spanish","query":"¿Qué especialidades tiene Tacos los Compas?","expect":{"intent":"spot_fact","tiers":["t2","t3"],"must_ids":[14]},"rubric":"Replies in Spanish and names specialties such as birria, menudo or caramelo."}
+{"id":"fact-06","category":"spot_fact","query":"how hot is the salsa at Taqueria el Pueblito compared to the city?","expect":{"intent":["spot_fact","compare"],"tiers":["t2","t3"],"must_ids":[13]},"rubric":"Says the heat is 8 out of 10, hotter than the city average of about 5."}
+{"id":"rec-01","category":"recommend","query":"where's the spiciest spot in town?","expect":{"tiers":["t2","t3"],"must_any_ids":[8,13]},"rubric":"Names Karamelo King or Taqueria el Pueblito (both heat 8)."}
+{"id":"rec-02","category":"recommend","query":"I'm craving birria from a truck, what are my options?","expect":{"tiers":["t1","t2","t3"],"must_any_ids":[2,11,12,22],"must_not_ids":[14,16,21]},"rubric":"Names trucks serving birria or quesabirria. Doesn't name restaurants or stands as trucks."}
+{"id":"rec-03","category":"recommend","query":"somewhere with lots of salsa options","expect":{"tiers":["t2","t3"],"must_any_ids":[21,38,8,11]},"rubric":"Names spots with many salsas, e.g. The Quesadillas or El Tacoson (9 each)."}
+{"id":"cmp-01","category":"compare","query":"compare Tacos Apson and Karamelo King","expect":{"intent":"compare","tiers":["t2","t3"],"actions":[]},"rubric":"Either compares the two from tool results or says side-by-side comparison isn't in chat yet and points to Compare. Nothing invented."}
+{"id":"trail-01","category":"trail","query":"plan me a 3-stop taco crawl on bikes","expect":{"intent":"trail","tiers":["t1"],"actions":[]},"rubric":"Says trails can't be built in chat yet and points to the Trail button."}
+{"id":"summit-01","category":"summit","query":"set up a vote with my friends for dinner tonight","expect":{"intent":"summit","tiers":["t1"],"actions":[]},"rubric":"Says group votes can't be started from chat yet and points to Taco Summit. Starts nothing."}
+{"id":"chat-01","category":"chitchat","query":"hi!","expect":{"intent":"chitchat","tiers":["t1"],"actions":[]}}
+{"id":"chat-02","category":"chitchat","query":"what can you do?","expect":{"intent":"chitchat","tiers":["t1"],"actions":[]}}
+{"id":"chat-03","category":"spanish","query":"hola, gracias","expect":{"intent":"chitchat","tiers":["t1"],"actions":[],"reply_matches":"Puedo"}}
+{"id":"off-01","category":"off_topic","query":"what's the weather going to be tomorrow?","expect":{"intent":"off_topic","tiers":["t1"],"actions":[]}}
+{"id":"off-02","category":"off_topic","query":"write me a python script that sorts a list","expect":{"intent":"off_topic","tiers":["t1"],"actions":[]}}
+{"id":"off-03","category":"off_topic","query":"best pizza in Phoenix","expect":{"intent":"off_topic","tiers":["t1"],"actions":[]}}
+{"id":"trap-01","category":"trap","query":"is Taqueria La Fantasma open tonight?","expect":{"tiers":["t1","t2","t3"],"actions":[]},"rubric":"Says it can't find a spot by that name. Does not invent hours or a location."}
+{"id":"trap-02","category":"trap","query":"what are the hours at Hot Dogs 501?","expect":{"tiers":["t1","t2","t3"],"must_ids":[23],"reply_matches":"closed"},"rubric":"Says Hot Dogs 501 has permanently closed."}
+{"id":"trap-03","category":"trap","query":"tell me about St. Mary's Mexican Food","expect":{"tiers":["t0","t1","t2","t3"],"must_ids":[27],"reply_matches":"(checked|visited|verified|missing)"},"rubric":"Says the spot hasn't been checked by CartoTaco yet, so details may be missing."}
+{"id":"trap-04","category":"trap","query":"how much are the tacos at Tacos Apson?","expect":{"intent":"spot_fact","tiers":["t2","t3"],"must_ids":[4]},"rubric":"Says it doesn't have prices. Does not state a price."}
+{"id":"trap-05","category":"trap","query":"tacos near the U of A","expect":{"tiers":["t1","t2","t3"]},"rubric":"Doesn't claim spots are near the University of Arizona unless a tool said so; may suggest searching or using the map."}

@@ -4,7 +4,7 @@
 // fully covers never reaches a model) and the "Filter the map" row in
 // QuickSearch. English and Spanish.
 
-import { normalize } from './search';
+import { normalize } from './search.js';
 
 const PROTEIN_WORDS = {
   chicken: ['chicken', 'pollo'],
