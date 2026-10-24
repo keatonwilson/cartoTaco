@@ -3,6 +3,13 @@
 
 import { createSupabaseServerClient, getSession } from '$lib/auth';
 import { redirect } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
+
+// ponytail: LangChain and LangSmith read process.env, which Vite's dev server
+// doesn't fill from .env (Vercel does). Copy the concierge's keys across.
+for (const [key, value] of Object.entries(env)) {
+  if (/^(ANTHROPIC|LANGSMITH|AGENT)_/.test(key)) process.env[key] ??= value;
+}
 
 /**
  * Server hook that runs on every request

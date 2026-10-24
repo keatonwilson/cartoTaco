@@ -58,6 +58,12 @@ describe('T0, no model', () => {
     expect(r.reply).toMatch(/permanently closed/);
   });
 
+  it('answers from rules only when over budget', async () => {
+    expect((await run('fish stands', {}, { rulesOnly: true })).tier).toBe('t0');
+    const r = await run('what salsas does apson have?', {}, { rulesOnly: true });
+    expect(r).toMatchObject({ tier: 't0', calls: [], actions: [], escalation_reason: 'budget' });
+  });
+
   it('leaves favorites to the router when signed out', async () => {
     const r = await run('my favorites', { router: fakeRouter({ intent: 'chitchat' }) });
     expect(r.tier).toBe('t1');
@@ -192,6 +198,33 @@ describe('agent replies', () => {
     expect(r.reply).toBe('Tacos Apson [#4] is open until midnight.\n\nI’ve opened its card.');
   });
 
+  it('drops narration written alongside a lookup', async () => {
+    const r = await run('what salsas does karamelo king have', {
+      router: fakeRouter({ intent: 'spot_fact', needs_agent: true }),
+      agent: fakeModel(
+        { text: 'I’ll look up the salsa lineup.', calls: [call('search_spots', { query: 'Karamelo King' })] },
+        { text: 'Now let me get the details:', calls: [call('get_spot', { est_id: 8 })] },
+        { text: 'Karamelo King [#8] has six salsas.' }
+      )
+    });
+    expect(r.reply).toBe('Karamelo King [#8] has six salsas.');
+  });
+
+  it('apply_filters narrows the map to a dish, protein styles included', () => {
+    const { fns, actions } = makeTools({ catalog, now });
+    const r = fns.apply_filters({ dish: 'carnitas' });
+    expect(actions[0].filters).toEqual({ searchText: 'carnitas' });
+    expect(r.spots.map((s) => s.est_id)).toEqual(expect.arrayContaining([10, 20, 5, 4]));
+  });
+
+  it('seeds a search for the spot the router named', async () => {
+    const r = await run("tell me about St. Mary's", {
+      router: fakeRouter({ intent: 'spot_fact', spot_name: "St. Mary's Mexican Food", needs_agent: true }),
+      agent: fakeModel({ text: 'St. Mary’s Mexican Food [#27] hasn’t been checked yet.' })
+    });
+    expect(r).toMatchObject({ tier: 't2', escalation_reason: null });
+  });
+
   it('get_spot drops hours for closed spots', () => {
     const { fns } = makeTools({ catalog, now });
     expect(fns.get_spot({ est_id: 23 })).not.toHaveProperty('today');
@@ -231,7 +264,7 @@ describe('review fixes', () => {
     const followUp = (text) => run('is it open late?', {
       router: fakeRouter({ intent: 'spot_fact', needs_agent: true }),
       agent: fakeModel({ text }),
-      escalation: fakeModel({ text: 'Let me check.' })
+      escalation: fakeModel({ text: 'Sure.' })
     }, { history });
     expect((await followUp('Tacos Apson [#4] is open til midnight.')).tier).toBe('t2');
     expect((await followUp('Yes, [#999] is.')).escalation_reason).toBe('cited_unseen:999');

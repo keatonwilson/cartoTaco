@@ -33,7 +33,7 @@ Full detail in `docs/DEPLOYMENT.md`.
 - `pnpm agent:chat` - Concierge REPL against the eval fixture (`--fan` signs in a user with favorites)
 - `pnpm eval:fixture` - Refresh `evals/fixtures/sites_snapshot.json` from Supabase
 
-CI (`.github/workflows/ci.yml`) runs check, test, and build on every PR. Node 24 (`.nvmrc`, CI, and the Vercel runtime agree).
+CI (`.github/workflows/ci.yml`) runs check, test, and build on every PR. `agent-evals.yml` runs `pnpm eval --judge` on PRs touching the concierge (needs the `ANTHROPIC_API_KEY` secret; see `docs/DEPLOYMENT.md`). Node 24 (`.nvmrc`, CI, and the Vercel runtime agree).
 
 ## Environment Setup
 
@@ -106,6 +106,7 @@ Historical order, as originally applied:
 37. `037_add_salsa_styles_to_view.sql` - Rebuilds `sites_complete` exposing `salsa.styles` (`[{slug, name, color, heat, house_name, note}]` plus the style's flavour scores, so the taste profile can match on them)
 38. `038_create_user_favorite_salsas.sql` - `user_favorite_salsas` (user_id, style_id) with own-rows-only RLS, for favouriting salsas from the atlas
 39. `039_salsa_field_sightings.sql` - Field sightings and draft styles: `site_salsas` gains `photo_url`/`palette`/`observed_at` (written by cartoTacoMenuExtract's Salsa Field Notes page) and `synced` (backfilled true for links to keyed styles); `salsa_styles` gains `status` (`draft`/`published`, public reads see published only); `sync_site_salsas()` now removes only links it created and keeps those carrying curated data; view exposes the sighting fields
+40. `040_ai_usage.sql` - `ai_usage` (user_id, Tucson day, requests, tokens, escalations, cost_usd) with own-rows SELECT, and SECURITY DEFINER `record_ai_usage(...)` (authenticated only; adds to the caller's row, negatives clamped) for the concierge's per-user daily budget
 
 ### Data Health (self-healing)
 Migration 034 makes the database repair specialty links itself. Cards only show specials whose `spec_id_N` FK is set; cartoTacoMenuExtract promotion writes the spec *name* into `specialty_item_N` / `protein_spec_N` / `salsa_spec_N` (re-added by that repo's migration 009 after 017 dropped them, so they exist in production) and links the id.
@@ -230,6 +231,11 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 - `mobileNavOpen` - Whether the mobile navigation menu is open
 - `peekSite` - `{ site, lngLat } | null`: the spot the peek card is showing (set by mapping.js on pin hover, or first tap on touch tablets)
 - `quickSearchOpen` - Whether the QuickSearch palette is open (header search button, ⌘K/Ctrl+K, or `/`)
+- `chatOpen` - Whether the concierge `ChatPanel` is open (adds right map padding on desktop/tablet); `CHAT_PANEL_WIDTH` its docked width
+
+### Concierge Chat Store (src/lib/agentStore.js)
+- `chatMessages` - `[{ id, role, content, tier?, run_id?, feedback?, undo?, error? }]`; `chatPending`
+- Functions: `ask(query)` (POSTs `{ query, history }` to `/api/agent`, last 12 non-error turns), `applyActions(actions)` (`show_spot` → `flyToTarget`, closing the chat on phones; `apply_filters` → `applyIntentFilters` over the current `filterConfig`; returns the config to restore), `undoMessage(id)`, `sendFeedback(id, 0|1)`, `clearChat()`
 
 ### Site Model (src/lib/siteModel.js)
 The pure logic behind the stores, with no stores or Supabase client, so the server and offline evals can share it (see `docs/AI_CONCIERGE_PLAN.md`): `processSite(row)` / `processSites(rows)` (the body of `processedTacoData`), `computeSummaryStats`, `computeDistributionPool`, `computeDistributionStats`, `hasValidCoordinates`, `isOpenNow(hours, now)`, `matchesFilters(site, cfg, favIds, now)` (the `filteredTacoData` predicate), and `defaultFilterConfig()` (the `filterConfig` starting value). `stores.js` derives from these and re-exports `hasValidCoordinates`/`isOpenNow`. Change the logic here, not in the stores.
@@ -265,7 +271,7 @@ The map implementation (src/lib/mapping.js) uses Mapbox GL with clustering:
 - `flyToSite(map, site)` - Fly to a spot and open its card on arrival (side panel on desktop/tablet, bottom sheet on mobile)
 - `openSpot(map, site)` - Open a spot's card from outside the map handlers (the peek card)
 - `closeSpot(map)` - Close the open spot and give the map back its full width (see Interaction)
-- `computeMapPadding()` / `syncMapPadding(map)` - Camera padding for whatever covers the map (mobile sheet, spot panel, trail/comparison tray). Every overlay-aware camera move uses it; Map.svelte re-syncs on store/resize changes, skipping mid-animation
+- `computeMapPadding()` / `syncMapPadding(map)` - Camera padding for whatever covers the map (mobile sheet, spot panel, concierge panel, trail/comparison tray). Every overlay-aware camera move uses it; Map.svelte re-syncs on store/resize changes, skipping mid-animation
 - `spotPanelWidth(vw)` - The panel's width (360–560px, 38vw). SpotPanel renders at it and the camera pads by it
 - `updateTrailLayers(map, stops)` - Render numbered trail stops
 - `updateTrailRoute(map, routeGeojson)` - Render dashed route line from Mapbox Directions API
@@ -301,14 +307,18 @@ The free first tier of the planned AI concierge (`docs/AI_CONCIERGE_PLAN.md`). N
 - `src/lib/intentRules.js` - `parseIntent(query)` → `{ filters, extras, matched, remainder, covered }`: proteins, types (with negation: "no trucks" selects every other type), spice ("spicy" 7+, "very spicy" 8+, "mild"/"not spicy" ≤4; "hot dog" protected), open now, favorites, plus `extras.handmadeTortillas` / `extras.near`. English and Spanish. `covered` means no words were left over. `applyIntentFilters(cfg, filters)` merges the parsed filters into a filterConfig
 - `src/lib/voice.js` - Web Speech API wrapper: `speechSupported()`, `listen({ onResult, onEnd, onError, lang })` → stop fn, `describeVoiceError(code)`. There is no Firefox support, so callers hide the mic. `speechSupported()` is also false on iPhone/iPad (`isAppleMobile()`, which also catches iPadOS posing as a Mac via `maxTouchPoints`): WebKit there records once, then every later `start()` goes deaf with no result, error or end (open WebKit bug), so QuickSearch points people at the keyboard's dictation mic instead. One session at a time (a new `listen()` aborts the old one), and a session ends on our side, with `onEnd` exactly once, on its final result, an error, a stop, or a 15s watchdog. Never wait on the browser's `end` event: Safari often doesn't send it, which once left the mic stuck after one use
 
-## AI Concierge harness (phase 2, headless)
+## AI Concierge
 
-`src/lib/server/agent/`, server-only, no UI or endpoint yet (phase 3). Plan and deviations in `docs/AI_CONCIERGE_PLAN.md` → "Phase 2 as built".
-- `concierge.js` - `runConcierge({ query, history, catalog, now, user, models, llm, allowEscalation })` → `{ reply, actions, tier, route, escalation_reason, calls, cost }`. Tiers: T0 rules (`parseIntent` fully covers the query, or the query is a spot name) → T1 Haiku router (structured output) with deterministic handlers for chitchat/off_topic/find_spot/filter → T2 Haiku tool loop (intent-scoped tools, 4 steps) → T3 Sonnet when T2 hits the cap, replies empty, or cites an `[#est_id]` no tool returned. Wrapped in LangSmith `traceable`; the tier/route go on the run's metadata
-- `tools.js` - `makeTools({ catalog, now, user })` → `{ fns, tools, actions }`: `search_spots`, `get_spot`, `city_stats` (read), `show_spot`, `apply_filters` (record actions; unknown est_ids throw `ToolError`). `fns` are the plain functions, `tools` the LangChain wrappers
+`src/lib/server/agent/` is the server-only harness; `/api/agent` and `ChatPanel` ship it (phase 3). Plan and deviations in `docs/AI_CONCIERGE_PLAN.md` → "Phase 2 as built" / "Phase 3 as built".
+- `src/routes/api/agent/+server.js` - `POST { query, history }` → `{ reply, actions, tier, run_id }`. Signed-in only (401), query 1–500 chars (400), history trimmed to 12 `user`/`assistant` turns of ≤2000 chars (anything else the client sends is dropped). Loads the catalog and the user's favorites, checks today's `ai_usage` against `AI_DAILY_TOKENS` (default 200k; an unreadable row fails closed except in dev) and runs `runConcierge` with `rulesOnly` when over. A failed model call (e.g. the Anthropic workspace spend limit, the global kill switch) retries rules-only. Records usage via `record_ai_usage` when a model ran. `maxDuration` 60. JSON, not SSE (replies take ~2 s)
+- `src/routes/api/agent/feedback/+server.js` - `POST { run_id, score: 0|1 }` → LangSmith feedback `user_score` on the trace; no-op without `LANGSMITH_API_KEY`
+- `src/lib/server/catalog.js` - `getCatalog(supabase)`: `sites_complete` → `processSites`, cached 5 minutes per server instance
+- `hooks.server.js` copies `ANTHROPIC_*`/`LANGSMITH_*`/`AGENT_*` from `$env/dynamic/private` into `process.env`, since LangChain/LangSmith read `process.env` and Vite's dev server doesn't fill it from `.env`
+- `concierge.js` - `runConcierge({ query, history, catalog, now, user, models, llm, allowEscalation, rulesOnly })` → `{ reply, actions, tier, route, escalation_reason, calls, cost, run_id }`. `rulesOnly` stops after T0 with a "budget used up" reply. When the router names a spot, T2/T3 start with that `search_spots` already run (a seeded tool call). `cleanReply()` strips leading/trailing "Let me show you…" narration and `**bold**` from each turn, and text written alongside a read-tool call is dropped. Tiers: T0 rules (`parseIntent` fully covers the query, or the query is a spot name) → T1 Haiku router (structured output) with deterministic handlers for chitchat/off_topic/find_spot/filter → T2 Haiku tool loop (intent-scoped tools, 4 steps) → T3 Sonnet when T2 hits the cap, replies empty, or cites an `[#est_id]` no tool returned. Wrapped in LangSmith `traceable`; the tier/route go on the run's metadata
+- `tools.js` - `makeTools({ catalog, now, user })` → `{ fns, tools, actions }`: `search_spots` (its `total` counts every match, not just the rows returned), `get_spot`, `city_stats` (read), `show_spot`, `apply_filters` (record actions; unknown est_ids throw `ToolError`; `dish` sets the map's `searchText`, which `matchesFilters` also checks against protein styles). `fns` are the plain functions, `tools` the LangChain wrappers
 - `prompt.js` - router/agent system prompts and `PROMPT_VERSION` (bump on any wording change). `models.js` - model ids per tier (env-overridable) and `callCost()`
 - Replies cite spots as `Name [#est_id]`; evals and the T2 check parse that
-- `evals/` - `run.js` (runner + evaluators; LangSmith `evaluate()` when keyed, local loop otherwise), `sync-dataset.js` (upserts the golden file into the `cartotaco-concierge-golden` dataset by golden id, category as split; the repo file is the source of truth), `chat.js`, `refresh-fixture.js`, `golden/concierge.jsonl` (one example per line: `query`, `category`, optional `user`/`now`, `expect.{tiers,intent (string or list of accepted intents),actions,must_ids,must_any_ids,must_not_ids,reply_matches}`, `rubric`), `fixtures/sites_snapshot.json`. Results in `evals/results/` (gitignored)
+- `evals/` - `run.js` (runner + evaluators; LangSmith `evaluate()` when keyed, local loop otherwise), `sync-dataset.js` (upserts the golden file into the `cartotaco-concierge-golden` dataset by golden id, category as split; the repo file is the source of truth), `chat.js`, `refresh-fixture.js`, `golden/concierge.jsonl` (one example per line: `query`, `category`, optional `user`/`now`/`history` (prior `{role, content}` turns), `expect.{tiers,intent (string or list of accepted intents),actions,must_ids,must_any_ids,must_not_ids,reply_matches}`, `rubric`), `fixtures/sites_snapshot.json`. Results in `evals/results/` (gitignored)
 - The harness imports `siteModel`/`search`/`intentRules`/`hours`/`dataWrangling` from plain Node, so imports among those use explicit `.js` extensions; keep it that way or `pnpm eval` breaks
 
 ## Coordinate Validation
@@ -389,6 +399,7 @@ and `flyToSite()`.
 - `ContextStrip.svelte` - City-distribution dot strip: every spot as a faint dot on a shared scale with this spot highlighted (used in the `SpotStats` heat tile).
 - `QuickSearch.svelte` - ⌘K / `/` command palette, mounted once in `+layout.svelte`. Results from `searchSpots` update on every keystroke, each showing type, Tucson-time status and why it matched. A "Filter the map" row appears when `parseIntent` finds filters: its results are the remainder searched within the matching spots, and choosing it sets `filterConfig` and opens the filter panel. A mic button appears where speech recognition works (not iPhone/iPad, whose placeholder points at the keyboard's 🎤). Picking a spot sets `flyToTarget` on the map page, or goes to `/?location=<id>` elsewhere. Esc is handled on the dialog so it never also closes the open spot. On phones it's a full-screen sheet
 - `EmptyState.svelte` - Shared empty state (emoji + headline + message + optional CTA); used by favorites, compare, and census.
+- `ChatPanel.svelte` - The concierge chat, mounted in Map.svelte. An "Ask" launcher bottom right (above an open trail/comparison tray, hidden on phones while a spot sheet is up) opens a full-height panel docked right under the header on desktop/tablet (the mirror of `SpotPanel`, `CHAT_PANEL_WIDTH` = 380px; `--chat-panel-offset` on `:root` moves the FilterBar, Mapbox controls and trays left of it), or a 70dvh bottom sheet on phones. Signed-out users get a sign-in link. Replies turn `Name [#est_id]` into a link on the name that opens the spot; filter replies get "Undo filters"; traced replies get 👍/👎; mic where `speechSupported()` (a final result sends). Example prompts when empty
 - `ToastHost.svelte` - Renders the `toasts` store as a stack of dismissable notifications, mounted once in `+layout.svelte`. Uses Phosphor `CheckCircle/WarningCircle/Info/X` icons.
 
 ### Routes
@@ -465,6 +476,8 @@ Test files are co-located in src/lib/:
 - `src/lib/search.test.js` - Quick Search golden queries (query → expected top spot), ranking and edge cases. Add a golden row when a real query ranks wrong
 - `src/lib/intentRules.test.js` - Filter parsing (English/Spanish, negation, hot dog vs heat, remainder)
 - `src/lib/voice.test.js` - Voice session lifecycle against a fake SpeechRecognition (missing `end` events, stale events, start failures, watchdog)
+- `src/lib/agentStore.test.js` - Chat store: filters applied and undone, spots opened, history sent, errors kept out of history
+- `src/routes/api/agent/server.test.js` - Endpoint: 401/400, client-supplied fields dropped, favorites passed, usage recorded, rules-only over budget and on model failure
 - `src/lib/server/agent/concierge.test.js` - Concierge tier routing with scripted fake models (T0 hits, router handlers, tool loop, escalation reasons) and tool behaviour, against the eval fixture. No API calls
 
 Run all tests with `pnpm test`.
@@ -476,4 +489,4 @@ Detailed feature documentation in docs/:
 - `IMPROVEMENTS.md` - Roadmap and planned features
 - `UNVETTED_SPOTS_PLAN.md` - Pending/unvetted spots plan (shipped in this repo; scraping pipeline lives in `cartoTacoMenuExtract`)
 - `USER_SUBMISSIONS.md` - Location submission design and the manual approval process
-- `AI_CONCIERGE_PLAN.md` - Cost-first AI concierge: tiered router (rules → Haiku router → Haiku agent → Sonnet escalation) on LangChain/LangGraph, LangSmith tracing, golden-dataset evals. Phase 1 (search/intent/voice) shipped; phase 2 harness built
+- `AI_CONCIERGE_PLAN.md` - Cost-first AI concierge: tiered router (rules → Haiku router → Haiku agent → Sonnet escalation) on LangChain/LangGraph, LangSmith tracing, golden-dataset evals. Phase 1 (search/intent/voice) shipped; phase 2 harness and phase 3 chat built

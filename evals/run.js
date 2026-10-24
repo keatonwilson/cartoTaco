@@ -76,6 +76,7 @@ function check(ex, r) {
     must_any_ids: e.must_any_ids ? e.must_any_ids.some((id) => mentioned.has(id)) : null,
     must_not_ids: e.must_not_ids ? !e.must_not_ids.some((id) => mentioned.has(id)) : null,
     no_fabricated: cited.every((id) => known.has(id)),
+    no_narration: !/\b(let me|I'?ll|I will) (show|check|look|pull|get|open|filter|put|update)\b|\*\*/i.test(r.reply),
     reply: e.reply_matches ? new RegExp(e.reply_matches, 'i').test(r.reply) : null
   };
 }
@@ -98,7 +99,7 @@ async function judge(ex, r, now) {
   const model = chatModel(DEFAULT_MODELS.router, { maxTokens: 400 })
     .withStructuredOutput(Verdict, { name: 'verdict', method: 'jsonSchema', includeRaw: true });
   const { raw, parsed } = await model.invoke([
-    ['system', 'You grade replies from a taco-spot assistant for Tucson. Judge only what the reply says. In the evidence, `salsas` is the recorded salsa count and `salsa_lineup` lists only the named ones, so the two can differ (a known data gap). A reply using either number is grounded; never fail a reply over the salsa count.'],
+    ['system', 'You grade replies from a taco-spot assistant for Tucson. Judge only what the reply says. In the evidence, `salsas` is the recorded salsa count and `salsa_lineup` lists only the named ones, so the two can differ (a known data gap). A reply using either number is grounded; never fail a reply over the salsa count, and judge the rest of it on its own. The evidence holds only the spots the reply cites; a total like "14 spots serve al pastor" comes from a search not shown here, so don\'t fail a reply over a count of matches. A pending spot may have some details (address, hours, a description) and still be unverified; saying details may be missing is correct for it.'],
     ['user', `User asked: ${ex.query}\n\nReply: ${r.reply}\n\nActions taken: ${JSON.stringify(r.actions)}\n\nEvidence (the app's data):\n${JSON.stringify(evidence)}\n\nRubric: ${ex.rubric}`]
   ]);
   return { ...parsed, cost: callCost(DEFAULT_MODELS.router, raw.usage_metadata) };
@@ -127,8 +128,8 @@ const errorRow = (ex, err) => {
   return { id: ex.id, category: ex.category, error: String(err), checks: { ran: false } };
 };
 
-const target = (config) => ({ query, user = 'anon', now }) =>
-  runConcierge({ query, catalog, now: new Date(now || DEFAULT_NOW), user: USERS[user], ...config });
+const target = (config) => ({ query, history = [], user = 'anon', now }) =>
+  runConcierge({ query, history, catalog, now: new Date(now || DEFAULT_NOW), user: USERS[user], ...config });
 
 async function runLocal(config) {
   const rows = [];
@@ -138,7 +139,7 @@ async function runLocal(config) {
     for (let ex; (ex = queue.shift());) {
       const start = Date.now();
       try {
-        const r = await target(config)({ query: ex.query, user: ex.user, now: ex.now });
+        const r = await target(config)({ query: ex.query, history: ex.history, user: ex.user, now: ex.now });
         rows.push(await scoreRow(ex, r, Date.now() - start));
       } catch (err) {
         rows.push(errorRow(ex, err.message));

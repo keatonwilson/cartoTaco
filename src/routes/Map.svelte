@@ -20,7 +20,8 @@
 	import SpotPanel from '../components/SpotPanel.svelte';
 	import PeekCard from '../components/PeekCard.svelte';
 	import MapLegend from '../components/MapLegend.svelte';
-	import { filterPanelOpen, mobileNavOpen, peekSite } from '../lib/uiStore.js';
+	import ChatPanel from '../components/ChatPanel.svelte';
+	import { filterPanelOpen, mobileNavOpen, peekSite, chatOpen, CHAT_PANEL_WIDTH } from '../lib/uiStore.js';
 	import { tourActive } from '../lib/tourStore.js';
 	import 'mapbox-gl/dist/mapbox-gl.css';
 	import {
@@ -238,7 +239,7 @@
 	// trail/comparison tray (computeMapPadding in mapping.js). The stores are
 	// referenced so this re-runs when any of them, or the window size, changes.
 	$: if (map && mapLoaded) {
-		void [$isMobile, $selectedSite, $trailModeActive, $comparisonActive, $screenWidth];
+		void [$isMobile, $selectedSite, $trailModeActive, $comparisonActive, $chatOpen, $screenWidth];
 		syncMapPadding(map);
 	}
 
@@ -250,8 +251,15 @@
 	$: if (typeof document !== 'undefined') {
 		document.documentElement.style.setProperty('--spot-panel-offset', panelOpen ? `${panelWidth}px` : '0px');
 	}
+	// …and the filter bar, map controls and trays end beside the concierge panel
+	$: if (typeof document !== 'undefined') {
+		const docked = !$isMobile && $chatOpen;
+		document.documentElement.style.setProperty('--chat-panel-offset', docked ? `${CHAT_PANEL_WIDTH}px` : '0px');
+	}
 	onDestroy(() => {
-		if (typeof document !== 'undefined') document.documentElement.style.removeProperty('--spot-panel-offset');
+		if (typeof document === 'undefined') return;
+		document.documentElement.style.removeProperty('--spot-panel-offset');
+		document.documentElement.style.removeProperty('--chat-panel-offset');
 	});
 
 	function closeOpenSpot() {
@@ -440,6 +448,7 @@
 	<TrailTray />
 	<ComparisonTray cardOpen={$isMobile && !!$selectedSite} />
 	<MapLegend />
+	<ChatPanel />
 {/if}
 
 <!-- Desktop/tablet: the spot panel docked on the left -->
@@ -500,6 +509,11 @@
   /* Position map controls below the transparent header */
   :global(.mapboxgl-ctrl-top-right) {
     top: calc(var(--header-h) + 10px) !important;
+  }
+
+  :global(.mapboxgl-ctrl-top-right),
+  :global(.mapboxgl-ctrl-bottom-right) {
+    right: var(--chat-panel-offset, 0px) !important;
   }
 
   .loading-container, .error-container {

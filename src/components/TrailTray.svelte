@@ -277,7 +277,7 @@
     bottom: 0;
     /* Starts beside the desktop spot panel when it's open (set by Map.svelte) */
     left: var(--spot-panel-offset, 0px);
-    right: 0;
+    right: var(--chat-panel-offset, 0px);
     z-index: 50;
     background: white;
     border-top: 1px solid #e5e7eb;

@@ -3,7 +3,7 @@ import { deviceType } from './deviceDetection';
 import { get } from 'svelte/store';
 import { trailModeActive, trailStops, addStop, removeStop } from './trailStore';
 import { comparisonActive } from './comparisonStore';
-import { peekSite } from './uiStore';
+import { peekSite, chatOpen, CHAT_PANEL_WIDTH } from './uiStore';
 import { mapLens } from './mapLensStore';
 import { SEQUENTIAL, PENDING, CLOSED } from './chartTheme';
 
@@ -95,6 +95,11 @@ export function computeMapPadding({ panelOpen } = {}) {
     if (site) padding.bottom = getSheetPadding();
   } else if (panelOpen ?? !!site) {
     padding.left = spotPanelWidth();
+    padding.top = headerHeight();
+  }
+  // The concierge panel docks right, under the header, on desktop/tablet
+  if (get(deviceType) !== 'mobile' && get(chatOpen)) {
+    padding.right = CHAT_PANEL_WIDTH;
     padding.top = headerHeight();
   }
 

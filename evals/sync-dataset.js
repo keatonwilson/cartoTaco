@@ -18,7 +18,10 @@ export function readGolden() {
 // One golden line → a LangSmith example. The category doubles as the split,
 // so `--category` and the LangSmith UI can both slice by it.
 const toExample = (ex) => ({
-  inputs: { query: ex.query, user: ex.user || 'anon', ...(ex.now ? { now: ex.now } : {}) },
+  inputs: {
+    query: ex.query, user: ex.user || 'anon',
+    ...(ex.now ? { now: ex.now } : {}), ...(ex.history ? { history: ex.history } : {})
+  },
   outputs: { expect: ex.expect, ...(ex.rubric ? { rubric: ex.rubric } : {}) },
   metadata: { golden_id: ex.id, category: ex.category },
   split: ex.category

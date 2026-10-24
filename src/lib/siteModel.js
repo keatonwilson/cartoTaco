@@ -365,7 +365,7 @@ export function matchesFilters(site, cfg, favIds = new Set(), now = new Date()) 
     }
   }
 
-  // Search text filter (name, descriptions, type, menu items, proteins, specialties)
+  // Search text filter (name, descriptions, type, menu items, proteins, protein styles, specialties)
   if (cfg.searchText) {
     const searchLower = cfg.searchText.toLowerCase();
     const matched =
@@ -375,6 +375,7 @@ export function matchesFilters(site, cfg, favIds = new Set(), now = new Date()) 
       site.type?.toLowerCase().includes(searchLower) ||
       site.topFiveMenuItems?.some(item => item.toLowerCase().includes(searchLower)) ||
       site.topFiveProteinItems?.some(item => item.toLowerCase().includes(searchLower)) ||
+      Object.values(site.proteinStyles || {}).some(styles => styles.some(s => s.toLowerCase().includes(searchLower))) ||
       site.specialties?.some(s =>
         s.name?.toLowerCase().includes(searchLower) ||
         s.description?.toLowerCase().includes(searchLower)

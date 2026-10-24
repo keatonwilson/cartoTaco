@@ -40,6 +40,7 @@ export function toFilters(args = {}) {
   }
   if (args.open_now) filters.openNow = true;
   if (args.favorites_only) filters.showFavoritesOnly = true;
+  if (args.dish?.trim()) filters.searchText = args.dish.trim();
   return filters;
 }
 
@@ -84,10 +85,11 @@ export function makeTools({ catalog, now = new Date(), user = {} }) {
       const pool = matching(toFilters(args));
       if (sort_by === 'heat') pool.sort((a, b) => (b.heatOverall ?? -1) - (a.heatOverall ?? -1));
       if (sort_by === 'salsas') pool.sort((a, b) => (b.salsaCount ?? -1) - (a.salsaCount ?? -1));
-      const hits = query
-        ? searchSpots(query, pool, { limit }).map((h) => ({ ...brief(h.site, now), matched: h.matchedOn.label }))
+      const found = query ? searchSpots(query, pool, { limit: pool.length }) : null;
+      const spots = found
+        ? found.slice(0, limit).map((h) => ({ ...brief(h.site, now), matched: h.matchedOn.label }))
         : pool.slice(0, limit).map((s) => brief(s, now));
-      return { total: query ? hits.length : pool.length, spots: hits };
+      return { total: found ? found.length : pool.length, spots };
     },
 
     get_spot({ est_id }) {
@@ -155,7 +157,10 @@ export function makeTools({ catalog, now = new Date(), user = {} }) {
     wrap('get_spot', 'Details for one spot: address, hours today, open status, proteins, menu, tortillas, salsa lineup, specialties.', EstId),
     wrap('city_stats', 'City-wide numbers: how many spots, how many are open now, average heat and salsa count.', z.object({})),
     wrap('show_spot', 'Fly the map to a spot and open its card.', EstId),
-    wrap('apply_filters', "Set the map's filters (replacing any the user had) and return the matching spots.", FilterArgs)
+    wrap('apply_filters', "Set the map's filters (replacing any the user had) and return the matching spots.",
+      FilterArgs.extend({
+        dish: z.string().optional().describe('Only spots matching this dish or protein style, e.g. "carnitas" or "birria"')
+      }))
   ];
 
   return { fns, tools, actions };

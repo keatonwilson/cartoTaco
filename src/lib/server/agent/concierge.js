@@ -19,6 +19,23 @@ import { PROMPT_VERSION, INTENTS, ROUTER_SYSTEM, AGENT_SYSTEM } from './prompt.j
 import { makeTools, FilterArgs, INTENT_TOOLS, toFilters } from './tools.js';
 
 const MAX_STEPS = 4;
+const READ_TOOLS = new Set(['search_spots', 'get_spot', 'city_stats']);
+
+// ponytail: regexes for the narration and markdown Haiku writes despite the
+// prompt ("Let me show you these on the map:", **bold**). A leading or trailing
+// sentence only; move to a structured reply if the patterns multiply.
+const NARRATION = String.raw`(?:now,? )?(?:let me|i'll|i will) (?:show|check|look|pull|get|open|filter|put|update)\b[^.!?:\n]*[.!?:]?`;
+const LEADING_NARRATION = new RegExp(String.raw`^\s*${NARRATION}\s*`, 'i');
+const TRAILING_NARRATION = new RegExp(String.raw`(^|[.!?\n])\s*${NARRATION}\s*$`, 'i');
+
+/** Strip narration and markdown emphasis from one turn's text. */
+export function cleanReply(words) {
+  return words
+    .replace(LEADING_NARRATION, '')
+    .replace(TRAILING_NARRATION, '$1')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .trim();
+}
 const CONFIDENT = 0.7;
 
 export const RouterSchema = z.object({
@@ -108,16 +125,22 @@ async function agentLoop(model, modelId, toolNames, ctx, messages, calls) {
     .filter((m) => m instanceof AIMessage && typeof m.content === 'string')
     .flatMap((m) => citedIds(m.content))
     .filter((id) => known.has(id)));
+  // …as do spots in a seeded lookup (see agentTiers)
+  for (const m of messages) {
+    if (m instanceof ToolMessage) for (const id of m.content.matchAll(/"est_id":(\d+)/g)) seen.add(Number(id[1]));
+  }
   const msgs = [...messages];
   // Some models answer before their last tool call ("…I've opened its card"),
-  // so the reply is the text of every turn, not just the final one
+  // so the reply is the text of every turn, except text alongside a lookup,
+  // which is narration ("Let me check their salsas…")
   const said = [];
 
   for (let step = 0; step < MAX_STEPS; step++) {
     const ai = await bound.invoke(msgs);
     calls.push({ model: modelId, usage: ai.usage_metadata, cost: callCost(modelId, ai.usage_metadata) });
     msgs.push(ai);
-    if (text(ai).trim()) said.push(text(ai).trim());
+    const words = cleanReply(text(ai));
+    if (words && !ai.tool_calls?.some((c) => READ_TOOLS.has(c.name))) said.push(words);
 
     if (!ai.tool_calls?.length) {
       const reply = said.join('\n\n');
@@ -154,21 +177,23 @@ async function agentLoop(model, modelId, toolNames, ctx, messages, calls) {
  * @param {typeof DEFAULT_MODELS} [p.models]
  * @param {object} [p.llm] - chat model instances by tier, for tests
  * @param {boolean} [p.allowEscalation]
+ * @param {boolean} [p.rulesOnly] - over budget: answer from T0 or say the AI is resting
  * @returns {Promise<{ reply: string, actions: object[], tier: string, route: object|null,
- *   escalation_reason: string|null, calls: object[], cost: number }>}
+ *   escalation_reason: string|null, calls: object[], cost: number, run_id?: string }>}
  */
 async function concierge({
   query, history = [], catalog, now = new Date(), user = {},
-  models = DEFAULT_MODELS, llm = {}, allowEscalation = true
+  models = DEFAULT_MODELS, llm = {}, allowEscalation = true, rulesOnly = false
 }) {
   const ctx = { catalog, now, user };
   const calls = [];
   const done = (tier, reply, actions = [], route = null, escalation_reason = null) => {
+    const run = getCurrentRunTree(true);
     const result = {
       reply, actions, tier, route, escalation_reason, calls,
-      cost: calls.reduce((sum, c) => sum + c.cost, 0)
+      cost: calls.reduce((sum, c) => sum + c.cost, 0),
+      run_id: run?.id
     };
-    const run = getCurrentRunTree(true);
     if (run?.extra) {
       run.extra.metadata = {
         ...run.extra.metadata, tier, prompt_version: PROMPT_VERSION,
@@ -200,6 +225,10 @@ async function concierge({
     const { fns, actions } = makeTools(ctx);
     fns.show_spot({ est_id: named.est_id });
     return done('t0', `Here’s ${named.name} [#${named.est_id}].${spotNote(named)}`, actions);
+  }
+
+  if (rulesOnly) {
+    return done('t0', 'The concierge has used up its budget for now. Spot names and filters like “spicy pork open now” still work.', [], null, 'budget');
   }
 
   // T1: one router call, then a deterministic handler when the route is simple
@@ -239,6 +268,22 @@ async function concierge({
 
   return agentTiers(route, null);
 
+  /**
+   * When the router named a spot, run its search up front and hand the agent
+   * the result as an earlier tool call. Haiku otherwise sometimes answered
+   * "not on CartoTaco" without searching, and it saves a step.
+   */
+  function seedSearch(route, toolNames) {
+    if (!route?.spot_name || !toolNames.includes('search_spots')) return [];
+    const args = { query: route.spot_name, limit: 3 };
+    const out = makeTools(ctx).fns.search_spots(args);
+    const id = 'seeded_search';
+    return [
+      new AIMessage({ content: '', tool_calls: [{ id, name: 'search_spots', args, type: 'tool_call' }] }),
+      new ToolMessage({ content: JSON.stringify(out), tool_call_id: id })
+    ];
+  }
+
   /** T2, then T3 if T2's answer fails validation. `note` explains a skipped router. */
   async function agentTiers(route, note) {
     // T2: cheap agent with only the routed intent's tools
@@ -246,7 +291,8 @@ async function concierge({
     const messages = [
       new SystemMessage({ content: [{ type: 'text', text: AGENT_SYSTEM, cache_control: { type: 'ephemeral' } }] }),
       ...turns,
-      new HumanMessage(query)
+      new HumanMessage(query),
+      ...seedSearch(route, toolNames)
     ];
     const t2 = await agentLoop(llm.agent ?? chatModel(models.agent), models.agent, toolNames, ctx, messages, calls);
     const why = (reason) => [note, reason].filter(Boolean).join(';') || null;
@@ -255,7 +301,7 @@ async function concierge({
       return done('t2', 'Sorry, I couldn’t work that out. Try asking another way, or use the search box.', [], route, why(t2.reason));
     }
 
-    // T3: escalate, fresh, to the stronger model with every tool
+    // T3: escalate, fresh (with the same seeded search), to the stronger model with every tool
     const t3 = await agentLoop(
       llm.escalation ?? chatModel(models.escalation, { maxTokens: 4096 }),
       models.escalation, INTENT_TOOLS.default, ctx, messages, calls
