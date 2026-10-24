@@ -5,6 +5,7 @@
 //
 //   node --env-file=.env evals/sync-dataset.js      (pnpm eval runs it first)
 import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { Client } from 'langsmith';
 
 export const DATASET = process.env.LANGSMITH_DATASET || 'cartotaco-concierge-golden';
@@ -60,4 +61,4 @@ export async function syncDataset(client = new Client()) {
   return dataset;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) await syncDataset();
+if (import.meta.url === pathToFileURL(process.argv[1]).href) await syncDataset();

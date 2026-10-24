@@ -57,17 +57,19 @@ function spotNote(site) {
   return '';
 }
 
+/** Is `text` (nearly) this spot's name, rather than words found elsewhere on it? */
+function isName(text, site) {
+  const phrase = normalize(text);
+  const name = normalize(site.name);
+  if (name.includes(phrase)) return true;
+  const typos = phrase.length >= 7 ? 2 : 1;
+  return editDistance(phrase, name.slice(0, phrase.length), typos) <= typos;
+}
+
 /** T0 name match: the query is (nearly) a spot's name and nothing else. */
 function nameMatch(query, catalog) {
-  const phrase = normalize(query);
-  if (phrase.length < 4) return null;
-  const isName = (site) => {
-    const name = normalize(site.name);
-    if (name.includes(phrase)) return true;
-    const typos = phrase.length >= 7 ? 2 : 1;
-    return editDistance(phrase, name.slice(0, phrase.length), typos) <= typos;
-  };
-  const hits = searchSpots(query, catalog, { limit: 2 }).filter((h) => isName(h.site));
+  if (normalize(query).length < 4) return null;
+  const hits = searchSpots(query, catalog, { limit: 2 }).filter((h) => isName(query, h.site));
   return hits.length === 1 ? hits[0].site : null;
 }
 
@@ -98,7 +100,14 @@ async function agentLoop(model, modelId, toolNames, ctx, messages, calls) {
   const scoped = tools.filter((t) => toolNames.includes(t.name));
   const byName = Object.fromEntries(scoped.map((t) => [t.name, t]));
   const bound = model.bindTools(scoped);
-  const seen = new Set();
+  // Spots cited in earlier assistant turns count as seen, so a follow-up can
+  // mention them again without a fresh lookup. History comes from the client
+  // in phase 3, so only ids that exist in the catalog are trusted.
+  const known = new Set(ctx.catalog.map((s) => s.est_id));
+  const seen = new Set(messages
+    .filter((m) => m instanceof AIMessage && typeof m.content === 'string')
+    .flatMap((m) => citedIds(m.content))
+    .filter((id) => known.has(id)));
   const msgs = [...messages];
   // Some models answer before their last tool call ("…I've opened its card"),
   // so the reply is the text of every turn, not just the final one
@@ -203,12 +212,18 @@ async function concierge({
   ]);
   calls.push({ model: models.router, usage: raw.usage_metadata, cost: callCost(models.router, raw.usage_metadata) });
 
+  // An unparseable route (cut off, refused, off-schema) comes back null: skip
+  // the handlers and let the agent work it out with every tool
+  if (!route) return agentTiers(null, 'router_parse_failed');
+
   const simple = route.confidence >= CONFIDENT && !route.needs_agent;
   if (CANNED[route.intent] && route.confidence >= CONFIDENT) {
     return done('t1', CANNED[route.intent][route.language], [], route);
   }
   if (simple && route.intent === 'find_spot' && route.spot_name) {
-    const hit = searchSpots(route.spot_name, catalog, { limit: 1 })[0];
+    // Only a hit on the name: "take me to Taco Bell" shouldn't open a spot
+    // whose description happens to mention tacos
+    const hit = searchSpots(route.spot_name, catalog, { limit: 3 }).find((h) => isName(route.spot_name, h.site));
     if (hit) {
       const { fns, actions } = makeTools(ctx);
       fns.show_spot({ est_id: hit.site.est_id });
@@ -222,26 +237,32 @@ async function concierge({
     return done('t1', `Filtered the map to ${describeFilters(toFilters(route.filters))}: ${matching} spot${matching === 1 ? '' : 's'}.`, actions, route);
   }
 
-  // T2: cheap agent with only the routed intent's tools
-  const toolNames = INTENT_TOOLS[route.intent] || INTENT_TOOLS.default;
-  const messages = [
-    new SystemMessage({ content: [{ type: 'text', text: AGENT_SYSTEM, cache_control: { type: 'ephemeral' } }] }),
-    ...turns,
-    new HumanMessage(query)
-  ];
-  const t2 = await agentLoop(llm.agent ?? chatModel(models.agent), models.agent, toolNames, ctx, messages, calls);
-  if (t2.ok) return done('t2', t2.reply, t2.actions, route);
-  if (!allowEscalation) {
-    return done('t2', 'Sorry, I couldn’t work that out. Try asking another way, or use the search box.', [], route, t2.reason);
-  }
+  return agentTiers(route, null);
 
-  // T3: escalate, fresh, to the stronger model with every tool
-  const t3 = await agentLoop(
-    llm.escalation ?? chatModel(models.escalation, { maxTokens: 4096 }),
-    models.escalation, INTENT_TOOLS.default, ctx, messages, calls
-  );
-  if (t3.ok) return done('t3', t3.reply, t3.actions, route, t2.reason);
-  return done('t3', 'Sorry, I couldn’t work that out. Try asking another way, or use the search box.', [], route, `${t2.reason};${t3.reason}`);
+  /** T2, then T3 if T2's answer fails validation. `note` explains a skipped router. */
+  async function agentTiers(route, note) {
+    // T2: cheap agent with only the routed intent's tools
+    const toolNames = (route && INTENT_TOOLS[route.intent]) || INTENT_TOOLS.default;
+    const messages = [
+      new SystemMessage({ content: [{ type: 'text', text: AGENT_SYSTEM, cache_control: { type: 'ephemeral' } }] }),
+      ...turns,
+      new HumanMessage(query)
+    ];
+    const t2 = await agentLoop(llm.agent ?? chatModel(models.agent), models.agent, toolNames, ctx, messages, calls);
+    const why = (reason) => [note, reason].filter(Boolean).join(';') || null;
+    if (t2.ok) return done('t2', t2.reply, t2.actions, route, why());
+    if (!allowEscalation) {
+      return done('t2', 'Sorry, I couldn’t work that out. Try asking another way, or use the search box.', [], route, why(t2.reason));
+    }
+
+    // T3: escalate, fresh, to the stronger model with every tool
+    const t3 = await agentLoop(
+      llm.escalation ?? chatModel(models.escalation, { maxTokens: 4096 }),
+      models.escalation, INTENT_TOOLS.default, ctx, messages, calls
+    );
+    if (t3.ok) return done('t3', t3.reply, t3.actions, route, why(t2.reason));
+    return done('t3', 'Sorry, I couldn’t work that out. Try asking another way, or use the search box.', [], route, why(`${t2.reason};${t3.reason}`));
+  }
 }
 
 export const runConcierge = traceable(concierge, {

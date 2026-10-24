@@ -197,3 +197,43 @@ describe('agent replies', () => {
     expect(fns.get_spot({ est_id: 23 })).not.toHaveProperty('today');
   });
 });
+
+describe('review fixes', () => {
+  const nullRouter = {
+    withStructuredOutput: () => ({ invoke: async () => ({ raw: { usage_metadata: usage }, parsed: null }) })
+  };
+
+  it('falls through to the agent when the route fails to parse', async () => {
+    const r = await run('something odd', {
+      router: nullRouter,
+      agent: fakeModel({ text: 'Not sure what you mean. Try a spot name or a dish.' })
+    });
+    expect(r).toMatchObject({ tier: 't2', route: null, escalation_reason: 'router_parse_failed' });
+  });
+
+  it('T1 find_spot ignores hits that are not on the name', async () => {
+    const r = await run('take me to taco bell', {
+      router: fakeRouter({ intent: 'find_spot', spot_name: 'Taco Bell' }),
+      agent: fakeModel(
+        { calls: [call('search_spots', { query: 'Taco Bell' })] },
+        { text: 'Taco Bell isn’t on CartoTaco.' }
+      )
+    });
+    expect(r.tier).toBe('t2');
+    expect(r.actions).toEqual([]);
+  });
+
+  it('accepts spots cited in earlier assistant turns, but not invented ones', async () => {
+    const history = [
+      { role: 'user', content: 'apson?' },
+      { role: 'assistant', content: 'Here’s Tacos Apson [#4]. Also try [#999].' }
+    ];
+    const followUp = (text) => run('is it open late?', {
+      router: fakeRouter({ intent: 'spot_fact', needs_agent: true }),
+      agent: fakeModel({ text }),
+      escalation: fakeModel({ text: 'Let me check.' })
+    }, { history });
+    expect((await followUp('Tacos Apson [#4] is open til midnight.')).tier).toBe('t2');
+    expect((await followUp('Yes, [#999] is.')).escalation_reason).toBe('cited_unseen:999');
+  });
+});
