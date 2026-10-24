@@ -13,7 +13,7 @@
   import ThumbsDown from 'phosphor-svelte/lib/ThumbsDown';
   import ArrowCounterClockwise from 'phosphor-svelte/lib/ArrowCounterClockwise';
   import MapPin from 'phosphor-svelte/lib/MapPin';
-  import Trash from 'phosphor-svelte/lib/Trash';
+  import NotePencil from 'phosphor-svelte/lib/NotePencil';
   import X from 'phosphor-svelte/lib/X';
   import {
     chatMessages, chatPending, ask, applyActions, undoMessage, sendFeedback, clearChat
@@ -39,6 +39,13 @@
 
   async function open() {
     chatOpen.set(true);
+    await tick();
+    inputEl?.focus();
+  }
+
+  async function newChat() {
+    clearChat();
+    input = '';
     await tick();
     inputEl?.focus();
   }
@@ -147,7 +154,7 @@
       </div>
       <div class="header-actions">
         {#if $chatMessages.length}
-          <button class="icon-btn" on:click={clearChat} aria-label="Clear the conversation"><Trash size={16} /></button>
+          <button class="new-chat" on:click={newChat}><NotePencil size={14} /> New chat</button>
         {/if}
         <button class="icon-btn" on:click={() => chatOpen.set(false)} aria-label="Close the concierge"><X size={16} /></button>
       </div>
@@ -225,7 +232,7 @@
           bind:this={inputEl}
           bind:value={input}
           maxlength="500"
-          placeholder={listening ? 'Listening…' : 'Ask about tacos…'}
+          placeholder={listening ? 'Listening…' : 'Ask about spots, salsas, hours…'}
           aria-label="Ask the concierge"
         />
         {#if canSpeak}
@@ -337,8 +344,28 @@
     color: var(--ink-1);
   }
 
+  .new-chat {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--line-1);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-2);
+    font: 500 0.82rem var(--font-text);
+    cursor: pointer;
+  }
+
+  .new-chat:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
   .header-actions {
     display: flex;
+    align-items: center;
     gap: 4px;
   }
 
