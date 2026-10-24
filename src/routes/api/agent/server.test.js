@@ -5,6 +5,7 @@ vi.mock('$app/environment', () => ({ dev: false }));
 vi.mock('$lib/server/catalog.js', () => ({ getCatalog: async () => [] }));
 const runConcierge = vi.fn();
 vi.mock('$lib/server/agent/concierge.js', () => ({ runConcierge: (a) => runConcierge(a) }));
+vi.mock('$lib/server/agent/models.js', () => ({ DEFAULT_MODELS: { escalation: 'sonnet' } }));
 
 import { POST } from './+server.js';
 
@@ -21,11 +22,13 @@ function fakeSupabase({ usage = null, usageError = null } = {}) {
 const post = (body, locals) =>
   POST({ request: new Request('http://x/api/agent', { method: 'POST', body: JSON.stringify(body) }), locals });
 const signedIn = (supabase) => ({ supabase, session: { user: { id: 'u1' } } });
-const result = { reply: 'ok', actions: [], tier: 't2', run_id: 'r1', cost: 0.002,
-  calls: [{ usage: { input_tokens: 300, output_tokens: 40 } }] };
+const call = { model: 'haiku', usage: { input_tokens: 300, output_tokens: 40 }, cost: 0.002 };
+const result = { reply: 'ok', actions: [], tier: 't2', run_id: 'r1', cost: 0.002 };
+// A concierge run that makes one model call into the caller's calls array
+const ran = async (a) => { a.calls.push(call); return { ...result, calls: a.calls }; };
 
 describe('POST /api/agent', () => {
-  beforeEach(() => runConcierge.mockReset().mockResolvedValue(result));
+  beforeEach(() => { runConcierge.mockReset().mockImplementation(ran); });
 
   it('needs a session', async () => {
     await expect(post({ query: 'hi' }, { supabase: fakeSupabase(), session: null })).rejects.toMatchObject({ status: 401 });
@@ -50,6 +53,7 @@ describe('POST /api/agent', () => {
     expect(args).not.toHaveProperty('tools');
     expect([...args.user.favoriteIds]).toEqual([4]);
     expect(args.rulesOnly).toBe(false);
+    expect(args).not.toHaveProperty('system');
     expect(await res.json()).toEqual({ reply: 'ok', actions: [], tier: 't2', run_id: 'r1' });
     expect(supabase.rpc).toHaveBeenCalledWith('record_ai_usage',
       { p_input_tokens: 300, p_output_tokens: 40, p_escalated: false, p_cost_usd: 0.002 });
@@ -58,14 +62,18 @@ describe('POST /api/agent', () => {
   it('goes rules-only over budget or when usage can’t be read', async () => {
     await post({ query: 'hi' }, signedIn(fakeSupabase({ usage: { input_tokens: 990, output_tokens: 10 } })));
     await post({ query: 'hi' }, signedIn(fakeSupabase({ usageError: { message: 'no table' } })));
-    expect(runConcierge.mock.calls.map((c) => c[0].rulesOnly)).toEqual([true, true]);
+    expect(runConcierge.mock.calls.map((c) => c[0].rulesOnly)).toEqual(['budget', 'budget']);
   });
 
-  it('falls back to rules when the model call fails', async () => {
-    runConcierge.mockRejectedValueOnce(new Error('spend limit')).mockResolvedValueOnce({ ...result, calls: [] });
+  it('falls back to rules when the model fails, saying so, and records the calls that ran', async () => {
+    runConcierge
+      .mockImplementationOnce(async (a) => { a.calls.push(call); throw new Error('overloaded'); })
+      .mockResolvedValueOnce({ ...result, calls: [] });
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    const res = await post({ query: 'hi' }, signedIn(fakeSupabase()));
-    expect(runConcierge.mock.calls[1][0].rulesOnly).toBe(true);
+    const supabase = fakeSupabase();
+    const res = await post({ query: 'hi' }, signedIn(supabase));
+    expect(runConcierge.mock.calls[1][0].rulesOnly).toBe('unavailable');
     expect(res.status).toBe(200);
+    expect(supabase.rpc).toHaveBeenCalledWith('record_ai_usage', expect.objectContaining({ p_input_tokens: 300 }));
   });
 });

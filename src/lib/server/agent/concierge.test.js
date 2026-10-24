@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { AIMessage } from '@langchain/core/messages';
 import { processSites } from '../../siteModel.js';
-import { runConcierge } from './concierge.js';
+import { runConcierge, cleanReply } from './concierge.js';
 import { makeTools } from './tools.js';
 
 const catalog = processSites(JSON.parse(
@@ -62,6 +62,8 @@ describe('T0, no model', () => {
     expect((await run('fish stands', {}, { rulesOnly: true })).tier).toBe('t0');
     const r = await run('what salsas does apson have?', {}, { rulesOnly: true });
     expect(r).toMatchObject({ tier: 't0', calls: [], actions: [], escalation_reason: 'budget' });
+    const down = await run('what salsas does apson have?', {}, { rulesOnly: 'unavailable' });
+    expect(down.reply).toMatch(/isn’t available right now/);
   });
 
   it('leaves favorites to the router when signed out', async () => {
@@ -208,6 +210,11 @@ describe('agent replies', () => {
       )
     });
     expect(r.reply).toBe('Karamelo King [#8] has six salsas.');
+  });
+
+  it('keeps a narration-shaped sentence that carries the answer', () => {
+    expect(cleanReply('Let me show you Karamelo King [#8], with nine salsas.')).toBe('Let me show you Karamelo King [#8], with nine salsas.');
+    expect(cleanReply('Six spots. Let me show you these on the map:')).toBe('Six spots.');
   });
 
   it('apply_filters narrows the map to a dish, protein styles included', () => {

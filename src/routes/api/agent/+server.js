@@ -6,6 +6,7 @@ import { json, error } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import { runConcierge } from '$lib/server/agent/concierge.js';
+import { DEFAULT_MODELS } from '$lib/server/agent/models.js';
 import { getCatalog } from '$lib/server/catalog.js';
 
 export const config = { maxDuration: 60 };
@@ -44,29 +45,31 @@ export async function POST({ request, locals }) {
   const input = parseBody(await request.json().catch(() => null));
   if (!input) throw error(400, `Send a query of 1–${MAX_QUERY} characters`);
 
-  const [catalog, favorites, rulesOnly] = await Promise.all([
+  const [catalog, favorites, over] = await Promise.all([
     getCatalog(supabase),
     supabase.from('user_favorites').select('est_id'),
     overBudget(supabase)
   ]);
   const user = { favoriteIds: new Set((favorites.data ?? []).map((f) => f.est_id)) };
-  const args = { ...input, catalog, user, rulesOnly };
+  // Shared with runConcierge, so calls made before a failure still count
+  const calls = [];
+  const args = { ...input, catalog, user, calls, rulesOnly: over ? 'budget' : false };
 
   let result;
   try {
     result = await runConcierge(args);
   } catch (err) {
     console.error('concierge failed, answering from rules', err);
-    result = await runConcierge({ ...args, rulesOnly: true });
+    result = await runConcierge({ ...args, calls: [], rulesOnly: 'unavailable' });
   }
 
-  if (result.calls.length) {
-    const sum = (k) => result.calls.reduce((n, c) => n + (c.usage?.[k] ?? 0), 0);
+  if (calls.length) {
+    const sum = (k) => calls.reduce((n, c) => n + (c.usage?.[k] ?? 0), 0);
     const { error: err } = await supabase.rpc('record_ai_usage', {
       p_input_tokens: sum('input_tokens'),
       p_output_tokens: sum('output_tokens'),
-      p_escalated: result.tier === 't3',
-      p_cost_usd: result.cost
+      p_escalated: calls.some((c) => c.model === DEFAULT_MODELS.escalation),
+      p_cost_usd: calls.reduce((n, c) => n + c.cost, 0)
     });
     if (err) console.error('record_ai_usage', err.message);
   }

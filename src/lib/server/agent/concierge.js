@@ -24,7 +24,8 @@ const READ_TOOLS = new Set(['search_spots', 'get_spot', 'city_stats']);
 // ponytail: regexes for the narration and markdown Haiku writes despite the
 // prompt ("Let me show you these on the map:", **bold**). A leading or trailing
 // sentence only; move to a structured reply if the patterns multiply.
-const NARRATION = String.raw`(?:now,? )?(?:let me|i'll|i will) (?:show|check|look|pull|get|open|filter|put|update)\b[^.!?:\n]*[.!?:]?`;
+// A sentence citing a spot is the answer, however it starts, so it's kept.
+const NARRATION = String.raw`(?:now,? )?(?:let me|i'll|i will) (?:show|check|look|pull|get|open|filter|put|update)\b(?![^.!?:\n]*\[#\d+\])[^.!?:\n]*[.!?:]?`;
 const LEADING_NARRATION = new RegExp(String.raw`^\s*${NARRATION}\s*`, 'i');
 const TRAILING_NARRATION = new RegExp(String.raw`(^|[.!?\n])\s*${NARRATION}\s*$`, 'i');
 
@@ -46,6 +47,11 @@ export const RouterSchema = z.object({
   spot_name: z.string().optional().describe('The spot named, if any'),
   filters: FilterArgs.optional()
 });
+
+const RULES_ONLY = {
+  budget: 'The concierge has used up its budget for now. Spot names and filters like “spicy pork open now” still work.',
+  unavailable: 'The concierge isn’t available right now. Spot names and filters like “spicy pork open now” still work; try again in a minute.'
+};
 
 const CANNED = {
   chitchat: {
@@ -177,16 +183,16 @@ async function agentLoop(model, modelId, toolNames, ctx, messages, calls) {
  * @param {typeof DEFAULT_MODELS} [p.models]
  * @param {object} [p.llm] - chat model instances by tier, for tests
  * @param {boolean} [p.allowEscalation]
- * @param {boolean} [p.rulesOnly] - over budget: answer from T0 or say the AI is resting
+ * @param {false|'budget'|'unavailable'} [p.rulesOnly] - answer from T0 only, and say why on a miss
+ * @param {object[]} [p.calls] - collects each model call; pass one in to read usage even if this throws
  * @returns {Promise<{ reply: string, actions: object[], tier: string, route: object|null,
  *   escalation_reason: string|null, calls: object[], cost: number, run_id?: string }>}
  */
 async function concierge({
   query, history = [], catalog, now = new Date(), user = {},
-  models = DEFAULT_MODELS, llm = {}, allowEscalation = true, rulesOnly = false
+  models = DEFAULT_MODELS, llm = {}, allowEscalation = true, rulesOnly = false, calls = []
 }) {
   const ctx = { catalog, now, user };
-  const calls = [];
   const done = (tier, reply, actions = [], route = null, escalation_reason = null) => {
     const run = getCurrentRunTree(true);
     const result = {
@@ -228,7 +234,7 @@ async function concierge({
   }
 
   if (rulesOnly) {
-    return done('t0', 'The concierge has used up its budget for now. Spot names and filters like “spicy pork open now” still work.', [], null, 'budget');
+    return done('t0', RULES_ONLY[rulesOnly] ?? RULES_ONLY.budget, [], null, rulesOnly === true ? 'budget' : rulesOnly);
   }
 
   // T1: one router call, then a deterministic handler when the route is simple

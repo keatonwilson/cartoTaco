@@ -10,7 +10,7 @@ vi.mock('./favoritesStore', () => {
 
 import { tacoStore, filterConfig, flyToTarget } from './stores.js';
 import { defaultFilterConfig } from './siteModel.js';
-import { chatMessages, ask, undoMessage } from './agentStore.js';
+import { chatMessages, chatPending, ask, undoMessage, clearChat } from './agentStore.js';
 
 const rows = JSON.parse(readFileSync(new URL('../../evals/fixtures/sites_snapshot.json', import.meta.url)));
 
@@ -37,6 +37,27 @@ describe('concierge chat store', () => {
     undoMessage(msg.id);
     expect(get(filterConfig)).toEqual(before);
     expect(get(chatMessages).at(-1).undo).toBeNull();
+  });
+
+  it('replaces the filters the user had, keeping the pending/closed toggles', async () => {
+    filterConfig.set({ ...defaultFilterConfig(), proteins: { ...defaultFilterConfig().proteins, chicken: true }, openNow: true, showClosed: false });
+    globalThis.fetch = reply({ reply: 'Filtered.', tier: 't0', run_id: null,
+      actions: [{ type: 'apply_filters', filters: { proteins: { pork: true } } }] });
+    await ask('pork');
+    expect(get(filterConfig)).toMatchObject({ openNow: false, showClosed: false, proteins: { chicken: false, pork: true } });
+  });
+
+  it('drops a reply that lands after New chat', async () => {
+    let answer;
+    globalThis.fetch = vi.fn(() => new Promise((r) => { answer = r; }));
+    const pending = ask('pork');
+    clearChat();
+    expect(get(chatPending)).toBe(false);
+    answer({ ok: true, json: async () => ({ reply: 'Filtered.', tier: 't0', run_id: null,
+      actions: [{ type: 'apply_filters', filters: { proteins: { pork: true } } }] }) });
+    await pending;
+    expect(get(chatMessages)).toEqual([]);
+    expect(get(filterConfig).proteins.pork).toBe(false);
   });
 
   it('opens a spot, ignores unknown ones, and sends the history', async () => {

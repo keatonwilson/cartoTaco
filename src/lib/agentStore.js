@@ -4,6 +4,7 @@
 import { writable, get } from 'svelte/store';
 import { processedTacoData, filterConfig, flyToTarget } from './stores';
 import { applyIntentFilters } from './intentRules';
+import { defaultFilterConfig } from './siteModel';
 import { isMobile } from './deviceDetection';
 import { chatOpen } from './uiStore';
 
@@ -13,6 +14,8 @@ export const chatPending = writable(false);
 export const chatMessages = writable([]);
 
 let nextId = 1;
+// Bumped by clearChat, so a reply to a cleared conversation is dropped
+let generation = 0;
 const HISTORY_TURNS = 12;
 
 const update = (id, patch) =>
@@ -27,9 +30,12 @@ export function applyActions(actions) {
   let undo = null;
   for (const action of actions) {
     if (action.type === 'apply_filters') {
+      // Replace, as the server counted ("23 spots"), keeping only what the
+      // concierge can't set: whether pending and closed spots show
       const before = get(filterConfig);
       undo ??= before;
-      filterConfig.set(applyIntentFilters({ ...before, searchText: '' }, action.filters));
+      const fresh = { ...defaultFilterConfig(), showPending: before.showPending, showClosed: before.showClosed };
+      filterConfig.set(applyIntentFilters(fresh, action.filters));
     } else if (action.type === 'show_spot') {
       const site = get(processedTacoData).find((s) => s.est_id === action.est_id);
       if (!site) continue;
@@ -51,6 +57,7 @@ export async function ask(query) {
     .map(({ role, content }) => ({ role, content }));
   chatMessages.update((all) => [...all, { id: nextId++, role: 'user', content: query }]);
   chatPending.set(true);
+  const asked = generation;
 
   try {
     const res = await fetch('/api/agent', {
@@ -65,13 +72,15 @@ export async function ask(query) {
       throw new Error(message);
     }
     const { reply, actions, tier, run_id } = await res.json();
+    if (asked !== generation) return;
     const undo = applyActions(actions);
     chatMessages.update((all) => [...all, { id: nextId++, role: 'assistant', content: reply, tier, run_id, undo }]);
   } catch (err) {
+    if (asked !== generation) return;
     const content = err instanceof TypeError ? 'You seem to be offline.' : err.message;
     chatMessages.update((all) => [...all, { id: nextId++, role: 'assistant', content, error: true }]);
   } finally {
-    chatPending.set(false);
+    if (asked === generation) chatPending.set(false);
   }
 }
 
@@ -97,5 +106,7 @@ export async function sendFeedback(id, score) {
 }
 
 export function clearChat() {
+  generation++;
+  chatPending.set(false);
   chatMessages.set([]);
 }
