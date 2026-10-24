@@ -520,13 +520,13 @@
        document and slid under the sticky header on mobile. */
     position: fixed;
     top: calc(var(--header-h) + 20px);
-    right: 60px;
+    right: calc(60px + var(--chat-panel-offset, 0px));
     z-index: 200; /* above the bottom sheet (150) so the panel isn't hidden behind it */
     background: var(--surface-1);
     border-radius: 10px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     width: 560px;
-    max-width: 560px;
+    max-width: max(320px, calc(100vw - var(--spot-panel-offset, 0px) - var(--chat-panel-offset, 0px) - 80px));
     transition: opacity 0.15s ease;
   }
 

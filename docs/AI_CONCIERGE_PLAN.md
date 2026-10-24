@@ -1,6 +1,6 @@
 # AI Concierge Plan
 
-Status: Phase 1 (Quick Search, intent rules, voice, `siteModel.js`) shipped. Phase 2 harness built (see "Phase 2 as built" below); its exit criteria still need a real eval run with an API key. Phases 3–5 planned.
+Status: Phase 1 (Quick Search, intent rules, voice, `siteModel.js`) shipped. Phase 2 harness built and evaluated; phase 3 (endpoint, budget, chat panel, eval gate) built, see "Phase 3 as built". Phases 4–5 planned.
 
 ## Context
 We want fast natural-language and voice search in CartoTaco, plus an AI agent that drives the app: filters, map, cards, trails, Summits, comparisons and taste-profile recommendations. Constraints from the discussion:
@@ -71,7 +71,7 @@ Also extract `computeTasteProfile(favIds, sites, stats)` and the k-NN helpers fr
   - English or Spanish
 
 ## Tracing (LangSmith)
-- **Env** (server-only, documented in `docs/DEPLOYMENT.md`): `ANTHROPIC_API_KEY`, `LANGSMITH_TRACING=true`, `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT=cartotaco-concierge-{dev|staging|prod}`.
+- **Env** (server-only, documented in `docs/DEPLOYMENT.md`): `ANTHROPIC_API_KEY`, `LANGSMITH_TRACING=true`, `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT=cartotaco-{local|staging|production}`.
 - **Metadata on each trace**:
   - `thread_id`
   - `user_hash` (never the email)
@@ -149,6 +149,16 @@ What shipped differs from the plan above in these ways:
 - **Known data gap:** `salsa.total_num` and the named salsa booleans disagree for some spots (Taqueria el Pueblito: count 3, four named). `get_spot` returns both; the judge is told either is grounded. Worth a `data_health_report()` check.
 - **Prompt caching** is marked on the agent system prompt, but the prompt + tools are likely below Haiku 4.5's minimum cacheable prefix; check `cache_read` in traces once real traffic runs.
 
+## Phase 3 as built
+- **Endpoint** `POST /api/agent` returns JSON, not SSE: p50 is ~2 s and the reply arrives whole from `runConcierge` anyway. Add streaming if T2/T3 latency starts to hurt. History is trimmed server-side to 12 plain `user`/`assistant` turns, so a client can't inject a system prompt, tools or roles.
+- **Budgets.** Migration 040 `ai_usage` + `record_ai_usage()` give a per-user daily token budget (`AI_DAILY_TOKENS`, default 200k ≈ 70 T2 queries). Users can only add to their own row, so the global ceiling isn't computed from this table (any user could inflate it and trip it for everyone). Instead the production key lives in its own Anthropic workspace with a monthly **spend limit**; when Anthropic refuses a call the endpoint retries rules-only. `AI_MONTHLY_BUDGET_USD` was dropped.
+- **Rules-only mode** (`runConcierge({ rulesOnly })`) answers T0 hits and otherwise says the budget is used up; no model is called.
+- **Feedback** `POST /api/agent/feedback` attaches 👍/👎 as LangSmith feedback `user_score` to the run (`run_id` comes back with each reply). Set `LANGSMITH_TRACING_BACKGROUND=false` on Vercel or traces are lost when the function freezes.
+- **UI** `ChatPanel.svelte` + `src/lib/agentStore.js` (actions applied in the store; no separate `agentActions.js`). Docked right, full height (the mirror of the left spot panel, so both fit); `computeMapPadding()` pads right and `--chat-panel-offset` moves the filter bar, map controls and trays aside while it's open; bottom sheet on phones. Undo covers filter changes; opening a spot is undone by closing it. No confirm cards yet: no current action needs one (they come with Summit in phase 4).
+- **CI gate** `agent-evals.yml`: `pnpm eval --judge` on PRs touching the concierge (`--local`, so unmerged golden files don't rewrite the shared dataset), and a LangSmith experiment on pushes to `staging`.
+- **First tuning pass (prompt v6), from real chats:** "Where can I get carnitas?" was routed as the pork filter (23 spots); dishes and protein styles now route to `recommend`, and `apply_filters` takes a `dish` so the map shows the matches. Replies leaked narration ("I'll look up…", "Let me show you these on the map:") and markdown: text alongside a lookup is dropped and `cleanReply()` strips the rest. `search_spots` reported its capped row count as the total ("4 lugares", then "the map shows 14"). Haiku said St. Mary's wasn't on CartoTaco without searching; a router-named spot's search is now seeded into T2. Golden set 43 (carnitas, a carnitas follow-up with `history`, al pastor in Spanish) plus a `no_narration` check. Result: deterministic 100%, router 100%, $0.0029 per query (down from $0.0037). The judge (Haiku) misreads evidence now and then; the one steady failure is fact-06, the salsa count data gap. Consider a Sonnet judge for the CI gate if it flakes.
+- Not done: the QuickSearch → concierge hand-off ("Ask the concierge" row for uncovered queries), history summarisation (12 turns are kept verbatim), a per-user escalation allowance (escalations are counted in `ai_usage` but not capped).
+
 ## Phased delivery (harness before UI)
 1. **T0 foundation (free, everyone).**
    - `siteModel.js` extraction
@@ -179,7 +189,7 @@ What shipped differs from the plan above in these ways:
   - `src/lib/server/agent/{models,prompt,tools,concierge}.js` (+tests)
   - `src/routes/api/agent/+server.js`, `src/routes/api/agent/feedback/+server.js`
   - `src/components/{QuickSearch,ChatPanel}.svelte`
-  - `supabase/migrations/<ts>_036_ai_usage.sql`
+  - `supabase/migrations/<ts>_040_ai_usage.sql`
   - `evals/{run,evaluators,sync-dataset,refresh-fixture,chat}.js`, `evals/golden/concierge.jsonl`, `evals/fixtures/*`
   - `.github/workflows/agent-evals.yml`
 - Modified:
