@@ -30,12 +30,9 @@ export function applyActions(actions) {
   let undo = null;
   for (const action of actions) {
     if (action.type === 'apply_filters') {
-      // Replace, as the server counted ("23 spots"), keeping only what the
-      // concierge can't set: whether pending and closed spots show
-      const before = get(filterConfig);
-      undo ??= before;
-      const fresh = { ...defaultFilterConfig(), showPending: before.showPending, showClosed: before.showClosed };
-      filterConfig.set(applyIntentFilters(fresh, action.filters));
+      // Replace from the defaults, exactly as the server counted ("23 spots")
+      undo ??= get(filterConfig);
+      filterConfig.set(applyIntentFilters(defaultFilterConfig(), action.filters));
     } else if (action.type === 'show_spot') {
       const site = get(processedTacoData).find((s) => s.est_id === action.est_id);
       if (!site) continue;

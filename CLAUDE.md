@@ -235,7 +235,7 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 
 ### Concierge Chat Store (src/lib/agentStore.js)
 - `chatMessages` - `[{ id, role, content, tier?, run_id?, feedback?, undo?, error? }]`; `chatPending`
-- Functions: `ask(query)` (POSTs `{ query, history }` to `/api/agent`, last 12 non-error turns), `applyActions(actions)` (`show_spot` → `flyToTarget`, closing the chat on phones; `apply_filters` → replaces `filterConfig` (fresh defaults, keeping `showPending`/`showClosed`), matching the count the server quoted; returns the config to restore), `undoMessage(id)`, `sendFeedback(id, 0|1)`, `clearChat()` (also drops any reply still in flight)
+- Functions: `ask(query)` (POSTs `{ query, history }` to `/api/agent`, last 12 non-error turns), `applyActions(actions)` (`show_spot` → `flyToTarget`, closing the chat on phones; `apply_filters` → replaces `filterConfig` from `defaultFilterConfig()`, exactly as the server counted; returns the config to restore), `undoMessage(id)`, `sendFeedback(id, 0|1)`, `clearChat()` (also drops any reply still in flight)
 
 ### Site Model (src/lib/siteModel.js)
 The pure logic behind the stores, with no stores or Supabase client, so the server and offline evals can share it (see `docs/AI_CONCIERGE_PLAN.md`): `processSite(row)` / `processSites(rows)` (the body of `processedTacoData`), `computeSummaryStats`, `computeDistributionPool`, `computeDistributionStats`, `hasValidCoordinates`, `isOpenNow(hours, now)`, `matchesFilters(site, cfg, favIds, now)` (the `filteredTacoData` predicate), and `defaultFilterConfig()` (the `filterConfig` starting value). `stores.js` derives from these and re-exports `hasValidCoordinates`/`isOpenNow`. Change the logic here, not in the stores.
