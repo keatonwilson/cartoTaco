@@ -1,22 +1,22 @@
 # AI Concierge Plan
 
-Status: Phase 1 (Quick Search, intent rules, voice, `siteModel.js`) shipped on this branch; Phases 2–5 planned.
+Status: Phase 1 (Quick Search, intent rules, voice, `siteModel.js`) shipped. Phase 2 harness built (see "Phase 2 as built" below); its exit criteria still need a real eval run with an API key. Phases 3–5 planned.
 
 ## Context
 We want fast natural-language and voice search in CartoTaco, plus an AI agent that drives the app: filters, map, cards, trails, Summits, comparisons and taste-profile recommendations. Constraints from the discussion:
 - **Cheap models first.** Build and prove the *harness* (routing, tools, prompts, evals) on cheap models before any UI polish. Don't break the bank.
 - **A router (decision) model** decides how much machinery each query needs. Most queries should never reach an agent loop.
-- **LangChain.js / LangGraph**, with **LangSmith** for tracing and a **versioned golden dataset** for evals.
+- **LangChain.js** (LangGraph dropped in phase 2, see below), with **LangSmith** for tracing and a **versioned golden dataset** for evals.
 - Local search is free for everyone. The AI requires sign-in.
 
-## Core design: a tiered LangGraph with the router in front
-`src/lib/server/agent/graph.js` builds a LangGraph `StateGraph`. Each query takes the cheapest path that can answer it:
+## Core design: a tiered cascade with the router in front
+`src/lib/server/agent/concierge.js` (`runConcierge`) is a plain async function. Each query takes the cheapest path that can answer it:
 
 ```
 query ─▶ T0 deterministic ──hit──▶ actions + templated reply                 ($0)
             │ miss
             ▼
-         T1 router (Haiku 5.5, structured output, 1 call)
+         T1 router (Haiku 4.5, structured output, 1 call)
             │ intent ∈ {find_spot, filter, spot_fact, compare, trail, summit, recommend, chitchat, off_topic}
             │ + parsed slots + confidence
             ├─ simple intent & confident ─▶ deterministic handler + optional 1 Haiku sentence   (~1–2 calls)
@@ -25,8 +25,8 @@ query ─▶ T0 deterministic ──hit──▶ actions + templated reply      
 ```
 
 - **T0, deterministic (no model).** Runs `searchSpots()` (see Phase 1). A confident name match ("Tacos Apson", "pastr") → `show_spot`. A keyword/synonym parser (`src/lib/intentRules.js`) maps "open now", protein words, "spicy/picante", "truck/stand", "handmade tortillas" and Spanish synonyms → `filterConfig` slots. If T0 covers the whole query, no LLM is called. The same code powers the free Quick Search palette.
-- **T1, router.** `ChatAnthropic({ model: 'claude-haiku-5-5' }).withStructuredOutput(RouterSchema)` (zod). It's one short call with a cached system prompt, and it returns `{intent, confidence, slots, needs_agent}`. Deterministic handlers resolve `find_spot`, `filter`, `spot_fact` and simple `compare` from the slots, using the same tool functions the agent uses, with no agent loop.
-- **T2, cheap agent.** `createReactAgent` on Haiku 5.5. It gets **only the tools for the routed intent** (fewer tool tokens, fewer wrong calls), a step cap of about 4, and compact tool outputs.
+- **T1, router.** `ChatAnthropic({ model: 'claude-haiku-4-5' }).withStructuredOutput(RouterSchema, { method: 'jsonSchema' })` (zod). It's one short call with a cached system prompt, and it returns `{intent, confidence, slots, needs_agent}`. Deterministic handlers resolve `find_spot`, `filter`, `spot_fact` and simple `compare` from the slots, using the same tool functions the agent uses, with no agent loop.
+- **T2, cheap agent.** A short hand-written tool loop (`bindTools` + `ToolMessage`) on Haiku 4.5. It gets **only the tools for the routed intent** (fewer tool tokens, fewer wrong calls), a step cap of about 4, and compact tool outputs.
 - **T3, escalation.** Sonnet 5.5 runs only when T2's output fails validation or the router says the query is complex (multi-constraint trail plans, "explain my taste"). There's a per-user daily escalation allowance, and escalations are tagged in traces so we can see why they happen.
 - **Router roadmap.** Once LangSmith has a few hundred labeled routes (golden set plus 👍 traces), train a **local intent classifier**: embeddings + logistic regression, or a tiny fine-tuned model, exported as JSON weights or ONNX. It replaces T1's LLM call when confident, and Haiku stays as the fallback. The router eval below decides when that switch is safe.
 
@@ -119,15 +119,15 @@ Also extract `computeTasteProfile(favIds, sites, stats)` and the k-NN helpers fr
     - confirm-required actions never auto-applied
     - closed/pending flagged
   - **Cost and latency per example**: tokens, $ and tier, read from the run
-  - **LLM-as-judge**: groundedness and rubric helpfulness on **Haiku 5.5** by default; a Sonnet judge only for the nightly/manual full run
-- **Runner**: `pnpm eval` (`evals/run.js`) calls `evaluate()` from `langsmith/evaluation` against `buildGraph({ catalog, now, user, models })`. The experiment name is `{git_sha}-{prompt_version}-{router}-{agent_model}`.
+  - **LLM-as-judge**: groundedness and rubric helpfulness on **Haiku 4.5** by default; a Sonnet judge only for the nightly/manual full run
+- **Runner**: `pnpm eval` (`evals/run.js`) calls `evaluate()` from `langsmith/evaluation` with `runConcierge({ catalog, now, user, models })` as the target (local loop without a LangSmith key). The experiment name is `{git_sha}-{prompt_version}-{router}-{agent_model}`.
   - `--matrix` runs the same set across model configs (e.g. Haiku-only vs Haiku+Sonnet escalation). We then pick **the cheapest config that clears the quality bar**.
   - `--category` and `--limit` give quick, cheap local runs.
 - **No-cost layer in `pnpm test`**:
   - Quick Search golden queries (`src/lib/search.test.js`)
   - `intentRules.test.js`
   - tool unit tests against the fixture
-  - graph routing and SSE action emission with LangChain fake chat models (`FakeListChatModel`, scripted tool calls)
+  - tier routing with scripted fake models (`concierge.test.js`); SSE action emission in phase 3
 - **CI**: `.github/workflows/agent-evals.yml` runs on PRs touching `src/lib/server/agent/**`, `src/lib/siteModel.js`, `src/lib/intentRules.js` or `evals/**`, plus manual dispatch.
   - It runs the **Haiku-judged** set and writes the results to the job summary.
   - It fails when any of these happens:
@@ -135,6 +135,19 @@ Also extract `computeTasteProfile(favIds, sites, stats)` and the k-NN helpers fr
     - groundedness < 0.9
     - router accuracy < 90%
     - **mean cost per query rises > 20%** vs the latest `staging` baseline
+
+## Phase 2 as built
+What shipped differs from the plan above in these ways:
+- **Models.** There is no Haiku 5.5. The router, T2 agent and judge run on `claude-haiku-4-5`; T3 is `claude-sonnet-5-5`. All three are in `models.js`, overridable by `AGENT_ROUTER_MODEL` / `AGENT_MODEL` / `AGENT_ESCALATION_MODEL`.
+- **No LangGraph.** `createReactAgent` is deprecated (moved to the `langchain` package), and the tiers are a straight cascade, so `concierge.js` is a plain function with a ~30-line tool loop. Reach for LangGraph when phase 3/4 needs interrupts (confirm cards) or checkpointed threads.
+- **Structured output uses `method: 'jsonSchema'`** (output_config), not forced tool choice, which Sonnet 5.5 rejects. Schemas avoid `minimum`/`maximum`; `toFilters()` clamps instead.
+- **T2 validation.** T2 escalates on the step cap (4), an empty reply, or a reply citing an `[#est_id]` no tool returned. T3 starts fresh with every tool; T2's actions are dropped.
+- **Tools in phase 2:** `search_spots`, `get_spot`, `city_stats`, `show_spot`, `apply_filters`. Deferred to phase 4 with the features that need them: `geocode` (needs Mapbox server-side), `my_taste_profile`, `my_favorites`, `similar_spots`, trail/compare/summit actions. The agent prompt says those aren't in chat yet.
+- **Evals.** `pnpm eval` is a local loop with deterministic checks (tier, intent, actions, must/must-not/any ids, no fabricated ids, reply regex), an optional Haiku judge (`--judge`, evidence = the cited spots' `get_spot` data) and `--matrix` (`haiku`, `haiku+sonnet`, `sonnet-agent`). It exits 1 under the bars (deterministic/router/judge ≥ 90%). Golden set v1 has 40 examples (target 80). With `LANGSMITH_API_KEY` set, `pnpm eval` first runs `sync-dataset.js` (upsert by golden id, category as split, removed lines deleted) and then runs each config through `evaluate()` as experiment `{git_sha}-{prompt_version}-{config}`, with every check as feedback (`pass`, `tier`, `intent`, `actions`, ids, `cost_usd`, judge scores). `--local` or no key runs the same checks in a local loop.
+- **Fixture** is refreshed from whatever `SUPABASE_URL`/`SUPABASE_ANON_KEY` point at (local `.env` is prod): `pnpm eval:fixture`. Golden ids must be re-checked after a refresh.
+- **First results (prompt v5, 2026-10-23, LangSmith experiment `21a99b5-v5-haiku+sonnet-734e507a`):** deterministic 100%, router 100%, Haiku judge 100%, $0.0028 per query, p50 1.7 s; 23/40 queries end at T0/T1 (target ≥60%), 0 at T3. Filter-routed queries get only `apply_filters` (which also returns the matching spots): given `search_spots` too, Haiku answered from a search and left the map unfiltered. `sonnet-agent` (Sonnet at T2) scored about the same for ~12% more per query, and escalation never fired, so Haiku with Sonnet as fallback stays the default. Trail and summit get fixed T1 replies until phase 4.
+- **Known data gap:** `salsa.total_num` and the named salsa booleans disagree for some spots (Taqueria el Pueblito: count 3, four named). `get_spot` returns both; the judge is told either is grounded. Worth a `data_health_report()` check.
+- **Prompt caching** is marked on the agent system prompt, but the prompt + tools are likely below Haiku 4.5's minimum cacheable prefix; check `cache_read` in traces once real traffic runs.
 
 ## Phased delivery (harness before UI)
 1. **T0 foundation (free, everyone).**
@@ -144,7 +157,7 @@ Also extract `computeTasteProfile(favIds, sites, stats)` and the k-NN helpers fr
    - `src/components/QuickSearch.svelte`: a ⌘K or `/` palette with results → `flyToTarget`
    - `src/lib/voice.js`: Web Speech API, mic hidden where unsupported
 2. **Headless harness and evals (no chat UI yet).**
-   - `models.js`, `prompt.js`, `tools.js`, `graph.js` (T0→T1→T2→T3)
+   - `models.js`, `prompt.js`, `tools.js`, `concierge.js` (T0→T1→T2→T3)
    - catalog + fixtures, the golden set v1, evaluators, `pnpm eval` with `--matrix`
    - LangSmith tracing
    - `pnpm agent:chat`, a CLI REPL against the fixture for fast iteration
@@ -163,7 +176,7 @@ Also extract `computeTasteProfile(favIds, sites, stats)` and the k-NN helpers fr
 - New:
   - `src/lib/{siteModel,search,intentRules,voice,agentStore,agentActions,summit}.js` (+tests)
   - `src/lib/server/catalog.js`
-  - `src/lib/server/agent/{models,prompt,tools,graph}.js` (+tests)
+  - `src/lib/server/agent/{models,prompt,tools,concierge}.js` (+tests)
   - `src/routes/api/agent/+server.js`, `src/routes/api/agent/feedback/+server.js`
   - `src/components/{QuickSearch,ChatPanel}.svelte`
   - `supabase/migrations/<ts>_036_ai_usage.sql`
@@ -177,7 +190,7 @@ Also extract `computeTasteProfile(favIds, sites, stats)` and the k-NN helpers fr
   - `src/lib/tourStore.js`
   - `package.json` (`eval` and `agent:chat` scripts)
   - `CLAUDE.md`, `docs/DEPLOYMENT.md`, `docs/IMPROVEMENTS.md`
-- Dependencies: `@langchain/core`, `@langchain/anthropic`, `@langchain/langgraph`, `langsmith`, `zod`
+- Dependencies: `@langchain/core`, `@langchain/anthropic`, `langsmith`, `zod`
 
 ## Verification
 - `pnpm check`, `pnpm test` and `pnpm build`, with `stores.test.js` unchanged and passing after the extraction.

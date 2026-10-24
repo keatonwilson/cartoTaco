@@ -10,7 +10,8 @@ import {
   computeDistributionPool,
   computeDistributionStats,
   hasValidCoordinates,
-  matchesFilters
+  matchesFilters,
+  defaultFilterConfig
 } from "./siteModel";
 
 // Re-exported so existing imports from stores keep working
@@ -108,34 +109,7 @@ export const selectedSite = writable(null);
 export const flyToTarget = writable(null);
 
 // Filter configuration store
-export const filterConfig = writable({
-  searchText: '',
-  proteins: {
-    chicken: false,
-    beef: false,
-    pork: false,
-    fish: false,
-    veg: false
-  },
-  types: {
-    'Brick and Mortar': false,
-    'Stand': false,
-    'Truck': false
-  },
-  spiceLevel: { min: 0, max: 10 },
-  openNow: false,
-  showFavoritesOnly: false,
-  showPending: true,
-  showClosed: true,
-  salsaStyle: null, // salsa_styles slug; set from /?salsa=<slug> by the Salsa Atlas
-  styleFilters: {
-    chicken: [],
-    beef: [],
-    pork: [],
-    fish: [],
-    veg: []
-  }
-});
+export const filterConfig = writable(defaultFilterConfig());
 
 // Derived store for filtered taco data
 export const filteredTacoData = derived(

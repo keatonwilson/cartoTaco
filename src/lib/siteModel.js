@@ -3,8 +3,8 @@
 // spots, city stats, and the filter predicate. No stores and no Supabase
 // client, so the browser stores, the server, and offline evals all share it.
 
-import { filterObjectByKeySubstring, getTopFive, extractProteinStyles } from "./dataWrangling";
-import { getOpenStatus } from "./hours";
+import { filterObjectByKeySubstring, getTopFive, extractProteinStyles } from "./dataWrangling.js";
+import { getOpenStatus } from "./hours.js";
 
 // Legacy data uses the literal string 'NA' as a null marker
 function cleanNA(value) {
@@ -253,6 +253,38 @@ export function computeDistributionStats({ ids, heats, salsas }) {
     });
   });
   return stats;
+}
+
+/** A fresh filterConfig with nothing filtered. */
+export function defaultFilterConfig() {
+  return {
+    searchText: '',
+    proteins: {
+      chicken: false,
+      beef: false,
+      pork: false,
+      fish: false,
+      veg: false
+    },
+    types: {
+      'Brick and Mortar': false,
+      'Stand': false,
+      'Truck': false
+    },
+    spiceLevel: { min: 0, max: 10 },
+    openNow: false,
+    showFavoritesOnly: false,
+    showPending: true,
+    showClosed: true,
+    salsaStyle: null, // salsa_styles slug; set from /?salsa=<slug> by the Salsa Atlas
+    styleFilters: {
+      chicken: [],
+      beef: [],
+      pork: [],
+      fish: [],
+      veg: []
+    }
+  };
 }
 
 // Tucson metro bounding box. Same numbers as the bad_coordinates check in
