@@ -120,7 +120,7 @@ const citedIds = (reply) => [...reply.matchAll(/\[#(\d+)\]/g)].map((m) => Number
  * One tool-calling loop (T2 or T3). Fails, with a reason, when it hits the
  * step cap, ends without a reply, or cites a spot no tool returned.
  */
-async function agentLoop(model, modelId, toolNames, ctx, messages, calls) {
+async function agentLoop(model, modelId, toolNames, ctx, messages, calls, maxSteps = MAX_STEPS) {
   const { tools, actions } = makeTools(ctx);
   const scoped = tools.filter((t) => toolNames.includes(t.name));
   const byName = Object.fromEntries(scoped.map((t) => [t.name, t]));
@@ -143,7 +143,6 @@ async function agentLoop(model, modelId, toolNames, ctx, messages, calls) {
   // which is narration ("Let me check their salsas…")
   const said = [];
 
-  const maxSteps = toolNames.includes('plan_trail') ? TRAIL_STEPS : MAX_STEPS;
   for (let step = 0; step < maxSteps; step++) {
     const ai = await bound.invoke(msgs);
     calls.push({ model: modelId, usage: ai.usage_metadata, cost: callCost(modelId, ai.usage_metadata) });
@@ -307,7 +306,9 @@ async function concierge({
       new HumanMessage(query),
       ...seedSearch(route, toolNames)
     ];
-    const t2 = await agentLoop(llm.agent ?? chatModel(models.agent), models.agent, toolNames, ctx, messages, calls);
+    // Only trail requests get the longer loop (room to re-plan a long trail)
+    const steps = route?.intent === 'trail' ? TRAIL_STEPS : MAX_STEPS;
+    const t2 = await agentLoop(llm.agent ?? chatModel(models.agent), models.agent, toolNames, ctx, messages, calls, steps);
     const why = (reason) => [note, reason].filter(Boolean).join(';') || null;
     if (t2.ok) return done('t2', t2.reply, t2.actions, route, why());
     if (!allowEscalation) {
@@ -317,7 +318,7 @@ async function concierge({
     // T3: escalate, fresh (with the same seeded search), to the stronger model with every tool
     const t3 = await agentLoop(
       llm.escalation ?? chatModel(models.escalation, { maxTokens: 4096 }),
-      models.escalation, INTENT_TOOLS.default, ctx, messages, calls
+      models.escalation, INTENT_TOOLS.default, ctx, messages, calls, steps
     );
     if (t3.ok) return done('t3', t3.reply, t3.actions, route, why(t2.reason));
     return done('t3', 'Sorry, I couldn’t work that out. Try asking another way, or use the search box.', [], route, why(`${t2.reason};${t3.reason}`));
