@@ -199,6 +199,8 @@ describe('phase 4 tools', () => {
     const { stops, straight_line_km } = fns.plan_trail({ est_ids: [4, 8, 2, 14] });
     expect(stops.map((s) => s.est_id)).toEqual([4, 2, 8, 14]);
     expect(straight_line_km).toBeGreaterThan(0);
+    expect(fns.plan_trail({ est_ids: [4, 8, 2, 14] }).warning).toMatch(/long for walking/);
+    expect(fns.plan_trail({ est_ids: [4, 10] }).warning).toBeUndefined();
     expect(() => fns.plan_trail({ est_ids: [4, 23] })).toThrow(/permanently closed/);
     expect(() => fns.plan_trail({ est_ids: [4, 4] })).toThrow(/2 to 8/);
   });

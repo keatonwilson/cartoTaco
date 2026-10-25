@@ -17,6 +17,8 @@ const TYPES = ['Brick and Mortar', 'Stand', 'Truck'];
 const TORTILLAS = { both: 'corn and flour', corn: 'corn', flour: 'flour' };
 const TRAIL_MODES = ['walking', 'cycling', 'driving'];
 const MAX_TRAIL = 8;
+// Straight-line km past which a trail gets a warning to re-plan
+const LONG_TRAIL_KM = { walking: 5, cycling: 20 };
 const MAX_COMPARE = 3;
 const SUMMIT_SPOTS = [2, 6];
 
@@ -195,10 +197,15 @@ export function makeTools({ catalog, now = new Date(), user = {} }) {
       if (!TRAIL_MODES.includes(mode)) mode = 'walking';
       actions.push({ type: 'plan_trail', est_ids: order.map((s) => s.est_id), mode });
       const legs = order.slice(1).map((s, i) => Math.round(km(order[i], s) * 10) / 10);
+      const total = Math.round(legs.reduce((a, b) => a + b, 0) * 10) / 10;
       return {
         stops: order.map((s) => brief(s, now)),
         mode,
-        straight_line_km: Math.round(legs.reduce((a, b) => a + b, 0) * 10) / 10
+        straight_line_km: total,
+        // A model picking stops by dish alone planned a 27 km "walk"
+        ...(total > (LONG_TRAIL_KM[mode] ?? Infinity) ? {
+          warning: `${total} km is long for ${mode}. Re-plan with closer stops (search_spots with near_est_id of the first stop) or suggest another mode.`
+        } : {})
       };
     },
 
