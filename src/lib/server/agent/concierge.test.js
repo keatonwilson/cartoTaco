@@ -194,6 +194,21 @@ describe('phase 4 tools', () => {
     expect(r.actions).toEqual([{ type: 'plan_trail', est_ids: [4, 2, 8], mode: 'cycling' }]);
   });
 
+  it('has room to re-plan a trail plan_trail warned was long', async () => {
+    const r = await run('a birria trail I can walk', {
+      router: fakeRouter({ intent: 'trail', needs_agent: true }),
+      agent: fakeModel(
+        { calls: [call('search_spots', { query: 'birria' })] },
+        { calls: [call('plan_trail', { est_ids: [4, 8, 2, 14] })] },
+        { calls: [call('search_spots', { query: 'birria', near_est_id: 4 })] },
+        { calls: [call('plan_trail', { est_ids: [4, 10] })] },
+        { text: 'Tacos Apson [#4], then Carnitas La Yoca [#10].' }
+      )
+    });
+    expect(r).toMatchObject({ tier: 't2', escalation_reason: null });
+    expect(r.actions).toEqual([{ type: 'plan_trail', est_ids: [4, 10], mode: 'walking' }]);
+  });
+
   it('plan_trail orders stops nearest-first and refuses closed spots', () => {
     const { fns } = makeTools({ catalog, now });
     const { stops, straight_line_km } = fns.plan_trail({ est_ids: [4, 8, 2, 14] });

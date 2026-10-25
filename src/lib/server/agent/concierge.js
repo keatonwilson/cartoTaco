@@ -19,6 +19,8 @@ import { PROMPT_VERSION, INTENTS, ROUTER_SYSTEM, AGENT_SYSTEM } from './prompt.j
 import { makeTools, FilterArgs, INTENT_TOOLS, toFilters } from './tools.js';
 
 const MAX_STEPS = 4;
+// A trail may need search → plan → (warned: too long) → nearer search → plan → reply
+const TRAIL_STEPS = 6;
 // Text written alongside these is dropped: beside a lookup it's narration, and
 // beside a trail, compare or summit it predates the tool's answer (plan_trail
 // reorders the stops)
@@ -141,7 +143,8 @@ async function agentLoop(model, modelId, toolNames, ctx, messages, calls) {
   // which is narration ("Let me check their salsas…")
   const said = [];
 
-  for (let step = 0; step < MAX_STEPS; step++) {
+  const maxSteps = toolNames.includes('plan_trail') ? TRAIL_STEPS : MAX_STEPS;
+  for (let step = 0; step < maxSteps; step++) {
     const ai = await bound.invoke(msgs);
     calls.push({ model: modelId, usage: ai.usage_metadata, cost: callCost(modelId, ai.usage_metadata) });
     msgs.push(ai);

@@ -195,6 +195,9 @@ export function makeTools({ catalog, now = new Date(), user = {} }) {
       if (unplaced.length) throw new ToolError(`${unplaced.map((s) => s.name).join(', ')} has no map location; leave it out.`);
       const order = nearestOrder(stops);
       if (!TRAIL_MODES.includes(mode)) mode = 'walking';
+      // A re-plan replaces the earlier trail rather than stacking a second one
+      const prev = actions.findIndex((a) => a.type === 'plan_trail');
+      if (prev !== -1) actions.splice(prev, 1);
       actions.push({ type: 'plan_trail', est_ids: order.map((s) => s.est_id), mode });
       const legs = order.slice(1).map((s, i) => Math.round(km(order[i], s) * 10) / 10);
       const total = Math.round(legs.reduce((a, b) => a + b, 0) * 10) / 10;
