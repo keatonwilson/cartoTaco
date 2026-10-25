@@ -1,15 +1,19 @@
 <script>
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
+  import { page } from '$app/stores';
   import { processedTacoData, isLoading } from '$lib/stores.js';
   import { supabaseBrowser } from '$lib/supabaseBrowser.js';
 
   const MIN_SPOTS = 2;
   const MAX_SPOTS = 6;
 
-  let title = '';
+  // ?ids=1,2,3&title=… prefill the vote (the concierge's start_summit links here)
+  const params = $page.url.searchParams;
+  let title = (params.get('title') || '').slice(0, 80);
   let searchText = '';
-  let selectedIds = new Set();
+  let selectedIds = new Set((params.get('ids') || '').split(',').map(Number)
+    .filter((id) => Number.isInteger(id) && id > 0).slice(0, MAX_SPOTS));
   let creating = false;
   let errorMsg = '';
 
@@ -20,6 +24,12 @@
     if (!searchText.trim()) return true;
     return s.name.toLowerCase().includes(searchText.toLowerCase());
   });
+
+  // Drop prefilled ids that can't be voted on, once the spots load
+  $: if ($processedTacoData.length) {
+    const ok = new Set($processedTacoData.filter(s => !s.isPending && !s.isClosed).map(s => s.est_id));
+    if ([...selectedIds].some(id => !ok.has(id))) selectedIds = new Set([...selectedIds].filter(id => ok.has(id)));
+  }
 
   $: selectedCount = selectedIds.size;
   $: canCreate = selectedCount >= MIN_SPOTS && selectedCount <= MAX_SPOTS && !creating;

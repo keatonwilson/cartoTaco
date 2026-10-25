@@ -19,13 +19,19 @@ import { PROMPT_VERSION, INTENTS, ROUTER_SYSTEM, AGENT_SYSTEM } from './prompt.j
 import { makeTools, FilterArgs, INTENT_TOOLS, toFilters } from './tools.js';
 
 const MAX_STEPS = 4;
-const READ_TOOLS = new Set(['search_spots', 'get_spot', 'city_stats']);
+// A trail may need search → plan → (warned: too long) → nearer search → plan → reply
+const TRAIL_STEPS = 6;
+// Text written alongside these is dropped: beside a lookup it's narration, and
+// beside a trail, compare or summit it predates the tool's answer (plan_trail
+// reorders the stops)
+const QUIET_TOOLS = new Set(['search_spots', 'get_spot', 'city_stats', 'recommend_for_me',
+  'plan_trail', 'compare_spots', 'start_summit']);
 
 // ponytail: regexes for the narration and markdown Haiku writes despite the
 // prompt ("Let me show you these on the map:", **bold**). A leading or trailing
 // sentence only; move to a structured reply if the patterns multiply.
 // A sentence citing a spot is the answer, however it starts, so it's kept.
-const NARRATION = String.raw`(?:now,? )?(?:let me|i'll|i will) (?:show|check|look|pull|get|open|filter|put|update)\b(?![^.!?:\n]*\[#\d+\])[^.!?:\n]*[.!?:]?`;
+const NARRATION = String.raw`(?:now,? )?(?:let me|i'll|i will) (?:show|check|look|pull|get|open|filter|put|update|build|plan|search)\b(?![^.!?:\n]*\[#\d+\])[^.!?:\n]*[.!?:]?`;
 const LEADING_NARRATION = new RegExp(String.raw`^\s*${NARRATION}\s*`, 'i');
 const TRAILING_NARRATION = new RegExp(String.raw`(^|[.!?\n])\s*${NARRATION}\s*$`, 'i');
 
@@ -55,23 +61,19 @@ const RULES_ONLY = {
 
 const CANNED = {
   chitchat: {
-    en: 'I can find taco spots, filter the map, and answer questions about Tucson spots. Try "spicy pork open now" or "is Tacos Apson open?"',
-    es: 'Puedo buscar taquerías, filtrar el mapa y responder preguntas sobre lugares en Tucson. Prueba "puerco picante abierto ahora".'
-  },
-  // Not in chat until phase 4 gives them tools
-  trail: {
-    en: 'I can’t build trails in chat yet. Tap the Trail button on the map to pick stops and get a route.',
-    es: 'Todavía no puedo armar rutas en el chat. Usa el botón Trail en el mapa para elegir paradas y ver la ruta.'
-  },
-  summit: {
-    en: 'I can’t start a group vote from chat yet. Use Taco Summit to pick a few spots and share the vote with friends.',
-    es: 'Todavía no puedo iniciar una votación desde el chat. Usa Taco Summit para elegir lugares y compartir la votación.'
+    en: 'I can find taco spots, filter the map, answer questions about Tucson spots, plan a trail, compare spots, set up a Taco Summit vote, and suggest spots from your favorites. Try "spicy pork open now" or "a walking birria trail".',
+    es: 'Puedo buscar taquerías, filtrar el mapa, responder preguntas, armar una ruta, comparar lugares, iniciar una votación Taco Summit y recomendar según tus favoritos. Prueba "puerco picante abierto ahora".'
   },
   off_topic: {
     en: 'I only know about tacos in Tucson, so I can’t help with that. Ask me about a spot or what you’re craving.',
     es: 'Solo sé de tacos en Tucson, así que no puedo ayudar con eso. Pregúntame por una taquería o un antojo.'
   }
 };
+
+/** Who's asking, so the agent knows whether favorites and personal picks can work. */
+const userNote = (user) => !user.favoriteIds
+  ? 'The user is not signed in: no favorites or personal picks.'
+  : `The user is signed in with ${user.favoriteIds.size} favorite spot${user.favoriteIds.size === 1 ? '' : 's'}.`;
 
 // Shown with a spot so nobody walks to a closed or unchecked one
 function spotNote(site) {
@@ -92,7 +94,7 @@ function isName(text, site) {
 /** T0 name match: the query is (nearly) a spot's name and nothing else. */
 function nameMatch(query, catalog) {
   if (normalize(query).length < 4) return null;
-  const hits = searchSpots(query, catalog, { limit: 2 }).filter((h) => isName(query, h.site));
+  const hits = searchSpots(query, catalog, { limit: 2, complete: true }).filter((h) => isName(query, h.site));
   return hits.length === 1 ? hits[0].site : null;
 }
 
@@ -118,7 +120,7 @@ const citedIds = (reply) => [...reply.matchAll(/\[#(\d+)\]/g)].map((m) => Number
  * One tool-calling loop (T2 or T3). Fails, with a reason, when it hits the
  * step cap, ends without a reply, or cites a spot no tool returned.
  */
-async function agentLoop(model, modelId, toolNames, ctx, messages, calls) {
+async function agentLoop(model, modelId, toolNames, ctx, messages, calls, maxSteps = MAX_STEPS) {
   const { tools, actions } = makeTools(ctx);
   const scoped = tools.filter((t) => toolNames.includes(t.name));
   const byName = Object.fromEntries(scoped.map((t) => [t.name, t]));
@@ -141,12 +143,12 @@ async function agentLoop(model, modelId, toolNames, ctx, messages, calls) {
   // which is narration ("Let me check their salsas…")
   const said = [];
 
-  for (let step = 0; step < MAX_STEPS; step++) {
+  for (let step = 0; step < maxSteps; step++) {
     const ai = await bound.invoke(msgs);
     calls.push({ model: modelId, usage: ai.usage_metadata, cost: callCost(modelId, ai.usage_metadata) });
     msgs.push(ai);
     const words = cleanReply(text(ai));
-    if (words && !ai.tool_calls?.some((c) => READ_TOOLS.has(c.name))) said.push(words);
+    if (words && !ai.tool_calls?.some((c) => QUIET_TOOLS.has(c.name))) said.push(words);
 
     if (!ai.tool_calls?.length) {
       const reply = said.join('\n\n');
@@ -258,7 +260,7 @@ async function concierge({
   if (simple && route.intent === 'find_spot' && route.spot_name) {
     // Only a hit on the name: "take me to Taco Bell" shouldn't open a spot
     // whose description happens to mention tacos
-    const hit = searchSpots(route.spot_name, catalog, { limit: 3 }).find((h) => isName(route.spot_name, h.site));
+    const hit = searchSpots(route.spot_name, catalog, { limit: 3, complete: true }).find((h) => isName(route.spot_name, h.site));
     if (hit) {
       const { fns, actions } = makeTools(ctx);
       fns.show_spot({ est_id: hit.site.est_id });
@@ -295,12 +297,18 @@ async function concierge({
     // T2: cheap agent with only the routed intent's tools
     const toolNames = (route && INTENT_TOOLS[route.intent]) || INTENT_TOOLS.default;
     const messages = [
-      new SystemMessage({ content: [{ type: 'text', text: AGENT_SYSTEM, cache_control: { type: 'ephemeral' } }] }),
+      new SystemMessage({ content: [
+        { type: 'text', text: AGENT_SYSTEM, cache_control: { type: 'ephemeral' } },
+        // After the cache breakpoint, so it doesn't split the cache per user
+        { type: 'text', text: userNote(user) }
+      ] }),
       ...turns,
       new HumanMessage(query),
       ...seedSearch(route, toolNames)
     ];
-    const t2 = await agentLoop(llm.agent ?? chatModel(models.agent), models.agent, toolNames, ctx, messages, calls);
+    // Only trail requests get the longer loop (room to re-plan a long trail)
+    const steps = route?.intent === 'trail' ? TRAIL_STEPS : MAX_STEPS;
+    const t2 = await agentLoop(llm.agent ?? chatModel(models.agent), models.agent, toolNames, ctx, messages, calls, steps);
     const why = (reason) => [note, reason].filter(Boolean).join(';') || null;
     if (t2.ok) return done('t2', t2.reply, t2.actions, route, why());
     if (!allowEscalation) {
@@ -310,7 +318,7 @@ async function concierge({
     // T3: escalate, fresh (with the same seeded search), to the stronger model with every tool
     const t3 = await agentLoop(
       llm.escalation ?? chatModel(models.escalation, { maxTokens: 4096 }),
-      models.escalation, INTENT_TOOLS.default, ctx, messages, calls
+      models.escalation, INTENT_TOOLS.default, ctx, messages, calls, steps
     );
     if (t3.ok) return done('t3', t3.reply, t3.actions, route, why(t2.reason));
     return done('t3', 'Sorry, I couldn’t work that out. Try asking another way, or use the search box.', [], route, why(`${t2.reason};${t3.reason}`));

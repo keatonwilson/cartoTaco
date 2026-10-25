@@ -20,6 +20,7 @@ import { Client } from 'langsmith';
 import { evaluate } from 'langsmith/evaluation';
 import { z } from 'zod';
 import { processSites } from '../src/lib/siteModel.js';
+import { recommendFor } from '../src/lib/recommend.js';
 import { runConcierge } from '../src/lib/server/agent/concierge.js';
 import { makeTools } from '../src/lib/server/agent/tools.js';
 import { DEFAULT_MODELS, chatModel, callCost } from '../src/lib/server/agent/models.js';
@@ -76,7 +77,7 @@ function check(ex, r) {
     must_any_ids: e.must_any_ids ? e.must_any_ids.some((id) => mentioned.has(id)) : null,
     must_not_ids: e.must_not_ids ? !e.must_not_ids.some((id) => mentioned.has(id)) : null,
     no_fabricated: cited.every((id) => known.has(id)),
-    no_narration: !/\b(let me|I'?ll|I will) (show|check|look|pull|get|open|filter|put|update)\b|\*\*/i.test(r.reply),
+    no_narration: !/\b(let me|I'?ll|I will) (show|check|look|pull|get|open|filter|put|update|build|plan|search)\b|\*\*/i.test(r.reply),
     reply: e.reply_matches ? new RegExp(e.reply_matches, 'i').test(r.reply) : null
   };
 }
@@ -87,22 +88,34 @@ const Verdict = z.object({
   reason: z.string()
 });
 
-/** Haiku judges the reply against the rubric, with the cited spots' data as evidence. */
+/**
+ * Sonnet judges the reply against the rubric, with the cited spots' data as
+ * evidence. (A Haiku judge failed replies over the salsa count despite being
+ * told not to, enough to sink the bar on its own.)
+ */
 async function judge(ex, r, now) {
   const { fns } = makeTools({ catalog, now });
   const ids = new Set([...r.reply.matchAll(/\[#(\d+)\]/g)].map((m) => Number(m[1])));
   for (const a of r.actions) if (a.est_id) ids.add(a.est_id);
   const evidence = {
     city: fns.city_stats(),
-    spots: [...ids].filter((id) => known.has(id)).map((id) => fns.get_spot({ est_id: id }))
+    spots: [...ids].filter((id) => known.has(id)).map((id) => fns.get_spot({ est_id: id })),
+    // recommend_for_me works from these
+    user_favorites: USERS[ex.user ?? 'anon'].favoriteIds
+      ? [...USERS[ex.user].favoriteIds].map((id) => fns.get_spot({ est_id: id }).name)
+      : 'not signed in',
+    taste_picks: USERS[ex.user ?? 'anon'].favoriteIds
+      ? recommendFor(catalog, USERS[ex.user].favoriteIds).map((s) => `${s.name}: ${s.similarity}% like their favorites`)
+      : null
   };
-  const model = chatModel(DEFAULT_MODELS.router, { maxTokens: 400 })
+  const model = chatModel(DEFAULT_MODELS.escalation, { maxTokens: 1024 })
     .withStructuredOutput(Verdict, { name: 'verdict', method: 'jsonSchema', includeRaw: true });
   const { raw, parsed } = await model.invoke([
-    ['system', 'You grade replies from a taco-spot assistant for Tucson. Judge only what the reply says. In the evidence, `salsas` is the recorded salsa count and `salsa_lineup` lists only the named ones, so the two can differ (a known data gap). A reply using either number is grounded; never fail a reply over the salsa count, and judge the rest of it on its own. The evidence holds only the spots the reply cites; a total like "14 spots serve al pastor" comes from a search not shown here, so don\'t fail a reply over a count of matches. A pending spot may have some details (address, hours, a description) and still be unverified; saying details may be missing is correct for it.'],
+    ['system', 'You grade replies from a taco-spot assistant for Tucson. Judge only what the reply says. In the evidence, `salsas` is the recorded salsa count and `salsa_lineup` lists only the named ones, so the two can differ (a known data gap). A reply using either number is grounded; never fail a reply over the salsa count, and judge the rest of it on its own. The evidence holds only the spots the reply cites; a total like "14 spots serve al pastor" comes from a search not shown here, so don\'t fail a reply over a count of matches, nor over distances in km or a trail\'s stop order (also from tools not shown). A pending spot may have some details (address, hours, a description) and still be unverified; saying details may be missing is correct for it. Set grounded to false only for a claim the evidence contradicts or has nothing behind; loose but fair wording ("milder", "traditional", "great salsas") is not a failure.'],
     ['user', `User asked: ${ex.query}\n\nReply: ${r.reply}\n\nActions taken: ${JSON.stringify(r.actions)}\n\nEvidence (the app's data):\n${JSON.stringify(evidence)}\n\nRubric: ${ex.rubric}`]
   ]);
-  return { ...parsed, cost: callCost(DEFAULT_MODELS.router, raw.usage_metadata) };
+  const cost = callCost(DEFAULT_MODELS.escalation, raw.usage_metadata);
+  return parsed ? { ...parsed, cost } : { grounded: false, follows_rubric: false, reason: 'judge returned no verdict', cost };
 }
 
 /** Score one result and print a line for it. */

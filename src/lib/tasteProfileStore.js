@@ -5,9 +5,9 @@ import { derived } from 'svelte/store';
 import { favoriteIds } from './favoritesStore';
 import { processedTacoData, summaryStats } from './stores';
 import { favoriteSalsas } from './salsaFavoritesStore';
-import { AXES, salsaAffinity, flavourVector } from './salsa';
+import { AXES, flavourVector } from './salsa';
+import { buildFeatureVector, centroid, knnRecommend } from './recommend';
 
-const K = 5; // number of k-NN recommendations
 
 // ─── Data-driven thresholds ───────────────────────────────────────────────────
 
@@ -168,70 +168,6 @@ const ARCHETYPES = [
 		score: () => 15 // guaranteed floor so something always wins
 	}
 ];
-
-// ─── k-NN helpers ─────────────────────────────────────────────────────────────
-
-function buildFeatureVector(site, maxSalsa) {
-	const items = site.topFiveProteinItems || [];
-	const values = site.topFiveProteinValues || [];
-	const total = values.reduce((a, b) => a + b, 0) || 1;
-	const pmap = {};
-	for (let i = 0; i < items.length; i++) {
-		const key = items[i]?.toLowerCase();
-		if (key) pmap[key] = (values[i] || 0) / total;
-	}
-	return [
-		pmap.chicken || 0,
-		pmap.beef    || 0,
-		pmap.pork    || 0,
-		pmap.fish    || 0,
-		pmap.veg     || 0,
-		(site.heatOverall || 0) / 10,
-		maxSalsa > 0 ? (site.salsaCount || 0) / maxSalsa : 0
-	];
-}
-
-function euclideanDistance(a, b) {
-	let sum = 0;
-	for (let i = 0; i < a.length; i++) { const d = a[i] - b[i]; sum += d * d; }
-	return Math.sqrt(sum);
-}
-
-function centroid(vectors) {
-	if (vectors.length === 0) return [];
-	const dims = vectors[0].length;
-	const result = new Array(dims).fill(0);
-	for (const v of vectors) for (let i = 0; i < dims; i++) result[i] += v[i];
-	return result.map(x => x / vectors.length);
-}
-
-// Each favourited salsa a spot actually serves pulls it this much closer (up to two)
-const SERVES_FAVOURITE_PULL = 0.85;
-
-/**
- * Nearest spots to the user's taste. With favourite salsas, the 7 spot
- * dimensions are joined by how close the spot's salsas come to the user's
- * salsa taste (see salsaAffinity), and serving a favourite outright pulls a
- * spot closer still. Without any, this is the original 7-dimension k-NN.
- */
-function knnRecommend(targetVector, candidates, maxSalsa, favouriteSalsas) {
-	const withSalsas = favouriteSalsas.length > 0;
-	const MAX_DIST = Math.sqrt(withSalsas ? 7 + AXES.length : 7);
-	return candidates
-		.map(site => {
-			const fv = buildFeatureVector(site, maxSalsa);
-			let dist = euclideanDistance(targetVector, fv);
-			const affinity = salsaAffinity(site.salsaStyles, favouriteSalsas);
-			if (affinity) {
-				dist = Math.hypot(dist, affinity.distance) * SERVES_FAVOURITE_PULL ** Math.min(affinity.matched.length, 2);
-			}
-			const similarity = Math.round(Math.max(0, (1 - dist / MAX_DIST)) * 100);
-			return { site, dist, similarity, matchedSalsas: affinity?.matched ?? [] };
-		})
-		.sort((a, b) => a.dist - b.dist)
-		.slice(0, K)
-		.map(({ site, similarity, matchedSalsas }) => ({ ...site, similarity, matchedSalsas }));
-}
 
 // ─── Main derived store ───────────────────────────────────────────────────────
 

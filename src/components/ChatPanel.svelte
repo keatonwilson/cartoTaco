@@ -26,7 +26,7 @@
   import { isMobile } from '$lib/deviceDetection';
   import { listen, speechSupported, describeVoiceError } from '$lib/voice';
 
-  const EXAMPLES = ['Spicy pork open now', 'What salsas does Karamelo King have?', 'Where can I get birria from a truck?'];
+  const EXAMPLES = ['Spicy pork open now', 'Where can I get birria from a truck?', 'A walking trail near Tacos Apson', 'Pick a spot for me'];
 
   let input = '';
   let inputEl;
@@ -170,7 +170,7 @@
       <div class="messages" bind:this={scroller} aria-live="polite">
         {#if !$chatMessages.length}
           <div class="empty">
-            <p>Ask about spots, salsas, hours or what to eat. I can filter the map and open cards for you.</p>
+            <p>Ask about spots, salsas, hours or what to eat. I can filter the map, open cards, plan a trail, compare spots or set up a Taco Summit.</p>
             <div class="examples">
               {#each EXAMPLES as example}
                 <button on:click={() => submit(example)}>{example}</button>

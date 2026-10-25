@@ -323,6 +323,15 @@ export function isOpenNow(hours, now = new Date()) {
   return getOpenStatus(hours, now).isOpen;
 }
 
+/** Every salsa a spot serves, by name ("Salsa Macha", a house salsa's name). */
+export function salsaNames(site) {
+  return [
+    ...(site.salsaStyles || []).flatMap(s => [s.name, s.house_name]),
+    ...(site.salsaVarieties || []).map(v => `Salsa ${v.name}`),
+    ...(site.otherSalsas || []).map(o => o.name)
+  ].filter(Boolean);
+}
+
 /**
  * Does a spot pass the filters? The predicate behind filteredTacoData, also
  * used by search tools that filter without the stores.
@@ -379,7 +388,8 @@ export function matchesFilters(site, cfg, favIds = new Set(), now = new Date()) 
       site.specialties?.some(s =>
         s.name?.toLowerCase().includes(searchLower) ||
         s.description?.toLowerCase().includes(searchLower)
-      );
+      ) ||
+      salsaNames(site).some(n => n.toLowerCase().includes(searchLower));
     if (!matched) return false;
   }
 

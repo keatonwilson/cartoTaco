@@ -173,17 +173,82 @@ describe('tools', () => {
 describe('search_spots sorting', () => {
   it('lists the hottest spots first without a query', () => {
     const { fns } = makeTools({ catalog, now });
-    const heats = fns.search_spots({ sort_by: 'heat', limit: 3 }).spots.map((s) => s.heat);
+    const r = fns.search_spots({ sort_by: 'heat', limit: 3 });
+    expect(r).not.toHaveProperty('total');
+    expect(fns.search_spots({ sort_by: 'heat', types: ['Truck'] })).toHaveProperty('total');
+    expect(fns.search_spots({ query: 'birria', near_est_id: 4 })).not.toHaveProperty('total');
+    const heats = r.spots.map((s) => s.heat);
     expect(heats[0]).toBe(8);
     expect(heats).toEqual([...heats].sort((a, b) => b - a));
   });
 });
 
-describe('canned replies', () => {
-  it('answers trail requests without an agent', async () => {
-    const r = await run('plan a bike crawl', { router: fakeRouter({ intent: 'trail' }) });
-    expect(r).toMatchObject({ tier: 't1', actions: [] });
-    expect(r.reply).toMatch(/Trail button/);
+describe('phase 4 tools', () => {
+  const fan = { favoriteIds: new Set([4, 8, 38]) };
+
+  it('a trail request runs the agent with plan_trail', async () => {
+    const r = await run('plan a bike crawl', {
+      router: fakeRouter({ intent: 'trail', needs_agent: true }),
+      agent: fakeModel(
+        { calls: [call('plan_trail', { est_ids: [4, 8, 2], mode: 'cycling' })] },
+        { text: 'Tacos Apson [#4], then El Chivo de Oro [#2], then Karamelo King [#8].' }
+      )
+    });
+    expect(r.tier).toBe('t2');
+    expect(r.actions).toEqual([{ type: 'plan_trail', est_ids: [4, 2, 8], mode: 'cycling' }]);
+  });
+
+  it('has room to re-plan a trail plan_trail warned was long', async () => {
+    const r = await run('a birria trail I can walk', {
+      router: fakeRouter({ intent: 'trail', needs_agent: true }),
+      agent: fakeModel(
+        { calls: [call('search_spots', { query: 'birria' })] },
+        { calls: [call('plan_trail', { est_ids: [4, 8, 2, 14] })] },
+        { calls: [call('search_spots', { query: 'birria', near_est_id: 4 })] },
+        { calls: [call('plan_trail', { est_ids: [4, 10] })] },
+        { text: 'Tacos Apson [#4], then Carnitas La Yoca [#10].' }
+      )
+    });
+    expect(r).toMatchObject({ tier: 't2', escalation_reason: null });
+    expect(r.actions).toEqual([{ type: 'plan_trail', est_ids: [4, 10], mode: 'walking' }]);
+  });
+
+  it('plan_trail orders stops nearest-first and refuses closed spots', () => {
+    const { fns } = makeTools({ catalog, now });
+    const { stops, straight_line_km } = fns.plan_trail({ est_ids: [4, 8, 2, 14] });
+    expect(stops.map((s) => s.est_id)).toEqual([4, 2, 8, 14]);
+    expect(straight_line_km).toBeGreaterThan(0);
+    expect(fns.plan_trail({ est_ids: [4, 8, 2, 14] }).warning).toMatch(/long for walking/);
+    expect(fns.plan_trail({ est_ids: [4, 10] }).warning).toBeUndefined();
+    expect(() => fns.plan_trail({ est_ids: [4, 23] })).toThrow(/permanently closed/);
+    expect(() => fns.plan_trail({ est_ids: [4, 4] })).toThrow(/2 to 8/);
+  });
+
+  it('search_spots near a spot sorts by distance', () => {
+    const { fns } = makeTools({ catalog, now });
+    const { spots } = fns.search_spots({ near_est_id: 4, limit: 4 });
+    expect(spots.map((s) => s.est_id)).not.toContain(4);
+    const kms = spots.map((s) => s.km_away);
+    expect(kms).toEqual([...kms].sort((a, b) => a - b));
+  });
+
+  it('compare_spots and start_summit record their actions within limits', () => {
+    const { fns, actions } = makeTools({ catalog, now });
+    expect(fns.compare_spots({ est_ids: [4, 8] }).spots).toHaveLength(2);
+    expect(() => fns.compare_spots({ est_ids: [4, 8, 2, 14] })).toThrow(/2 to 3/);
+    fns.start_summit({ est_ids: [4, 8, 2], title: '  Friday tacos ' });
+    expect(actions).toEqual([
+      { type: 'compare', est_ids: [4, 8] },
+      { type: 'start_summit', est_ids: [4, 8, 2], title: 'Friday tacos' }
+    ]);
+  });
+
+  it('recommend_for_me needs a signed-in user with favorites', () => {
+    expect(() => makeTools({ catalog, now }).fns.recommend_for_me({})).toThrow(/not signed in/);
+    expect(() => makeTools({ catalog, now, user: { favoriteIds: new Set() } }).fns.recommend_for_me({})).toThrow(/no favorite/);
+    const { picks } = makeTools({ catalog, now, user: fan }).fns.recommend_for_me({ limit: 3 });
+    expect(picks).toHaveLength(3);
+    expect(picks.some((p) => fan.favoriteIds.has(p.est_id) || p.closed || p.pending)).toBe(false);
   });
 });
 
@@ -215,6 +280,7 @@ describe('agent replies', () => {
   it('keeps a narration-shaped sentence that carries the answer', () => {
     expect(cleanReply('Let me show you Karamelo King [#8], with nine salsas.')).toBe('Let me show you Karamelo King [#8], with nine salsas.');
     expect(cleanReply('Six spots. Let me show you these on the map:')).toBe('Six spots.');
+    expect(cleanReply('Sure! Let me search for spots in that area.')).toBe('Sure!');
   });
 
   it('apply_filters narrows the map to a dish, protein styles included', () => {
