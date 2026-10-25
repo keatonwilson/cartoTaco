@@ -91,10 +91,11 @@ function allowedTypos(token) {
   return 0;
 }
 
-function matchWord(token, word) {
+function matchWord(token, word, typing = false) {
   if (word === token) return EXACT;
-  // One letter is a whole word or nothing: "U of A" matched every "unique"
-  if (token.length > 1 && word.startsWith(token)) return PREFIX;
+  // A finished one-letter word is a whole word or nothing ("U of A" matched
+  // every "unique"); the last word may still be being typed ("k" → Karamelo)
+  if ((token.length > 1 || typing) && word.startsWith(token)) return PREFIX;
   if (token.length >= 3 && word.includes(token)) return SUBSTRING;
   const typos = allowedTypos(token);
   if (typos > 0 && editDistance(token, word, typos) <= typos) return FUZZY;
@@ -158,18 +159,19 @@ function cachedFields(site) {
  *
  * @returns {{ score: number, matchedOn: { field: string, label: string } } | null}
  */
-function scoreSite(site, tokens, phrase) {
+function scoreSite(site, tokens, phrase, complete = false) {
   const fields = cachedFields(site);
   let score = 0;
   let best = null;
 
-  for (const token of tokens) {
+  for (const [i, token] of tokens.entries()) {
+    const typing = !complete && i === tokens.length - 1;
     let tokenBest = 0;
     let tokenField = null;
     for (const f of fields) {
       const weight = FIELD_WEIGHTS[f.field];
       for (const word of f.words) {
-        const q = matchWord(token, word);
+        const q = matchWord(token, word, typing);
         if (q > 0 && q * weight > tokenBest) {
           tokenBest = q * weight;
           tokenField = f;
@@ -199,10 +201,11 @@ function scoreSite(site, tokens, phrase) {
  *
  * @param {string} query
  * @param {Array} sites - processSite() spots
- * @param {{ limit?: number }} [options]
+ * @param {{ limit?: number, complete?: boolean }} [options] - `complete`: the query
+ *   is finished (the concierge), so no word is still being typed
  * @returns {Array<{ site: object, score: number, matchedOn: { field: string, label: string } }>}
  */
-export function searchSpots(query, sites, { limit = 8 } = {}) {
+export function searchSpots(query, sites, { limit = 8, complete = false } = {}) {
   const tokens = tokenize(query);
   if (tokens.length === 0 || !sites?.length) return [];
   const phrase = normalize(query);
@@ -210,7 +213,7 @@ export function searchSpots(query, sites, { limit = 8 } = {}) {
   const results = [];
   for (const site of sites) {
     if (!hasValidCoordinates(site)) continue;
-    const hit = scoreSite(site, tokens, phrase);
+    const hit = scoreSite(site, tokens, phrase, complete);
     if (hit) results.push({ site, ...hit });
   }
 

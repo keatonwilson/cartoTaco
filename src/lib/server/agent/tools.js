@@ -132,7 +132,7 @@ export function makeTools({ catalog, now = new Date(), user = {} }) {
         pool = pool.filter((s) => s !== from && hasValidCoordinates(s)).sort((a, b) => km(from, a) - km(from, b));
       }
       let hits = query
-        ? searchSpots(query, pool, { limit: pool.length }).map((h) => ({ site: h.site, matched: h.matchedOn.label }))
+        ? searchSpots(query, pool, { limit: pool.length, complete: true }).map((h) => ({ site: h.site, matched: h.matchedOn.label }))
         : pool.map((site) => ({ site }));
       // searchSpots ranks by match; "near" puts distance back in charge
       if (from && query) hits.sort((a, b) => km(from, a.site) - km(from, b.site));

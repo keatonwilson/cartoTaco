@@ -323,15 +323,6 @@ export function isOpenNow(hours, now = new Date()) {
   return getOpenStatus(hours, now).isOpen;
 }
 
-/**
- * Does a spot pass the filters? The predicate behind filteredTacoData, also
- * used by search tools that filter without the stores.
- *
- * @param {object} site - a processSite() spot
- * @param {object} cfg - filterConfig shape
- * @param {Set} [favIds] - favorited est_ids, for showFavoritesOnly
- * @param {Date} [now] - for openNow
- */
 /** Every salsa a spot serves, by name ("Salsa Macha", a house salsa's name). */
 export function salsaNames(site) {
   return [
@@ -341,6 +332,15 @@ export function salsaNames(site) {
   ].filter(Boolean);
 }
 
+/**
+ * Does a spot pass the filters? The predicate behind filteredTacoData, also
+ * used by search tools that filter without the stores.
+ *
+ * @param {object} site - a processSite() spot
+ * @param {object} cfg - filterConfig shape
+ * @param {Set} [favIds] - favorited est_ids, for showFavoritesOnly
+ * @param {Date} [now] - for openNow
+ */
 export function matchesFilters(site, cfg, favIds = new Set(), now = new Date()) {
   // A spot we can't place on the map can't be a map result either — it
   // would render no marker and fly the camera to [0, 0] if picked.

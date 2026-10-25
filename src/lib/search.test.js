@@ -90,8 +90,14 @@ describe('searchSpots golden queries', () => {
 });
 
 describe('searchSpots', () => {
-  it('matches a one-letter word only as a whole word', () => {
-    expect(names(searchSpots('U of A', sites))).toEqual([]);
+  it('matches a finished one-letter word only as a whole word', () => {
+    expect(names(searchSpots('U of A', sites, { complete: true }))).toEqual([]);
+    expect(names(searchSpots('u', sites, { complete: true }))).toEqual([]);
+  });
+
+  it('still prefix-matches a one-letter word being typed', () => {
+    expect(names(searchSpots('m', sites))).toContain('Mariscos Chihuahua');
+    expect(names(searchSpots('tacos e', sites))).toContain('Tacos El Chicote');
   });
 
   it('requires every word to match somewhere', () => {
