@@ -332,6 +332,15 @@ export function isOpenNow(hours, now = new Date()) {
  * @param {Set} [favIds] - favorited est_ids, for showFavoritesOnly
  * @param {Date} [now] - for openNow
  */
+/** Every salsa a spot serves, by name ("Salsa Macha", a house salsa's name). */
+export function salsaNames(site) {
+  return [
+    ...(site.salsaStyles || []).flatMap(s => [s.name, s.house_name]),
+    ...(site.salsaVarieties || []).map(v => `Salsa ${v.name}`),
+    ...(site.otherSalsas || []).map(o => o.name)
+  ].filter(Boolean);
+}
+
 export function matchesFilters(site, cfg, favIds = new Set(), now = new Date()) {
   // A spot we can't place on the map can't be a map result either — it
   // would render no marker and fly the camera to [0, 0] if picked.
@@ -379,7 +388,8 @@ export function matchesFilters(site, cfg, favIds = new Set(), now = new Date()) 
       site.specialties?.some(s =>
         s.name?.toLowerCase().includes(searchLower) ||
         s.description?.toLowerCase().includes(searchLower)
-      );
+      ) ||
+      salsaNames(site).some(n => n.toLowerCase().includes(searchLower));
     if (!matched) return false;
   }
 

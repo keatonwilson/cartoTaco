@@ -7,6 +7,9 @@ import { applyIntentFilters } from './intentRules';
 import { defaultFilterConfig } from './siteModel';
 import { isMobile } from './deviceDetection';
 import { chatOpen } from './uiStore';
+import { enterTrailMode, clearStops, addStop, trailTransportMode } from './trailStore';
+import { clearComparison, addToComparison } from './comparisonStore';
+import { goto } from '$app/navigation';
 
 export const chatPending = writable(false);
 /** @type {import('svelte/store').Writable<Array<{ id: number, role: 'user'|'assistant', content: string,
@@ -28,6 +31,12 @@ const update = (id, patch) =>
  */
 export function applyActions(actions) {
   let undo = null;
+  const sites = (ids) => {
+    const byId = new Map(get(processedTacoData).map((s) => [s.est_id, s]));
+    return ids.map((id) => byId.get(id)).filter(Boolean);
+  };
+  // A tray or sheet and the chat sheet can't share a phone screen
+  const makeRoom = () => { if (get(isMobile)) chatOpen.set(false); };
   for (const action of actions) {
     if (action.type === 'apply_filters') {
       // Replace from the defaults, exactly as the server counted ("23 spots")
@@ -37,8 +46,22 @@ export function applyActions(actions) {
       const site = get(processedTacoData).find((s) => s.est_id === action.est_id);
       if (!site) continue;
       flyToTarget.set(site);
-      // The spot's bottom sheet and the chat sheet can't share a phone screen
-      if (get(isMobile)) chatOpen.set(false);
+      makeRoom();
+    } else if (action.type === 'plan_trail') {
+      // Stops arrive in visit order; the Trail tray fetches the route
+      clearStops();
+      trailTransportMode.set(action.mode);
+      enterTrailMode();
+      sites(action.est_ids).forEach(addStop);
+      makeRoom();
+    } else if (action.type === 'compare') {
+      clearComparison();
+      sites(action.est_ids).forEach(addToComparison);
+      makeRoom();
+    } else if (action.type === 'start_summit') {
+      const q = new URLSearchParams({ ids: action.est_ids.join(',') });
+      if (action.title) q.set('title', action.title);
+      goto(`/vote/new?${q}`);
     }
   }
   return undo;

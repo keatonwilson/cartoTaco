@@ -179,11 +179,55 @@ describe('search_spots sorting', () => {
   });
 });
 
-describe('canned replies', () => {
-  it('answers trail requests without an agent', async () => {
-    const r = await run('plan a bike crawl', { router: fakeRouter({ intent: 'trail' }) });
-    expect(r).toMatchObject({ tier: 't1', actions: [] });
-    expect(r.reply).toMatch(/Trail button/);
+describe('phase 4 tools', () => {
+  const fan = { favoriteIds: new Set([4, 8, 38]) };
+
+  it('a trail request runs the agent with plan_trail', async () => {
+    const r = await run('plan a bike crawl', {
+      router: fakeRouter({ intent: 'trail', needs_agent: true }),
+      agent: fakeModel(
+        { calls: [call('plan_trail', { est_ids: [4, 8, 2], mode: 'cycling' })] },
+        { text: 'Tacos Apson [#4], then El Chivo de Oro [#2], then Karamelo King [#8].' }
+      )
+    });
+    expect(r.tier).toBe('t2');
+    expect(r.actions).toEqual([{ type: 'plan_trail', est_ids: [4, 2, 8], mode: 'cycling' }]);
+  });
+
+  it('plan_trail orders stops nearest-first and refuses closed spots', () => {
+    const { fns } = makeTools({ catalog, now });
+    const { stops, straight_line_km } = fns.plan_trail({ est_ids: [4, 8, 2, 14] });
+    expect(stops.map((s) => s.est_id)).toEqual([4, 2, 8, 14]);
+    expect(straight_line_km).toBeGreaterThan(0);
+    expect(() => fns.plan_trail({ est_ids: [4, 23] })).toThrow(/permanently closed/);
+    expect(() => fns.plan_trail({ est_ids: [4, 4] })).toThrow(/2 to 8/);
+  });
+
+  it('search_spots near a spot sorts by distance', () => {
+    const { fns } = makeTools({ catalog, now });
+    const { spots } = fns.search_spots({ near_est_id: 4, limit: 4 });
+    expect(spots.map((s) => s.est_id)).not.toContain(4);
+    const kms = spots.map((s) => s.km_away);
+    expect(kms).toEqual([...kms].sort((a, b) => a - b));
+  });
+
+  it('compare_spots and start_summit record their actions within limits', () => {
+    const { fns, actions } = makeTools({ catalog, now });
+    expect(fns.compare_spots({ est_ids: [4, 8] }).spots).toHaveLength(2);
+    expect(() => fns.compare_spots({ est_ids: [4, 8, 2, 14] })).toThrow(/2 to 3/);
+    fns.start_summit({ est_ids: [4, 8, 2], title: '  Friday tacos ' });
+    expect(actions).toEqual([
+      { type: 'compare', est_ids: [4, 8] },
+      { type: 'start_summit', est_ids: [4, 8, 2], title: 'Friday tacos' }
+    ]);
+  });
+
+  it('recommend_for_me needs a signed-in user with favorites', () => {
+    expect(() => makeTools({ catalog, now }).fns.recommend_for_me({})).toThrow(/not signed in/);
+    expect(() => makeTools({ catalog, now, user: { favoriteIds: new Set() } }).fns.recommend_for_me({})).toThrow(/no favorite/);
+    const { picks } = makeTools({ catalog, now, user: fan }).fns.recommend_for_me({ limit: 3 });
+    expect(picks).toHaveLength(3);
+    expect(picks.some((p) => fan.favoriteIds.has(p.est_id) || p.closed || p.pending)).toBe(false);
   });
 });
 

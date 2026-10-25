@@ -19,13 +19,17 @@ import { PROMPT_VERSION, INTENTS, ROUTER_SYSTEM, AGENT_SYSTEM } from './prompt.j
 import { makeTools, FilterArgs, INTENT_TOOLS, toFilters } from './tools.js';
 
 const MAX_STEPS = 4;
-const READ_TOOLS = new Set(['search_spots', 'get_spot', 'city_stats']);
+// Text written alongside these is dropped: beside a lookup it's narration, and
+// beside a trail, compare or summit it predates the tool's answer (plan_trail
+// reorders the stops)
+const QUIET_TOOLS = new Set(['search_spots', 'get_spot', 'city_stats', 'recommend_for_me',
+  'plan_trail', 'compare_spots', 'start_summit']);
 
 // ponytail: regexes for the narration and markdown Haiku writes despite the
 // prompt ("Let me show you these on the map:", **bold**). A leading or trailing
 // sentence only; move to a structured reply if the patterns multiply.
 // A sentence citing a spot is the answer, however it starts, so it's kept.
-const NARRATION = String.raw`(?:now,? )?(?:let me|i'll|i will) (?:show|check|look|pull|get|open|filter|put|update)\b(?![^.!?:\n]*\[#\d+\])[^.!?:\n]*[.!?:]?`;
+const NARRATION = String.raw`(?:now,? )?(?:let me|i'll|i will) (?:show|check|look|pull|get|open|filter|put|update|build|plan)\b(?![^.!?:\n]*\[#\d+\])[^.!?:\n]*[.!?:]?`;
 const LEADING_NARRATION = new RegExp(String.raw`^\s*${NARRATION}\s*`, 'i');
 const TRAILING_NARRATION = new RegExp(String.raw`(^|[.!?\n])\s*${NARRATION}\s*$`, 'i');
 
@@ -55,23 +59,19 @@ const RULES_ONLY = {
 
 const CANNED = {
   chitchat: {
-    en: 'I can find taco spots, filter the map, and answer questions about Tucson spots. Try "spicy pork open now" or "is Tacos Apson open?"',
-    es: 'Puedo buscar taquerías, filtrar el mapa y responder preguntas sobre lugares en Tucson. Prueba "puerco picante abierto ahora".'
-  },
-  // Not in chat until phase 4 gives them tools
-  trail: {
-    en: 'I can’t build trails in chat yet. Tap the Trail button on the map to pick stops and get a route.',
-    es: 'Todavía no puedo armar rutas en el chat. Usa el botón Trail en el mapa para elegir paradas y ver la ruta.'
-  },
-  summit: {
-    en: 'I can’t start a group vote from chat yet. Use Taco Summit to pick a few spots and share the vote with friends.',
-    es: 'Todavía no puedo iniciar una votación desde el chat. Usa Taco Summit para elegir lugares y compartir la votación.'
+    en: 'I can find taco spots, filter the map, answer questions about Tucson spots, plan a trail, compare spots, set up a Taco Summit vote, and suggest spots from your favorites. Try "spicy pork open now" or "a walking birria trail".',
+    es: 'Puedo buscar taquerías, filtrar el mapa, responder preguntas, armar una ruta, comparar lugares, iniciar una votación Taco Summit y recomendar según tus favoritos. Prueba "puerco picante abierto ahora".'
   },
   off_topic: {
     en: 'I only know about tacos in Tucson, so I can’t help with that. Ask me about a spot or what you’re craving.',
     es: 'Solo sé de tacos en Tucson, así que no puedo ayudar con eso. Pregúntame por una taquería o un antojo.'
   }
 };
+
+/** Who's asking, so the agent knows whether favorites and personal picks can work. */
+const userNote = (user) => !user.favoriteIds
+  ? 'The user is not signed in: no favorites or personal picks.'
+  : `The user is signed in with ${user.favoriteIds.size} favorite spot${user.favoriteIds.size === 1 ? '' : 's'}.`;
 
 // Shown with a spot so nobody walks to a closed or unchecked one
 function spotNote(site) {
@@ -146,7 +146,7 @@ async function agentLoop(model, modelId, toolNames, ctx, messages, calls) {
     calls.push({ model: modelId, usage: ai.usage_metadata, cost: callCost(modelId, ai.usage_metadata) });
     msgs.push(ai);
     const words = cleanReply(text(ai));
-    if (words && !ai.tool_calls?.some((c) => READ_TOOLS.has(c.name))) said.push(words);
+    if (words && !ai.tool_calls?.some((c) => QUIET_TOOLS.has(c.name))) said.push(words);
 
     if (!ai.tool_calls?.length) {
       const reply = said.join('\n\n');
@@ -295,7 +295,11 @@ async function concierge({
     // T2: cheap agent with only the routed intent's tools
     const toolNames = (route && INTENT_TOOLS[route.intent]) || INTENT_TOOLS.default;
     const messages = [
-      new SystemMessage({ content: [{ type: 'text', text: AGENT_SYSTEM, cache_control: { type: 'ephemeral' } }] }),
+      new SystemMessage({ content: [
+        { type: 'text', text: AGENT_SYSTEM, cache_control: { type: 'ephemeral' } },
+        // After the cache breakpoint, so it doesn't split the cache per user
+        { type: 'text', text: userNote(user) }
+      ] }),
       ...turns,
       new HumanMessage(query),
       ...seedSearch(route, toolNames)

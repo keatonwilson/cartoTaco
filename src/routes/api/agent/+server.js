@@ -45,12 +45,18 @@ export async function POST({ request, locals }) {
   const input = parseBody(await request.json().catch(() => null));
   if (!input) throw error(400, `Send a query of 1–${MAX_QUERY} characters`);
 
-  const [catalog, favorites, over] = await Promise.all([
+  // Both favorites tables are own-rows-only under RLS
+  const [catalog, favorites, salsas, over] = await Promise.all([
     getCatalog(supabase),
     supabase.from('user_favorites').select('est_id'),
+    supabase.from('user_favorite_salsas').select('salsa_styles(slug, name, heat_min, heat_max, smoke, acid, sweet, chunk, rich)'),
     overBudget(supabase)
   ]);
-  const user = { favoriteIds: new Set((favorites.data ?? []).map((f) => f.est_id)) };
+  const user = {
+    favoriteIds: new Set((favorites.data ?? []).map((f) => f.est_id)),
+    // Feeds recommend_for_me, as on the profile page's taste profile
+    favouriteSalsas: (salsas.data ?? []).map((r) => r.salsa_styles).filter(Boolean)
+  };
   // Shared with runConcierge, so calls made before a failure still count
   const calls = [];
   const args = { ...input, catalog, user, calls, rulesOnly: over ? 'budget' : false };

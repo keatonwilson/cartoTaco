@@ -11,6 +11,7 @@ function row(estId, name, {
   protein = { beef_yes: true },
   styles = {},
   specialties = [],
+  salsa = {},
   closed = false,
   lat = 32.2,
   lon = -110.9
@@ -25,7 +26,7 @@ function row(estId, name, {
     descriptions: { short_descrip: short, long_descrip: '', region },
     menu: { ...menu, specialty_items: specialties },
     hours: {},
-    salsa: { total_num: 3, heat_overall: 5 },
+    salsa: { total_num: 3, heat_overall: 5, ...salsa },
     protein: { ...protein, ...styles }
   };
 }
@@ -37,7 +38,8 @@ const sites = processSites([
   row(4, 'Mariscos Chihuahua', { protein: { fish_yes: true }, specialties: [{ name: 'Coctel de camarón' }] }),
   row(5, 'BK Carne Asada', { closed: true, menu: { taco_yes: true, dog_yes: true } }),
   row(6, 'Nowhere Tacos', { lat: null, lon: null }),
-  row(7, 'Birrieria Guadalajara', { specialties: [{ name: 'Birria quesataco' }] })
+  row(7, 'Birrieria Guadalajara', { specialties: [{ name: 'Birria quesataco' }] }),
+  row(8, 'Tacos El Chicote', { salsa: { verde_yes: true, macha_yes: true } })
 ]);
 
 const names = (results) => results.map((r) => r.site.name);
@@ -76,7 +78,9 @@ describe('searchSpots golden queries', () => {
     ['birria', 'Birrieria Guadalajara'],
     ['jalisco', 'Taqueria Pico de Gallo'],
     ['sonoran hot dog', 'El Güero Canelo'],
-    ['restaurant', 'El Güero Canelo']
+    ['restaurant', 'El Güero Canelo'],
+    ['salsa macha', 'Tacos El Chicote'],
+    ['salsa matcha', 'Tacos El Chicote']
   ];
 
   it.each(golden)('"%s" → %s', (query, expected) => {
@@ -86,6 +90,10 @@ describe('searchSpots golden queries', () => {
 });
 
 describe('searchSpots', () => {
+  it('matches a one-letter word only as a whole word', () => {
+    expect(names(searchSpots('U of A', sites))).toEqual([]);
+  });
+
   it('requires every word to match somewhere', () => {
     expect(names(searchSpots('apson birria', sites))).toEqual([]);
   });

@@ -16,7 +16,7 @@ function fakeSupabase({ usage = null, usageError = null } = {}) {
     rpc,
     from: (table) => table === 'ai_usage'
       ? { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: usage, error: usageError }) }) }) }
-      : { select: async () => ({ data: [{ est_id: 4 }] }) }
+      : { select: async () => ({ data: table === 'user_favorites' ? [{ est_id: 4 }] : [{ salsa_styles: { slug: 'macha' } }] }) }
   };
 }
 const post = (body, locals) =>
@@ -52,6 +52,7 @@ describe('POST /api/agent', () => {
     expect(args).not.toHaveProperty('system');
     expect(args).not.toHaveProperty('tools');
     expect([...args.user.favoriteIds]).toEqual([4]);
+    expect(args.user.favouriteSalsas).toEqual([{ slug: 'macha' }]);
     expect(args.rulesOnly).toBe(false);
     expect(args).not.toHaveProperty('system');
     expect(await res.json()).toEqual({ reply: 'ok', actions: [], tier: 't2', run_id: 'r1' });

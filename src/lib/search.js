@@ -3,13 +3,14 @@
 // everything we know about a spot. Pure and model-free, so it runs on every
 // keystroke in QuickSearch and backs the agent's search tool on the server.
 
-import { hasValidCoordinates } from './siteModel.js';
+import { hasValidCoordinates, salsaNames } from './siteModel.js';
 
 // How much a hit in each field counts toward a spot's score
 const FIELD_WEIGHTS = {
   name: 10,
   specialty: 5,
   style: 4,
+  salsa: 4,
   protein: 4,
   menu: 3,
   region: 2,
@@ -92,7 +93,8 @@ function allowedTypos(token) {
 
 function matchWord(token, word) {
   if (word === token) return EXACT;
-  if (word.startsWith(token)) return PREFIX;
+  // One letter is a whole word or nothing: "U of A" matched every "unique"
+  if (token.length > 1 && word.startsWith(token)) return PREFIX;
   if (token.length >= 3 && word.includes(token)) return SUBSTRING;
   const typos = allowedTypos(token);
   if (typos > 0 && editDistance(token, word, typos) <= typos) return FUZZY;
@@ -120,6 +122,7 @@ function searchFields(site) {
   for (const styles of Object.values(site.proteinStyles || {})) {
     for (const style of styles) add('style', style);
   }
+  for (const salsa of salsaNames(site)) add('salsa', salsa);
   for (const [key, value] of Object.entries(raw.protein || {})) {
     if (!key.endsWith('_yes') || value !== true) continue;
     const protein = key.slice(0, -4);
@@ -175,7 +178,7 @@ function scoreSite(site, tokens, phrase) {
     }
     if (tokenBest === 0) return null;
     score += tokenBest;
-    if (!best || tokenBest > best.score) best = { score: tokenBest, field: tokenField };
+    if (!best || tokenBest >= best.score) best = { score: tokenBest, field: tokenField };
   }
 
   // Whole-phrase bonuses, so "el guero canelo" beats spots matching each word apart

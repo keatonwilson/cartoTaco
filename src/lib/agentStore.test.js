@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { get } from 'svelte/store';
 
 vi.mock('./supabaseBrowser', () => ({ supabaseBrowser: null }));
+vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('./favoritesStore', () => {
   const { writable } = require('svelte/store');
   return { favoriteIds: writable(new Set()) };
@@ -11,7 +12,10 @@ vi.mock('./favoritesStore', () => {
 import { tacoStore, filterConfig, flyToTarget } from './stores.js';
 import { defaultFilterConfig } from './siteModel.js';
 import { applyIntentFilters } from './intentRules.js';
-import { chatMessages, chatPending, ask, undoMessage, clearChat } from './agentStore.js';
+import { chatMessages, chatPending, ask, undoMessage, clearChat, applyActions } from './agentStore.js';
+import { trailModeActive, trailStops, trailTransportMode } from './trailStore.js';
+import { comparisonSites, comparisonActive } from './comparisonStore.js';
+import { goto } from '$app/navigation';
 
 const rows = JSON.parse(readFileSync(new URL('../../evals/fixtures/sites_snapshot.json', import.meta.url)));
 
@@ -79,5 +83,19 @@ describe('concierge chat store', () => {
     globalThis.fetch = vi.fn(async () => ({ ok: false, status: 401 }));
     await ask('hi');
     expect(get(chatMessages).at(-1)).toMatchObject({ error: true, content: 'Sign in to use the concierge.' });
+  });
+
+  it('builds a trail, fills the compare tray, and opens a prefilled summit', () => {
+    applyActions([
+      { type: 'plan_trail', est_ids: [4, 2, 999, 8], mode: 'cycling' },
+      { type: 'compare', est_ids: [4, 8] },
+      { type: 'start_summit', est_ids: [4, 8, 2], title: 'Friday tacos' }
+    ]);
+    expect(get(trailModeActive)).toBe(true);
+    expect(get(trailTransportMode)).toBe('cycling');
+    expect(get(trailStops).map((s) => s.est_id)).toEqual([4, 2, 8]);
+    expect(get(comparisonSites).map((s) => s.est_id)).toEqual([4, 8]);
+    expect(get(comparisonActive)).toBe(true);
+    expect(goto).toHaveBeenCalledWith('/vote/new?ids=4%2C8%2C2&title=Friday+tacos');
   });
 });
