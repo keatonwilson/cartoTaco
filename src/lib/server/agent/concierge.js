@@ -92,7 +92,7 @@ function isName(text, site) {
 /** T0 name match: the query is (nearly) a spot's name and nothing else. */
 function nameMatch(query, catalog) {
   if (normalize(query).length < 4) return null;
-  const hits = searchSpots(query, catalog, { limit: 2 }).filter((h) => isName(query, h.site));
+  const hits = searchSpots(query, catalog, { limit: 2, complete: true }).filter((h) => isName(query, h.site));
   return hits.length === 1 ? hits[0].site : null;
 }
 
@@ -258,7 +258,7 @@ async function concierge({
   if (simple && route.intent === 'find_spot' && route.spot_name) {
     // Only a hit on the name: "take me to Taco Bell" shouldn't open a spot
     // whose description happens to mention tacos
-    const hit = searchSpots(route.spot_name, catalog, { limit: 3 }).find((h) => isName(route.spot_name, h.site));
+    const hit = searchSpots(route.spot_name, catalog, { limit: 3, complete: true }).find((h) => isName(route.spot_name, h.site));
     if (hit) {
       const { fns, actions } = makeTools(ctx);
       fns.show_spot({ est_id: hit.site.est_id });
