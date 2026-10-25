@@ -173,7 +173,9 @@ describe('tools', () => {
 describe('search_spots sorting', () => {
   it('lists the hottest spots first without a query', () => {
     const { fns } = makeTools({ catalog, now });
-    const heats = fns.search_spots({ sort_by: 'heat', limit: 3 }).spots.map((s) => s.heat);
+    const r = fns.search_spots({ sort_by: 'heat', limit: 3 });
+    expect(r).not.toHaveProperty('total');
+    const heats = r.spots.map((s) => s.heat);
     expect(heats[0]).toBe(8);
     expect(heats).toEqual([...heats].sort((a, b) => b - a));
   });
@@ -276,6 +278,7 @@ describe('agent replies', () => {
   it('keeps a narration-shaped sentence that carries the answer', () => {
     expect(cleanReply('Let me show you Karamelo King [#8], with nine salsas.')).toBe('Let me show you Karamelo King [#8], with nine salsas.');
     expect(cleanReply('Six spots. Let me show you these on the map:')).toBe('Six spots.');
+    expect(cleanReply('Sure! Let me search for spots in that area.')).toBe('Sure!');
   });
 
   it('apply_filters narrows the map to a dish, protein styles included', () => {

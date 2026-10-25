@@ -31,7 +31,7 @@ const QUIET_TOOLS = new Set(['search_spots', 'get_spot', 'city_stats', 'recommen
 // prompt ("Let me show you these on the map:", **bold**). A leading or trailing
 // sentence only; move to a structured reply if the patterns multiply.
 // A sentence citing a spot is the answer, however it starts, so it's kept.
-const NARRATION = String.raw`(?:now,? )?(?:let me|i'll|i will) (?:show|check|look|pull|get|open|filter|put|update|build|plan)\b(?![^.!?:\n]*\[#\d+\])[^.!?:\n]*[.!?:]?`;
+const NARRATION = String.raw`(?:now,? )?(?:let me|i'll|i will) (?:show|check|look|pull|get|open|filter|put|update|build|plan|search)\b(?![^.!?:\n]*\[#\d+\])[^.!?:\n]*[.!?:]?`;
 const LEADING_NARRATION = new RegExp(String.raw`^\s*${NARRATION}\s*`, 'i');
 const TRAILING_NARRATION = new RegExp(String.raw`(^|[.!?\n])\s*${NARRATION}\s*$`, 'i');
 

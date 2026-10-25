@@ -143,8 +143,10 @@ export function makeTools({ catalog, now = new Date(), user = {} }) {
         ...(matched ? { matched } : {}),
         ...(from ? { km_away: Math.round(km(from, site) * 10) / 10 } : {})
       }));
-      // Sorted by distance every spot "matches"; a total read as "N spots in that area"
-      return from ? { spots } : { total: hits.length, spots };
+      // A ranked listing (by distance, heat or salsas, no query) "matches" every
+      // spot; its total read as "35 spots in that area" / "36 spots with salsa variety"
+      const listing = !query && (from || sort_by);
+      return listing ? { spots } : { total: hits.length, spots };
     },
 
     get_spot({ est_id }) {
@@ -287,10 +289,11 @@ export const INTENT_TOOLS = {
   // Only apply_filters, which also returns the spots: given search_spots too,
   // Haiku answered from a search and left the map unfiltered
   filter: ['apply_filters'],
-  spot_fact: ['search_spots', 'get_spot', 'show_spot'],
+  // city_stats for "how hot is X compared to the city?"
+  spot_fact: ['search_spots', 'get_spot', 'city_stats', 'show_spot'],
   recommend: ['search_spots', 'get_spot', 'recommend_for_me', 'show_spot', 'apply_filters'],
   trail: ['search_spots', 'recommend_for_me', 'plan_trail'],
-  compare: ['search_spots', 'compare_spots'],
+  compare: ['search_spots', 'compare_spots', 'city_stats'],
   summit: ['search_spots', 'recommend_for_me', 'start_summit'],
   default: ['search_spots', 'get_spot', 'city_stats', 'show_spot', 'apply_filters',
     'recommend_for_me', 'plan_trail', 'compare_spots', 'start_summit']
