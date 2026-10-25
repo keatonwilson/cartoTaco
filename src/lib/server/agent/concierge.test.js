@@ -175,6 +175,8 @@ describe('search_spots sorting', () => {
     const { fns } = makeTools({ catalog, now });
     const r = fns.search_spots({ sort_by: 'heat', limit: 3 });
     expect(r).not.toHaveProperty('total');
+    expect(fns.search_spots({ sort_by: 'heat', types: ['Truck'] })).toHaveProperty('total');
+    expect(fns.search_spots({ query: 'birria', near_est_id: 4 })).not.toHaveProperty('total');
     const heats = r.spots.map((s) => s.heat);
     expect(heats[0]).toBe(8);
     expect(heats).toEqual([...heats].sort((a, b) => b - a));

@@ -143,9 +143,10 @@ export function makeTools({ catalog, now = new Date(), user = {} }) {
         ...(matched ? { matched } : {}),
         ...(from ? { km_away: Math.round(km(from, site) * 10) / 10 } : {})
       }));
-      // A ranked listing (by distance, heat or salsas, no query) "matches" every
-      // spot; its total read as "35 spots in that area" / "36 spots with salsa variety"
-      const listing = !query && (from || sort_by);
+      // No total where it would mislead: a near search's total is city-wide (read as
+      // "35 spots in that area"), and an unfiltered sorted listing matches every
+      // spot (read as "36 spots with salsa variety")
+      const listing = from || (!query && sort_by && !Object.keys(toFilters(args)).length);
       return listing ? { spots } : { total: hits.length, spots };
     },
 
