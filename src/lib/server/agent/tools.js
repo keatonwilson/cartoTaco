@@ -10,6 +10,7 @@ import { applyIntentFilters } from '../../intentRules.js';
 import { matchesFilters, defaultFilterConfig, computeSummaryStats, hasValidCoordinates } from '../../siteModel.js';
 import { recommendFor } from '../../recommend.js';
 import { getOpenStatus, todayHours } from '../../hours.js';
+import { findEntry, describeEntry, credits } from '../../kb.js';
 
 const PROTEINS = ['chicken', 'beef', 'pork', 'fish', 'veg'];
 const TYPES = ['Brick and Mortar', 'Stand', 'Truck'];
@@ -17,6 +18,8 @@ const TYPES = ['Brick and Mortar', 'Stand', 'Truck'];
 const TORTILLAS = { both: 'corn and flour', corn: 'corn', flour: 'flour' };
 const TRAIL_MODES = ['walking', 'cycling', 'driving'];
 const MAX_TRAIL = 8;
+// Where a dish's name counts as "this spot serves it" (not a street or a region)
+const SERVES_FIELDS = new Set(['specialty', 'style', 'salsa', 'menu', 'name', 'description']);
 // Straight-line km past which a trail gets a warning to re-plan
 const LONG_TRAIL_KM = { walking: 5, cycling: 20 };
 const MAX_COMPARE = 3;
@@ -92,10 +95,11 @@ function brief(site, now) {
 /**
  * Build the tool set for one request.
  *
- * @param {{ catalog: object[], now?: Date, user?: { favoriteIds?: Set<number> } }} ctx
+ * @param {{ catalog: object[], now?: Date, user?: { favoriteIds?: Set<number> },
+ *   kb?: { version: string|null, cards: object[] } }} ctx - kb: cocina's published cards
  * @returns {{ fns: object, tools: object[], actions: object[] }}
  */
-export function makeTools({ catalog, now = new Date(), user = {} }) {
+export function makeTools({ catalog, now = new Date(), user = {}, kb = { version: null, cards: [] } }) {
   const byId = new Map(catalog.map((s) => [s.est_id, s]));
   const favIds = user.favoriteIds || new Set();
   const actions = [];
@@ -122,7 +126,33 @@ export function makeTools({ catalog, now = new Date(), user = {} }) {
     return sites;
   };
 
+  /** Spots whose specialties, protein styles, salsas or menu name any of these. */
+  const servedAt = (names) => {
+    const found = new Map();
+    for (const n of names) {
+      for (const h of searchSpots(n, catalog, { limit: catalog.length, complete: true })) {
+        if (SERVES_FIELDS.has(h.matchedOn.field) && !found.has(h.site.est_id)) found.set(h.site.est_id, h.site);
+      }
+    }
+    return [...found.values()];
+  };
+
   const fns = {
+    describe_dish({ name }) {
+      const card = findEntry(kb.cards, name);
+      const spots = servedAt(card ? [card.name, ...card.aliases] : [name]);
+      if (!card) {
+        return {
+          found: false,
+          note: `CartoTaco has no entry for "${name}" yet. Say so, and don't describe it from general knowledge.`,
+          ...(spots.length ? { spots_mentioning_it: spots.slice(0, 4).map((s) => brief(s, now)) } : {})
+        };
+      }
+      // The app shows these under the reply: credit comes from the data, not the model's wording
+      actions.push({ type: 'sources', name: card.name, items: credits(card) });
+      return { found: true, ...describeEntry(card), served_at: spots.slice(0, 6).map((s) => brief(s, now)), total_served_at: spots.length };
+    },
+
     search_spots({ query, limit = 6, sort_by, near_est_id, ...args }) {
       if (args.favorites_only && !user.favoriteIds) throw new ToolError('The user is not signed in, so there are no favorites.');
       let pool = matching(toFilters(args));
@@ -257,6 +287,8 @@ export function makeTools({ catalog, now = new Date(), user = {} }) {
     tool(async (args) => JSON.stringify(fns[name](args)), { name, description, schema });
 
   const tools = [
+    wrap('describe_dish', 'What a dish, salsa, chile, protein style or other food is, from CartoTaco\'s sourced knowledgebase, and which spots serve it. Use it for "what is X", "qué es X", "what\'s in X".',
+      z.object({ name: z.string().describe('The food, e.g. "chavindeca" or "salsa macha"') })),
     wrap('search_spots', 'Find spots by free text (name, dish, protein style, neighbourhood) and/or filters. Returns est_id, name, type, heat (0-10), salsa count and open status.',
       FilterArgs.extend({
         query: z.string().optional().describe('Free text, e.g. "birria" or "Apson"'),
@@ -290,12 +322,14 @@ export const INTENT_TOOLS = {
   // Only apply_filters, which also returns the spots: given search_spots too,
   // Haiku answered from a search and left the map unfiltered
   filter: ['apply_filters'],
+  // What a food is, then where to get it
+  dish_info: ['describe_dish', 'search_spots', 'show_spot', 'apply_filters'],
   // city_stats for "how hot is X compared to the city?"
   spot_fact: ['search_spots', 'get_spot', 'city_stats', 'show_spot'],
   recommend: ['search_spots', 'get_spot', 'recommend_for_me', 'show_spot', 'apply_filters'],
   trail: ['search_spots', 'recommend_for_me', 'plan_trail'],
   compare: ['search_spots', 'compare_spots', 'city_stats'],
   summit: ['search_spots', 'recommend_for_me', 'start_summit'],
-  default: ['search_spots', 'get_spot', 'city_stats', 'show_spot', 'apply_filters',
+  default: ['search_spots', 'get_spot', 'city_stats', 'show_spot', 'apply_filters', 'describe_dish',
     'recommend_for_me', 'plan_trail', 'compare_spots', 'start_summit']
 };

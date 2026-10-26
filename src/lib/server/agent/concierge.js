@@ -51,6 +51,7 @@ export const RouterSchema = z.object({
   needs_agent: z.boolean(),
   language: z.enum(['en', 'es']),
   spot_name: z.string().optional().describe('The spot named, if any'),
+  dish_name: z.string().optional().describe('The food asked about, if any'),
   filters: FilterArgs.optional()
 });
 
@@ -61,7 +62,7 @@ const RULES_ONLY = {
 
 const CANNED = {
   chitchat: {
-    en: 'I can find taco spots, filter the map, answer questions about Tucson spots, plan a trail, compare spots, set up a Taco Summit vote, and suggest spots from your favorites. Try "spicy pork open now" or "a walking birria trail".',
+    en: 'I can find taco spots, filter the map, answer questions about Tucson spots, explain what a dish is, plan a trail, compare spots, set up a Taco Summit vote, and suggest spots from your favorites. Try "spicy pork open now" or "a walking birria trail".',
     es: 'Puedo buscar taquerías, filtrar el mapa, responder preguntas, armar una ruta, comparar lugares, iniciar una votación Taco Summit y recomendar según tus favoritos. Prueba "puerco picante abierto ahora".'
   },
   off_topic: {
@@ -113,6 +114,10 @@ const text = (ai) =>
   typeof ai.content === 'string'
     ? ai.content
     : ai.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
+
+// A food looked up twice (seeded, then again by the model) is credited once
+const mergeActions = (...lists) => lists.flat().filter((a, i, all) =>
+  a.type !== 'sources' || all.findIndex((b) => b.type === 'sources' && b.name === a.name) === i);
 
 const citedIds = (reply) => [...reply.matchAll(/\[#(\d+)\]/g)].map((m) => Number(m[1]));
 
@@ -182,6 +187,7 @@ async function agentLoop(model, modelId, toolNames, ctx, messages, calls, maxSte
  * @param {object[]} p.catalog - processSites() spots
  * @param {Date} [p.now]
  * @param {{ favoriteIds?: Set<number> }} [p.user]
+ * @param {{ version: string|null, cards: object[] }} [p.kb] - cocina's published cards (describe_dish)
  * @param {typeof DEFAULT_MODELS} [p.models]
  * @param {object} [p.llm] - chat model instances by tier, for tests
  * @param {boolean} [p.allowEscalation]
@@ -191,10 +197,10 @@ async function agentLoop(model, modelId, toolNames, ctx, messages, calls, maxSte
  *   escalation_reason: string|null, calls: object[], cost: number, run_id?: string }>}
  */
 async function concierge({
-  query, history = [], catalog, now = new Date(), user = {},
+  query, history = [], catalog, now = new Date(), user = {}, kb = { version: null, cards: [] },
   models = DEFAULT_MODELS, llm = {}, allowEscalation = true, rulesOnly = false, calls = []
 }) {
-  const ctx = { catalog, now, user };
+  const ctx = { catalog, now, user, kb };
   const done = (tier, reply, actions = [], route = null, escalation_reason = null) => {
     const run = getCurrentRunTree(true);
     const result = {
@@ -205,7 +211,8 @@ async function concierge({
     if (run?.extra) {
       run.extra.metadata = {
         ...run.extra.metadata, tier, prompt_version: PROMPT_VERSION,
-        route_intent: route?.intent, router_confidence: route?.confidence, escalation_reason
+        route_intent: route?.intent, router_confidence: route?.confidence, escalation_reason,
+        kb_version: kb.version
       };
     }
     return result;
@@ -277,25 +284,35 @@ async function concierge({
   return agentTiers(route, null);
 
   /**
-   * When the router named a spot, run its search up front and hand the agent
-   * the result as an earlier tool call. Haiku otherwise sometimes answered
-   * "not on CartoTaco" without searching, and it saves a step.
+   * When the router named a food or a spot, run its lookup up front and hand
+   * the agent the result as an earlier tool call. Haiku otherwise sometimes
+   * answered "not on CartoTaco" without searching (or a dish from memory), and
+   * it saves a step. Returns the lookup's actions too (describe_dish's sources).
    */
-  function seedSearch(route, toolNames) {
-    if (!route?.spot_name || !toolNames.includes('search_spots')) return [];
-    const args = { query: route.spot_name, limit: 3 };
-    const out = makeTools(ctx).fns.search_spots(args);
-    const id = 'seeded_search';
-    return [
-      new AIMessage({ content: '', tool_calls: [{ id, name: 'search_spots', args, type: 'tool_call' }] }),
-      new ToolMessage({ content: JSON.stringify(out), tool_call_id: id })
-    ];
+  function seed(route, toolNames) {
+    const [name, args] = route?.intent === 'dish_info' && route.dish_name && toolNames.includes('describe_dish')
+      ? ['describe_dish', { name: route.dish_name }]
+      : route?.spot_name && toolNames.includes('search_spots')
+        ? ['search_spots', { query: route.spot_name, limit: 3 }]
+        : [];
+    if (!name) return { messages: [], actions: [] };
+    const { fns, actions } = makeTools(ctx);
+    const out = fns[name](args);
+    const id = `seeded_${name}`;
+    return {
+      messages: [
+        new AIMessage({ content: '', tool_calls: [{ id, name, args, type: 'tool_call' }] }),
+        new ToolMessage({ content: JSON.stringify(out), tool_call_id: id })
+      ],
+      actions
+    };
   }
 
   /** T2, then T3 if T2's answer fails validation. `note` explains a skipped router. */
   async function agentTiers(route, note) {
     // T2: cheap agent with only the routed intent's tools
     const toolNames = (route && INTENT_TOOLS[route.intent]) || INTENT_TOOLS.default;
+    const seeded = seed(route, toolNames);
     const messages = [
       new SystemMessage({ content: [
         { type: 'text', text: AGENT_SYSTEM, cache_control: { type: 'ephemeral' } },
@@ -304,13 +321,13 @@ async function concierge({
       ] }),
       ...turns,
       new HumanMessage(query),
-      ...seedSearch(route, toolNames)
+      ...seeded.messages
     ];
     // Only trail requests get the longer loop (room to re-plan a long trail)
     const steps = route?.intent === 'trail' ? TRAIL_STEPS : MAX_STEPS;
     const t2 = await agentLoop(llm.agent ?? chatModel(models.agent), models.agent, toolNames, ctx, messages, calls, steps);
     const why = (reason) => [note, reason].filter(Boolean).join(';') || null;
-    if (t2.ok) return done('t2', t2.reply, t2.actions, route, why());
+    if (t2.ok) return done('t2', t2.reply, mergeActions(seeded.actions, t2.actions), route, why());
     if (!allowEscalation) {
       return done('t2', 'Sorry, I couldn’t work that out. Try asking another way, or use the search box.', [], route, why(t2.reason));
     }
@@ -320,7 +337,7 @@ async function concierge({
       llm.escalation ?? chatModel(models.escalation, { maxTokens: 4096 }),
       models.escalation, INTENT_TOOLS.default, ctx, messages, calls, steps
     );
-    if (t3.ok) return done('t3', t3.reply, t3.actions, route, why(t2.reason));
+    if (t3.ok) return done('t3', t3.reply, mergeActions(seeded.actions, t3.actions), route, why(t2.reason));
     return done('t3', 'Sorry, I couldn’t work that out. Try asking another way, or use the search box.', [], route, why(`${t2.reason};${t3.reason}`));
   }
 }
