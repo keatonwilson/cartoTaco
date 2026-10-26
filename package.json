@@ -13,7 +13,7 @@
 		"eval": "node --env-file-if-exists=.env evals/run.js",
 		"agent:chat": "node --env-file-if-exists=.env evals/chat.js",
 		"eval:fixture": "node --env-file-if-exists=.env evals/refresh-fixture.js",
-		"eval:kb-fixture": "sh -c 'case \"$0\" in kb-*) ;; *) echo \"usage: pnpm eval:kb-fixture kb-YYYY.MM.DD\" >&2; exit 1;; esac; rm -f evals/fixtures/kb-*.jsonl && gh release download \"$0\" -R keatonwilson/cocina -p \"*.jsonl\" -D evals/fixtures'",
+		"eval:kb-fixture": "sh -c 'case \"$0\" in kb-*) ;; *) echo \"usage: pnpm eval:kb-fixture kb-YYYY.MM.DD\" >&2; exit 1;; esac; t=$(mktemp -d) && gh release download \"$0\" -R keatonwilson/cocina -p \"*.jsonl\" -D \"$t\" && rm -f evals/fixtures/kb-*.jsonl && mv \"$t\"/*.jsonl evals/fixtures/'",
 		"eval:sync": "node --env-file-if-exists=.env evals/sync-dataset.js"
 	},
 	"devDependencies": {

@@ -111,7 +111,7 @@ function matchWord(token, word, typing = false) {
  * The searchable text of a spot, by field. Each entry keeps its original
  * label so results can say what matched ("Specialty: Birria taco").
  */
-function searchFields(site) {
+export function searchFields(site) {
   const raw = site.rawData || {};
   const fields = [];
   const add = (field, label, text = label) => {

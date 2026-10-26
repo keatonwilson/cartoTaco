@@ -375,6 +375,14 @@ describe('describe_dish (cocina knowledgebase)', () => {
     expect(makeTools({ catalog, now, kb }).fns.describe_dish({ name: 'Sincronizada Michoacana' }).found).toBe(true);
   });
 
+  it('counts a spot as serving a food only on its exact name, not a near miss', () => {
+    // One letter off "chavindeca": the typo-tolerant spot search would still find spots 10 and 16
+    const near = { ...kb.cards[0], name: 'Chavindeka', aliases: [] };
+    const r = makeTools({ catalog, now, kb: { version: 'kb-test', cards: [near] } }).fns.describe_dish({ name: 'chavindeka' });
+    expect(r.found).toBe(true);
+    expect(r.served_at).toEqual([]);
+  });
+
   it('links only http(s) source URLs', () => {
     const bad = { ...slang, url: 'javascript:alert(1)', authors: ['Someone'] };
     const card = { ...kb.cards[0], claims: [{ ...kb.cards[0].claims[1], sources: [bad] }] };

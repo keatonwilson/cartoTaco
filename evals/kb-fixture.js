@@ -7,6 +7,7 @@ import { parseSnapshot } from '../src/lib/kb.js';
 const dir = new URL('./fixtures/', import.meta.url);
 const file = readdirSync(dir).find((f) => /^kb-.+\.jsonl$/.test(f));
 
-export const kb = file
-  ? { version: file.replace(/\.jsonl$/, ''), cards: parseSnapshot(readFileSync(new URL(file, dir), 'utf8')) }
-  : { version: null, cards: [] };
+// No silent empty knowledgebase: the dish examples would fail with nothing saying why
+if (!file) throw new Error('No evals/fixtures/kb-*.jsonl: pin one with `pnpm eval:kb-fixture kb-YYYY.MM.DD`');
+
+export const kb = { version: file.replace(/\.jsonl$/, ''), cards: parseSnapshot(readFileSync(new URL(file, dir), 'utf8')) };

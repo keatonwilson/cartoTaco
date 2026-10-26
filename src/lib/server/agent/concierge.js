@@ -24,7 +24,7 @@ const TRAIL_STEPS = 6;
 // Text written alongside these is dropped: beside a lookup it's narration, and
 // beside a trail, compare or summit it predates the tool's answer (plan_trail
 // reorders the stops)
-const QUIET_TOOLS = new Set(['search_spots', 'get_spot', 'city_stats', 'recommend_for_me',
+const QUIET_TOOLS = new Set(['search_spots', 'get_spot', 'city_stats', 'recommend_for_me', 'describe_dish',
   'plan_trail', 'compare_spots', 'start_summit']);
 
 // ponytail: regexes for the narration and markdown Haiku writes despite the

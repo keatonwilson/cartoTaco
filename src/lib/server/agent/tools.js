@@ -5,7 +5,7 @@
 // action for the client to apply (applyActions in src/lib/agentStore.js).
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
-import { searchSpots } from '../../search.js';
+import { searchSpots, searchFields, normalize } from '../../search.js';
 import { applyIntentFilters } from '../../intentRules.js';
 import { matchesFilters, defaultFilterConfig, computeSummaryStats, hasValidCoordinates } from '../../siteModel.js';
 import { recommendFor } from '../../recommend.js';
@@ -18,8 +18,8 @@ const TYPES = ['Brick and Mortar', 'Stand', 'Truck'];
 const TORTILLAS = { both: 'corn and flour', corn: 'corn', flour: 'flour' };
 const TRAIL_MODES = ['walking', 'cycling', 'driving'];
 const MAX_TRAIL = 8;
-// Where a dish's name counts as "this spot serves it" (not a street or a region)
-const SERVES_FIELDS = new Set(['specialty', 'style', 'salsa', 'menu', 'name', 'description']);
+// Where a dish's name counts as "this spot serves it" (not its name, a street or a region)
+const SERVES_FIELDS = new Set(['specialty', 'style', 'salsa', 'menu', 'description']);
 // Straight-line km past which a trail gets a warning to re-plan
 const LONG_TRAIL_KM = { walking: 5, cycling: 20 };
 const MAX_COMPARE = 3;
@@ -126,15 +126,15 @@ export function makeTools({ catalog, now = new Date(), user = {}, kb = { version
     return sites;
   };
 
-  /** Spots whose specialties, protein styles, salsas or menu name any of these. */
+  /**
+   * Spots whose specialties, protein styles, salsas, menu or description name one of
+   * these as whole words (or their plural). Not fuzzy: "gringa" mustn't find "gringo".
+   */
   const servedAt = (names) => {
-    const found = new Map();
-    for (const n of names) {
-      for (const h of searchSpots(n, catalog, { limit: catalog.length, complete: true })) {
-        if (SERVES_FIELDS.has(h.matchedOn.field) && !found.has(h.site.est_id)) found.set(h.site.est_id, h.site);
-      }
-    }
-    return [...found.values()];
+    const phrases = [...new Set(names.map(normalize).filter(Boolean))];
+    const says = (text) => phrases.some((p) => [p, `${p}s`, `${p}es`].some((v) => ` ${text} `.includes(` ${v} `)));
+    return catalog.filter((s) => hasValidCoordinates(s) &&
+      searchFields(s).some((f) => SERVES_FIELDS.has(f.field) && says(f.words.join(' '))));
   };
 
   const fns = {

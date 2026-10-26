@@ -96,7 +96,9 @@ export async function ask(query) {
     if (asked !== generation) return;
     const undo = applyActions(actions);
     // describe_dish's credits, shown under the reply
-    const sources = actions.filter((a) => a.type === 'sources').flatMap((a) => a.items);
+    // Two foods in one reply can share a work: credit it once
+    const sources = [...new Map(actions.filter((a) => a.type === 'sources').flatMap((a) => a.items)
+      .map((s) => [s.url || `${s.by}|${s.title}`, s])).values()];
     chatMessages.update((all) => [...all, { id: nextId++, role: 'assistant', content: reply, tier, run_id, undo,
       ...(sources.length ? { sources } : {}) }]);
   } catch (err) {
