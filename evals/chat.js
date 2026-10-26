@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { createInterface } from 'node:readline/promises';
 import { processSites } from '../src/lib/siteModel.js';
 import { runConcierge } from '../src/lib/server/agent/concierge.js';
+import { kb } from './kb-fixture.js';
 
 const catalog = processSites(JSON.parse(readFileSync(new URL('./fixtures/sites_snapshot.json', import.meta.url))));
 const user = process.argv.includes('--fan') ? { favoriteIds: new Set([4, 8, 38]) } : {};
@@ -18,7 +19,7 @@ for (;;) {
   const query = (await rl.question('\n🌮 ')).trim();
   if (!query) continue;
   if (query === 'exit' || query === 'quit') break;
-  const r = await runConcierge({ query, history, catalog, user });
+  const r = await runConcierge({ query, history, catalog, kb, user });
   console.log(r.reply);
   const route = r.route ? ` ${r.route.intent} (${r.route.confidence})` : '';
   console.log(`  ↳ ${r.tier}${route}${r.escalation_reason ? ` escalated: ${r.escalation_reason}` : ''} · $${r.cost.toFixed(5)}`);
