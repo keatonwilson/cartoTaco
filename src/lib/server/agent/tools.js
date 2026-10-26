@@ -18,8 +18,9 @@ const TYPES = ['Brick and Mortar', 'Stand', 'Truck'];
 const TORTILLAS = { both: 'corn and flour', corn: 'corn', flour: 'flour' };
 const TRAIL_MODES = ['walking', 'cycling', 'driving'];
 const MAX_TRAIL = 8;
-// Where a dish's name counts as "this spot serves it" (not its name, a street or a region)
-const SERVES_FIELDS = new Set(['specialty', 'style', 'salsa', 'menu', 'description']);
+// Where a dish's name counts as "this spot serves it" (not its name, a street or a
+// region), strongest first: a specialty beats a passing mention in the description
+const SERVES_FIELDS = ['specialty', 'style', 'salsa', 'menu', 'description'];
 // Straight-line km past which a trail gets a warning to re-plan
 const LONG_TRAIL_KM = { walking: 5, cycling: 20 };
 const MAX_COMPARE = 3;
@@ -129,12 +130,19 @@ export function makeTools({ catalog, now = new Date(), user = {}, kb = { version
   /**
    * Spots whose specialties, protein styles, salsas, menu or description name one of
    * these as whole words (or their plural). Not fuzzy: "gringa" mustn't find "gringo".
+   * Ranked like search: closed spots last, then by the strongest field that matched.
    */
   const servedAt = (names) => {
     const phrases = [...new Set(names.map(normalize).filter(Boolean))];
     const says = (text) => phrases.some((p) => [p, `${p}s`, `${p}es`].some((v) => ` ${text} `.includes(` ${v} `)));
-    return catalog.filter((s) => hasValidCoordinates(s) &&
-      searchFields(s).some((f) => SERVES_FIELDS.has(f.field) && says(f.words.join(' '))));
+    const rank = (s) => Math.min(...searchFields(s)
+      .filter((f) => SERVES_FIELDS.includes(f.field) && says(f.words.join(' ')))
+      .map((f) => SERVES_FIELDS.indexOf(f.field)));               // Infinity: no match
+    return catalog.filter(hasValidCoordinates)
+      .map((site) => ({ site, r: rank(site) }))
+      .filter(({ r }) => r < Infinity)
+      .sort((a, b) => (a.site.isClosed ? 1 : 0) - (b.site.isClosed ? 1 : 0) || a.r - b.r)
+      .map(({ site }) => site);
   };
 
   const fns = {
