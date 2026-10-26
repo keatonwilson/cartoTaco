@@ -383,6 +383,20 @@ describe('describe_dish (cocina knowledgebase)', () => {
     expect(r.served_at).toEqual([]);
   });
 
+  it('lists open spots with the food as a specialty first, closed spots last', () => {
+    const base = catalog.find((s) => s.est_id === 10);
+    const spot = (est_id, extra) => ({ ...base, est_id, specialties: [], proteinStyles: {},
+      shortDescription: '', longDescription: '', isClosed: false, ...extra });
+    const spots = [
+      spot(901, { specialties: [{ name: 'Pescado zarandeado' }], isClosed: true }),
+      spot(902, { longDescription: 'Weekends bring zarandeado to the grill.' }),
+      spot(903, { specialties: [{ name: 'Zarandeado' }] })
+    ];
+    const card = { ...kb.cards[0], name: 'Zarandeado', aliases: [] };
+    const r = makeTools({ catalog: spots, now, kb: { version: 'kb-test', cards: [card] } }).fns.describe_dish({ name: 'zarandeado' });
+    expect(r.served_at.map((s) => s.est_id)).toEqual([903, 902, 901]);
+  });
+
   it('links only http(s) source URLs', () => {
     const bad = { ...slang, url: 'javascript:alert(1)', authors: ['Someone'] };
     const card = { ...kb.cards[0], claims: [{ ...kb.cards[0].claims[1], sources: [bad] }] };
