@@ -158,7 +158,7 @@ export function makeTools({ catalog, now = new Date(), user = {}, kb = { version
       }
       // The app shows these under the reply: credit comes from the data, not the model's wording
       actions.push({ type: 'sources', name: card.name, items: credits(card) });
-      return { found: true, ...describeEntry(card), served_at: spots.slice(0, 6).map((s) => brief(s, now)), total_served_at: spots.length };
+      return { found: true, ...describeEntry(card), served_at: spots.slice(0, 3).map((s) => brief(s, now)), total_served_at: spots.length };
     },
 
     search_spots({ query, limit = 6, sort_by, near_est_id, ...args }) {
