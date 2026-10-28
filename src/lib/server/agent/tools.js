@@ -76,16 +76,19 @@ export function toFilters(args = {}) {
   return filters;
 }
 
+// The UI's "Closes soon · 8 PM" reads to Haiku as "opens soon"; say it's open
+const status = (site, now) => getOpenStatus(site.rawData.hours, now).label.replace('Closes soon ·', 'Open now, closes soon at');
+
 /** The fields a model needs to talk about a spot, and no more. */
 function brief(site, now) {
   const row = { est_id: site.est_id, name: site.name, type: site.type };
   if (site.isClosed) return { ...row, closed: true };
-  if (site.isPending) return { ...row, pending: true, status: getOpenStatus(site.rawData.hours, now).label };
+  if (site.isPending) return { ...row, pending: true, status: status(site, now) };
   return {
     ...row,
     heat: site.heatOverall,
     salsas: site.salsaCount,
-    status: getOpenStatus(site.rawData.hours, now).label
+    status: status(site, now)
   };
 }
 
