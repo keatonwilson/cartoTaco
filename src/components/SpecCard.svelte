@@ -1,23 +1,26 @@
 <script>
   import { isMobile } from '$lib/deviceDetection';
   import { effectiveTheme } from '$lib/theme';
+  import Sources from './Sources.svelte';
 
   export let cardType;
   export let itemName;
   export let shortDescrip = '';
   export let longDescrip = '';
   export let imgUrl = null;
+  /** Credits for a cocina writeup; shown when the card is expanded */
+  export let sources = [];
 
   // Expandable state — only meaningful when there is a long description
   let isExpanded = false;
 
   function toggleExpand() {
-    if (longDescrip) {
+    if (hasLongDescrip) {
       isExpanded = !isExpanded;
     }
   }
 
-  $: hasLongDescrip = !!longDescrip;
+  $: hasLongDescrip = !!longDescrip || sources.length > 0;
 
   // Determine image based on card type if not explicitly provided
   $: cardImage = imgUrl || getImageByType(cardType, $effectiveTheme === 'dark');
@@ -74,6 +77,9 @@
       <p class="card-description">{shortDescrip}</p>
       {#if isExpanded && longDescrip}
         <p class="card-long-description">{longDescrip}</p>
+      {/if}
+      {#if isExpanded}
+        <Sources items={sources} />
       {/if}
       {#if hasLongDescrip}
         {#if isExpanded}
