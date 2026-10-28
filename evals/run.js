@@ -26,6 +26,7 @@ import { makeTools } from '../src/lib/server/agent/tools.js';
 import { DEFAULT_MODELS, chatModel, callCost } from '../src/lib/server/agent/models.js';
 import { PROMPT_VERSION } from '../src/lib/server/agent/prompt.js';
 import { DATASET, readGolden, syncDataset } from './sync-dataset.js';
+import { kb } from './kb-fixture.js';
 
 const CONFIGS = {
   'haiku': { models: DEFAULT_MODELS, allowEscalation: false },
@@ -77,6 +78,8 @@ function check(ex, r) {
     must_any_ids: e.must_any_ids ? e.must_any_ids.some((id) => mentioned.has(id)) : null,
     must_not_ids: e.must_not_ids ? !e.must_not_ids.some((id) => mentioned.has(id)) : null,
     no_fabricated: cited.every((id) => known.has(id)),
+    // describe_dish answers carry credit the app shows (a `sources` action)
+    sources: e.sources == null ? null : r.actions.some((a) => a.type === 'sources') === e.sources,
     no_narration: !/\b(let me|I'?ll|I will) (show|check|look|pull|get|open|filter|put|update|build|plan|search)\b|\*\*/i.test(r.reply),
     reply: e.reply_matches ? new RegExp(e.reply_matches, 'i').test(r.reply) : null
   };
@@ -94,7 +97,7 @@ const Verdict = z.object({
  * told not to, enough to sink the bar on its own.)
  */
 async function judge(ex, r, now) {
-  const { fns } = makeTools({ catalog, now });
+  const { fns } = makeTools({ catalog, now, kb });
   const ids = new Set([...r.reply.matchAll(/\[#(\d+)\]/g)].map((m) => Number(m[1])));
   for (const a of r.actions) if (a.est_id) ids.add(a.est_id);
   const evidence = {
@@ -106,12 +109,14 @@ async function judge(ex, r, now) {
       : 'not signed in',
     taste_picks: USERS[ex.user ?? 'anon'].favoriteIds
       ? recommendFor(catalog, USERS[ex.user].favoriteIds).map((s) => `${s.name}: ${s.similarity}% like their favorites`)
-      : null
+      : null,
+    // What the knowledgebase says about each food the reply credited
+    dishes: r.actions.filter((a) => a.type === 'sources').map((a) => fns.describe_dish({ name: a.name }))
   };
   const model = chatModel(DEFAULT_MODELS.escalation, { maxTokens: 1024 })
     .withStructuredOutput(Verdict, { name: 'verdict', method: 'jsonSchema', includeRaw: true });
   const { raw, parsed } = await model.invoke([
-    ['system', 'You grade replies from a taco-spot assistant for Tucson. Judge only what the reply says. In the evidence, `salsas` is the recorded salsa count and `salsa_lineup` lists only the named ones, so the two can differ (a known data gap). A reply using either number is grounded; never fail a reply over the salsa count, and judge the rest of it on its own. The evidence holds only the spots the reply cites; a total like "14 spots serve al pastor" comes from a search not shown here, so don\'t fail a reply over a count of matches, nor over distances in km or a trail\'s stop order (also from tools not shown). A pending spot may have some details (address, hours, a description) and still be unverified; saying details may be missing is correct for it. Set grounded to false only for a claim the evidence contradicts or has nothing behind; loose but fair wording ("milder", "traditional", "great salsas") is not a failure.'],
+    ['system', 'You grade replies from a taco-spot assistant for Tucson. Judge only what the reply says. In the evidence, `salsas` is the recorded salsa count and `salsa_lineup` lists only the named ones, so the two can differ (a known data gap). A reply using either number is grounded; never fail a reply over the salsa count, and judge the rest of it on its own. Facts about what a food is come from `dishes` (CartoTaco\'s sourced knowledgebase); a food described with no `dishes` entry behind it is ungrounded. The evidence holds only the spots the reply cites; a total like "14 spots serve al pastor" comes from a search not shown here, so don\'t fail a reply over a count of matches, nor over distances in km or a trail\'s stop order (also from tools not shown). A pending spot may have some details (address, hours, a description) and still be unverified; saying details may be missing is correct for it. Set grounded to false only for a claim the evidence contradicts or has nothing behind; loose but fair wording ("milder", "traditional", "great salsas") is not a failure.'],
     ['user', `User asked: ${ex.query}\n\nReply: ${r.reply}\n\nActions taken: ${JSON.stringify(r.actions)}\n\nEvidence (the app's data):\n${JSON.stringify(evidence)}\n\nRubric: ${ex.rubric}`]
   ]);
   const cost = callCost(DEFAULT_MODELS.escalation, raw.usage_metadata);
@@ -142,7 +147,7 @@ const errorRow = (ex, err) => {
 };
 
 const target = (config) => ({ query, history = [], user = 'anon', now }) =>
-  runConcierge({ query, history, catalog, now: new Date(now || DEFAULT_NOW), user: USERS[user], ...config });
+  runConcierge({ query, history, catalog, kb, now: new Date(now || DEFAULT_NOW), user: USERS[user], ...config });
 
 async function runLocal(config) {
   const rows = [];

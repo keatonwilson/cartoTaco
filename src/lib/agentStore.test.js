@@ -52,6 +52,16 @@ describe('concierge chat store', () => {
     expect(get(filterConfig)).toEqual(applyIntentFilters(defaultFilterConfig(), { proteins: { pork: true } }));
   });
 
+  it('keeps a dish answer\'s credits on the message and changes nothing on the map', async () => {
+    const before = get(filterConfig);
+    const items = [{ by: 'Alasdair Baverstock', title: 'Mexican Slang 101', url: 'https://mexiconewsdaily.com/slang' }];
+    globalThis.fetch = reply({ reply: 'Two corn tortillas, from Michoacán.', tier: 't2', run_id: null,
+      actions: [{ type: 'sources', name: 'Chavindeca', items }, { type: 'sources', name: 'Sincronizada', items }] });
+    await ask('what is chavindeca?');  // two foods citing the same work credit it once
+    expect(get(chatMessages).at(-1).sources).toEqual(items);
+    expect(get(filterConfig)).toEqual(before);
+  });
+
   it('drops a reply that lands after New chat', async () => {
     let answer;
     globalThis.fetch = vi.fn(() => new Promise((r) => { answer = r; }));
