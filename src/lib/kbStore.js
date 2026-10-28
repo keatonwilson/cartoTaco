@@ -8,13 +8,16 @@ let pending = null;
 
 export function loadWriteups() {
   pending ??= fetch('/api/kb')
-    .then((r) => (r.ok ? r.json() : null))
+    .then((r) => {
+      if (!r.ok) throw new Error(`/api/kb: ${r.status}`);
+      return r.json();
+    })
     .then((index) => {
       writeups.set(index);
       return index;
     })
     .catch(() => {
-      pending = null; // a network blip: let the next card try again
+      pending = null; // a network blip or an error status: let the next card try again
       return null;
     });
   return pending;

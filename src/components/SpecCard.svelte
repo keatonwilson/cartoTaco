@@ -62,7 +62,7 @@
   class:mobile={$isMobile}
   class:expanded={isExpanded}
   on:click={toggleExpand}
-  on:keydown={(e) => e.key === 'Enter' && toggleExpand()}
+  on:keydown={(e) => e.target === e.currentTarget && e.key === 'Enter' && toggleExpand()}
   role="button"
   tabindex="0"
   aria-expanded={isExpanded}
