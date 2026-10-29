@@ -165,6 +165,11 @@ describe('tools', () => {
     expect(r.salsa_lineup).toBeUndefined();
   });
 
+  it('says a spot closing soon is open now', () => {
+    // La Vaquita closes at 8 PM; the eval's Friday 7 PM is inside the last hour
+    expect(fns.get_spot({ est_id: 22 }).status).toBe('Open now, closes soon at 8 PM');
+  });
+
   it('favorites need a signed-in user', () => {
     expect(() => fns.apply_filters({ favorites_only: true })).toThrow(/not signed in/);
   });
