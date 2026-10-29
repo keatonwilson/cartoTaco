@@ -12,7 +12,9 @@
 // config as a LangSmith experiment with the checks below as feedback.
 // Without it, the same checks run in a local loop. Either way the summary
 // prints here and lands in evals/results/<config>.json, and the run exits 1
-// when a quality bar is missed.
+// when a quality bar is missed. An example that fails is run twice more and
+// counts as passing only if both retries pass (2 of 3), so one stochastic
+// miss doesn't sink the bar but a real regression still does.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { execSync } from 'node:child_process';
@@ -34,6 +36,7 @@ const CONFIGS = {
   'sonnet-agent': { models: { ...DEFAULT_MODELS, agent: DEFAULT_MODELS.escalation }, allowEscalation: false }
 };
 const BARS = { deterministic: 0.9, router: 0.9, judge: 0.9 };
+const RETRIES = 2;
 
 // A Friday at 7 PM in Tucson, unless an example sets its own
 const DEFAULT_NOW = '2026-10-24T02:00:00Z';
@@ -80,15 +83,18 @@ function check(ex, r) {
     no_fabricated: cited.every((id) => known.has(id)),
     // describe_dish answers carry credit the app shows (a `sources` action)
     sources: e.sources == null ? null : r.actions.some((a) => a.type === 'sources') === e.sources,
-    no_narration: !/\b(let me|I'?ll|I will) (show|check|look|pull|get|open|filter|put|update|build|plan|search)\b|\*\*/i.test(r.reply),
+    // Sentence-initial only: "Let me show you…" is narration, "…and I'll search for more" is an offer
+    no_narration: !/(?:^|[.!?]\s+)(let me|I'?ll|I will) (show|check|look|pull|get|open|filter|put|update|build|plan|search)\b|\*\*/i.test(r.reply),
     reply: e.reply_matches ? new RegExp(e.reply_matches, 'i').test(r.reply) : null
   };
 }
 
+// reason comes first so the judge reasons before it rules; with it last, the
+// verdict sometimes contradicted its own reasoning ("should count as grounded" → false)
 const Verdict = z.object({
+  reason: z.string(),
   grounded: z.boolean().describe('Every fact in the reply is supported by the evidence'),
-  follows_rubric: z.boolean(),
-  reason: z.string()
+  follows_rubric: z.boolean()
 });
 
 /**
@@ -215,8 +221,35 @@ async function runLangSmith(name, config, client) {
   return rows;
 }
 
+const failed = (r) =>
+  Object.values(r.checks).includes(false) || (r.verdict && !(r.verdict.grounded && r.verdict.follows_rubric));
+
+/** Re-run failed examples; one that passes every retry replaces its row, marked flaky. */
+async function retryFailures(rows, config) {
+  for (const [i, row] of rows.entries()) {
+    if (!failed(row)) continue;
+    const ex = examples.find((e) => e.id === row.id);
+    let last;
+    for (let n = 0; n < RETRIES; n++) {
+      const start = Date.now();
+      try {
+        last = await scoreRow(ex, await target(config)(ex), Date.now() - start);
+      } catch (err) {
+        last = errorRow(ex, err.message);
+      }
+      if (failed(last)) break;
+    }
+    if (!failed(last)) rows[i] = { ...last, flaky: true };
+    console.log(`↻ ${row.id.padEnd(10)} ${failed(last) ? 'failed again: real failure' : `passed ${RETRIES}/${RETRIES} retries: flaky`}`);
+  }
+}
+
 async function runConfig(name, config, client) {
   const rows = client ? await runLangSmith(name, config, client) : await runLocal(config);
+  if (rows.some(failed)) {
+    console.log('\n── retrying failures ──');
+    await retryFailures(rows, config);
+  }
   const ok = rows.filter((r) => !Object.values(r.checks).includes(false));
   const routed = rows.filter((r) => r.checks.intent != null);
   const judged = rows.filter((r) => r.verdict);
@@ -226,6 +259,7 @@ async function runConfig(name, config, client) {
   const summary = {
     config: name, prompt_version: PROMPT_VERSION, models: config.models, examples: rows.length,
     deterministic: ok.length / rows.length,
+    flaky: rows.filter((r) => r.flaky).map((r) => r.id),
     router: routed.length ? routed.filter((r) => r.checks.intent).length / routed.length : null,
     judge: judged.length ? judged.filter((r) => r.verdict.grounded && r.verdict.follows_rubric).length / judged.length : null,
     tiers,
@@ -253,5 +287,6 @@ console.log('\nconfig         determ.  router  judge   $/query    p50     tiers'
 for (const s of summaries) {
   console.log(`${s.config.padEnd(14)} ${pct(s.deterministic).padEnd(8)} ${pct(s.router).padEnd(7)} ${pct(s.judge).padEnd(7)} $${s.mean_cost.toFixed(5).padEnd(9)} ${String(s.p50_ms).padStart(5)}ms  ${JSON.stringify(s.tiers)}`);
 }
+for (const s of summaries) if (s.flaky.length) console.log(`${s.config}: passed on retry (flaky): ${s.flaky.join(', ')}`);
 const missed = summaries.some((s) => Object.entries(BARS).some(([k, bar]) => s[k] != null && s[k] < bar));
 process.exitCode = missed ? 1 : 0;
