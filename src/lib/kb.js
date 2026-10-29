@@ -60,3 +60,37 @@ export function describeEntry(card) {
   }));
   return { name: card.name, kind: card.kind, other_names: card.aliases, facts, sources: [...works.values()] };
 }
+
+/** A card's writeup for a spot card: its sentences, credited to the works behind the claims they cite. */
+export function writeupEntry(card) {
+  if (!card.writeup?.length) return null;
+  const cited = new Set(card.writeup.flatMap((s) => s.claims));
+  return {
+    name: card.name,
+    slug: card.slug,
+    sentences: card.writeup.map((s) => s.text),
+    sources: credits({ claims: card.claims.filter((c) => cited.has(c.id)) })
+  };
+}
+
+/** Writeups by slug, plus every name and alias (normalized) → slug, for exact lookups. */
+export function writeupIndex(cards) {
+  const entries = {};
+  const names = {};
+  for (const card of cards) {
+    const entry = writeupEntry(card);
+    if (!entry) continue;
+    entries[card.slug] = entry;
+    for (const n of [card.name, ...card.aliases]) names[normalize(n)] ??= card.slug;
+  }
+  return { entries, names };
+}
+
+/**
+ * A specialty's writeup: its name exactly (normalized), never a near miss, so a
+ * spot card never borrows another food's description.
+ */
+export function writeupFor(index, name) {
+  const slug = index?.names?.[normalize(name)];
+  return slug ? index.entries[slug] : null;
+}
