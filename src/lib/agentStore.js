@@ -13,7 +13,8 @@ import { goto } from '$app/navigation';
 
 export const chatPending = writable(false);
 /** @type {import('svelte/store').Writable<Array<{ id: number, role: 'user'|'assistant', content: string,
- *   tier?: string, run_id?: string|null, feedback?: 0|1, undo?: object|null, error?: boolean }>>} */
+ *   tier?: string, run_id?: string|null, feedback?: 0|1, undo?: object|null, error?: boolean,
+ *   sources?: Array<{ by: string, title: string, url: string|null }> }>>} */
 export const chatMessages = writable([]);
 
 let nextId = 1;
@@ -94,7 +95,12 @@ export async function ask(query) {
     const { reply, actions, tier, run_id } = await res.json();
     if (asked !== generation) return;
     const undo = applyActions(actions);
-    chatMessages.update((all) => [...all, { id: nextId++, role: 'assistant', content: reply, tier, run_id, undo }]);
+    // describe_dish's credits, shown under the reply
+    // Two foods in one reply can share a work: credit it once
+    const sources = [...new Map(actions.filter((a) => a.type === 'sources').flatMap((a) => a.items)
+      .map((s) => [s.url || `${s.by}|${s.title}`, s])).values()];
+    chatMessages.update((all) => [...all, { id: nextId++, role: 'assistant', content: reply, tier, run_id, undo,
+      ...(sources.length ? { sources } : {}) }]);
   } catch (err) {
     if (asked !== generation) return;
     const content = err instanceof TypeError ? 'You seem to be offline.' : err.message;

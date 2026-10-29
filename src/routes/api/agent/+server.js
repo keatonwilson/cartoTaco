@@ -8,6 +8,7 @@ import { env } from '$env/dynamic/private';
 import { runConcierge } from '$lib/server/agent/concierge.js';
 import { DEFAULT_MODELS } from '$lib/server/agent/models.js';
 import { getCatalog } from '$lib/server/catalog.js';
+import { getKb } from '$lib/server/kb.js';
 
 export const config = { maxDuration: 60 };
 
@@ -46,8 +47,9 @@ export async function POST({ request, locals }) {
   if (!input) throw error(400, `Send a query of 1–${MAX_QUERY} characters`);
 
   // Both favorites tables are own-rows-only under RLS
-  const [catalog, favorites, salsas, over] = await Promise.all([
+  const [catalog, kb, favorites, salsas, over] = await Promise.all([
     getCatalog(supabase),
+    getKb(),
     supabase.from('user_favorites').select('est_id'),
     supabase.from('user_favorite_salsas').select('salsa_styles(slug, name, heat_min, heat_max, smoke, acid, sweet, chunk, rich)'),
     overBudget(supabase)
@@ -59,7 +61,7 @@ export async function POST({ request, locals }) {
   };
   // Shared with runConcierge, so calls made before a failure still count
   const calls = [];
-  const args = { ...input, catalog, user, calls, rulesOnly: over ? 'budget' : false };
+  const args = { ...input, catalog, kb, user, calls, rulesOnly: over ? 'budget' : false };
 
   let result;
   try {

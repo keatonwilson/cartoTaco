@@ -211,6 +211,7 @@ Settings → Environment Variables, scoped per environment:
 | `LANGSMITH_PROJECT` | `cartotaco-staging` (Preview) / `cartotaco-production` (Production). Set it explicitly: the SDK ignores `LANGSMITH_AGENT_ENVIRONMENT` |
 | `LANGSMITH_TRACING_BACKGROUND` | `false`: serverless functions freeze after responding, so traces must flush before the response |
 | `AI_DAILY_TOKENS` | Optional per-user daily token budget (default 200000); over it the concierge goes rules-only |
+| `KB_URL` / `KB_ANON_KEY` | The culinary knowledgebase (cocina's Supabase project, its anon key): `describe_dish` answers "what is X?" from its published cards. Server-only. The same values serve Preview and Production, since consumers only ever see published knowledge. Unset, dish questions get "no entry yet" |
 
 ### Local
 

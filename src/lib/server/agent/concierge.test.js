@@ -348,3 +348,88 @@ describe('review fixes', () => {
     expect((await followUp('Yes, [#999] is.')).escalation_reason).toBe('cited_unseen:999');
   });
 });
+
+describe('describe_dish (cocina knowledgebase)', () => {
+  const slang = { title: 'Mexican Slang 101', url: 'https://mexiconewsdaily.com/slang', publisher: 'Mexico News Daily',
+    authors: ['Alasdair Baverstock'], quote: 'chavindecas, from Chavinda, Michoacán', locator: null };
+  const morelia = { title: '¿Qué es la Chavindeca?', url: 'https://revistamorelia.com/chavindeca', publisher: 'Revista Morelia',
+    authors: [], quote: 'originaria de Michoacán', locator: null };
+  const kb = {
+    version: 'kb-test',
+    cards: [{
+      slug: 'chavindeca', kind: 'dish', name: 'Chavindeca', aliases: ['sincronizada michoacana'], linked_from: [],
+      claims: [
+        { predicate: 'originates_in', value: 'Michoacán', object: null, confidence: 2, sources: [slang, morelia] },
+        { predicate: 'uses', value: 'two corn tortillas', object: null, confidence: 1, sources: [slang] }
+      ]
+    }]
+  };
+  const dishRoute = { intent: 'dish_info', dish_name: 'chavindeca', needs_agent: true };
+
+  it('finds a food by a typo or an alias and names the spots that serve it', () => {
+    const { fns, actions } = makeTools({ catalog, now, kb });
+    const r = fns.describe_dish({ name: 'chavidenca' });
+    expect(r.found).toBe(true);
+    expect(r.served_at.map((s) => s.est_id)).toEqual(expect.arrayContaining([10, 16]));
+    expect(r.facts[0]).toEqual({ fact: 'originates_in', value: 'Michoacán', sources: [1, 2] });
+    expect(r.sources).toHaveLength(2); // a work cited twice is listed once
+    expect(actions).toEqual([{ type: 'sources', name: 'Chavindeca', items: [
+      { by: 'Alasdair Baverstock', title: 'Mexican Slang 101', url: 'https://mexiconewsdaily.com/slang' },
+      { by: 'Revista Morelia', title: '¿Qué es la Chavindeca?', url: 'https://revistamorelia.com/chavindeca' }
+    ] }]);
+    expect(makeTools({ catalog, now, kb }).fns.describe_dish({ name: 'Sincronizada Michoacana' }).found).toBe(true);
+  });
+
+  it('counts a spot as serving a food only on its exact name, not a near miss', () => {
+    // One letter off "chavindeca": the typo-tolerant spot search would still find spots 10 and 16
+    const near = { ...kb.cards[0], name: 'Chavindeka', aliases: [] };
+    const r = makeTools({ catalog, now, kb: { version: 'kb-test', cards: [near] } }).fns.describe_dish({ name: 'chavindeka' });
+    expect(r.found).toBe(true);
+    expect(r.served_at).toEqual([]);
+  });
+
+  it('lists open spots with the food as a specialty first, closed spots last', () => {
+    const base = catalog.find((s) => s.est_id === 10);
+    const spot = (est_id, extra) => ({ ...base, est_id, specialties: [], proteinStyles: {},
+      shortDescription: '', longDescription: '', isClosed: false, ...extra });
+    const spots = [
+      spot(901, { specialties: [{ name: 'Pescado zarandeado' }], isClosed: true }),
+      spot(902, { longDescription: 'Weekends bring zarandeado to the grill.' }),
+      spot(903, { specialties: [{ name: 'Zarandeado' }] })
+    ];
+    const card = { ...kb.cards[0], name: 'Zarandeado', aliases: [] };
+    const r = makeTools({ catalog: spots, now, kb: { version: 'kb-test', cards: [card] } }).fns.describe_dish({ name: 'zarandeado' });
+    expect(r.served_at.map((s) => s.est_id)).toEqual([903, 902, 901]);
+  });
+
+  it('links only http(s) source URLs', () => {
+    const bad = { ...slang, url: 'javascript:alert(1)', authors: ['Someone'] };
+    const card = { ...kb.cards[0], claims: [{ ...kb.cards[0].claims[1], sources: [bad] }] };
+    const { fns, actions } = makeTools({ catalog, now, kb: { version: 'kb-test', cards: [card] } });
+    fns.describe_dish({ name: 'chavindeca' });
+    expect(actions[0].items[0].url).toBeNull();
+  });
+
+  it('says there is no entry rather than describing one, and credits nothing', () => {
+    const { fns, actions } = makeTools({ catalog, now, kb });
+    expect(fns.describe_dish({ name: 'tlayuda' })).toMatchObject({ found: false });
+    expect(actions).toEqual([]);
+  });
+
+  it('looks the food up before the agent answers, and keeps the credit', async () => {
+    const r = await run('what is chavindeca?', {
+      router: fakeRouter(dishRoute),
+      agent: fakeModel({ text: 'Two corn tortillas with meat and cheese, from Michoacán. Try Carnitas La Yoca [#10].' })
+    }, { kb });
+    expect(r.tier).toBe('t2');
+    expect(r.actions).toEqual([expect.objectContaining({ type: 'sources', name: 'Chavindeca' })]);
+  });
+
+  it('credits a food once when the agent looks it up again', async () => {
+    const r = await run('what is chavindeca?', {
+      router: fakeRouter(dishRoute),
+      agent: fakeModel({ calls: [call('describe_dish', { name: 'chavindeca' })] }, { text: 'Two corn tortillas, from Michoacán.' })
+    }, { kb });
+    expect(r.actions.filter((a) => a.type === 'sources')).toHaveLength(1);
+  });
+});

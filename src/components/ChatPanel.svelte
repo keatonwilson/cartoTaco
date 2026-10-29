@@ -190,6 +190,12 @@
                   ><MapPin size={12} weight="fill" />{part.name}</button>{:else}{part.text}{/if}
               {/each}
             </p>
+            {#if msg.sources}
+              <p class="sources">
+                Sources:
+                {#each msg.sources as s, i}{#if i}; {/if}{#if s.url}<a href={s.url} target="_blank" rel="noopener noreferrer">{s.by}</a>{:else}{s.by}{/if}{#if s.title && s.title !== s.by}, <cite>{s.title}</cite>{/if}{/each}
+              </p>
+            {/if}
             {#if msg.role === 'assistant' && !msg.error}
               <div class="msg-actions">
                 {#if msg.undo}
@@ -527,6 +533,24 @@
     padding-left: 4px;
     font-size: 0.78rem;
     color: var(--ink-3);
+  }
+
+  .sources {
+    margin-top: 4px;
+    padding-left: 4px;
+    font-size: 0.74rem;
+    line-height: 1.4;
+    color: var(--ink-3);
+  }
+
+  .sources a {
+    color: var(--ink-2);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .sources cite {
+    font-style: italic;
   }
 
   .undo {
