@@ -100,10 +100,11 @@ function brief(site, now) {
  * Build the tool set for one request.
  *
  * @param {{ catalog: object[], now?: Date, user?: { favoriteIds?: Set<number> },
- *   kb?: { version: string|null, cards: object[] } }} ctx - kb: cocina's published cards
+ *   kb?: { version: string|null, cards: object[] }, lookups?: object[] }} ctx - kb: cocina's published
+ *   cards; lookups collects each describe_dish as { name, slug } (slug null on a miss) for the trace
  * @returns {{ fns: object, tools: object[], actions: object[] }}
  */
-export function makeTools({ catalog, now = new Date(), user = {}, kb = { version: null, cards: [] } }) {
+export function makeTools({ catalog, now = new Date(), user = {}, kb = { version: null, cards: [] }, lookups = [] }) {
   const byId = new Map(catalog.map((s) => [s.est_id, s]));
   const favIds = user.favoriteIds || new Set();
   const actions = [];
@@ -151,6 +152,7 @@ export function makeTools({ catalog, now = new Date(), user = {}, kb = { version
   const fns = {
     describe_dish({ name }) {
       const card = findEntry(kb.cards, name);
+      lookups.push({ name, slug: card?.slug ?? null });
       const spots = servedAt(card ? [card.name, ...card.aliases] : [name]);
       if (!card) {
         return {
