@@ -513,7 +513,16 @@
 
   :global(.mapboxgl-ctrl-top-right),
   :global(.mapboxgl-ctrl-bottom-right) {
-    right: var(--chat-panel-offset, 0px) !important;
+    right: calc(var(--chat-panel-offset, 0px) + env(safe-area-inset-right)) !important;
+  }
+
+  :global(.mapboxgl-ctrl-bottom-left) {
+    left: env(safe-area-inset-left) !important;
+  }
+
+  :global(.mapboxgl-ctrl-bottom-left),
+  :global(.mapboxgl-ctrl-bottom-right) {
+    bottom: env(safe-area-inset-bottom) !important;
   }
 
   .loading-container, .error-container {
@@ -685,7 +694,7 @@
     /* Prevent scroll from propagating to the map at top/bottom boundaries */
     overscroll-behavior: contain;
     /* Bottom padding accounts for the home-indicator bar on iPhone X+ */
-    padding: 0 18px max(24px, env(safe-area-inset-bottom));
+    padding: 0 calc(18px + env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) calc(18px + env(safe-area-inset-left));
     /* iOS Safari: force this scroll container onto its own persistent GPU
        compositing layer. Without this, iOS caches the scroll layer as a
        stale texture and won't repaint text-color changes (e.g. compare

@@ -556,6 +556,7 @@
       width: 100vw;
       height: 100dvh;
       max-height: none;
+      padding-top: env(safe-area-inset-top);
       border-radius: 0;
       border: none;
     }

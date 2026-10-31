@@ -33,8 +33,8 @@
 <style>
   .map-legend {
     position: fixed;
-    bottom: 28px;
-    left: calc(var(--spot-panel-offset, 0px) + 10px);
+    bottom: calc(28px + env(safe-area-inset-bottom));
+    left: calc(var(--spot-panel-offset, 0px) + 10px + env(safe-area-inset-left));
     transition: left 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
     z-index: 40;
     display: flex;

@@ -520,14 +520,24 @@
        document and slid under the sticky header on mobile. */
     position: fixed;
     top: calc(var(--header-h) + 20px);
-    right: calc(60px + var(--chat-panel-offset, 0px));
+    right: calc(60px + var(--chat-panel-offset, 0px) + env(safe-area-inset-right));
     z-index: 200; /* above the bottom sheet (150) so the panel isn't hidden behind it */
     background: var(--surface-1);
     border-radius: 10px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     width: 560px;
-    max-width: max(320px, calc(100vw - var(--spot-panel-offset, 0px) - var(--chat-panel-offset, 0px) - 80px));
+    max-width: max(320px, calc(100vw - var(--spot-panel-offset, 0px) - var(--chat-panel-offset, 0px) - 80px - env(safe-area-inset-left) - env(safe-area-inset-right)));
     transition: opacity 0.15s ease;
+    container-type: inline-size;
+  }
+
+  /* Squeezed between the notch and a docked panel (landscape phone): icons only, as on phones */
+  @container (max-width: 520px) {
+    .surprise-text,
+    .trail-text,
+    .filter-text {
+      display: none;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -982,8 +992,8 @@
   @media (max-width: 768px) {
     .filter-container {
       top: calc(var(--header-h) + 10px);
-      left: 10px;
-      right: 60px; /* Leave space for map controls */
+      left: calc(10px + env(safe-area-inset-left));
+      right: calc(60px + env(safe-area-inset-right)); /* Leave space for map controls */
       width: auto;
       max-width: none;
     }

@@ -284,7 +284,8 @@
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
     display: flex;
     flex-direction: column;
-    height: 280px;
+    height: calc(280px + env(safe-area-inset-bottom));
+    padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     transform: translateY(100%);
     transition: transform 0.3s ease;
   }

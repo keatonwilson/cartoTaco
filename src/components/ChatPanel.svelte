@@ -131,7 +131,7 @@
 </script>
 
 {#if showLauncher}
-  <button class="chat-launcher" style="bottom: {launcherBottom}px" on:click={open} aria-label="Ask the concierge">
+  <button class="chat-launcher" style="bottom: calc({launcherBottom}px + env(safe-area-inset-bottom))" on:click={open} aria-label="Ask the concierge">
     <ChatCircleDots size={20} weight="bold" />
     <span>Ask</span>
   </button>
@@ -254,7 +254,7 @@
 <style>
   .chat-launcher {
     position: fixed;
-    right: 16px;
+    right: calc(16px + env(safe-area-inset-right));
     z-index: 60; /* above the trays (50) */
     display: flex;
     align-items: center;
@@ -280,6 +280,8 @@
     right: 0;
     bottom: 0;
     max-width: 100vw;
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
     z-index: 120; /* level with the spot panel: above the trays (50), below FilterBar (200) */
     display: flex;
     flex-direction: column;
@@ -294,6 +296,7 @@
     top: auto;
     left: 0;
     height: 70dvh;
+    padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left); /* the form clears the home indicator */
   }
 
   .chat-panel.sheet.compact {
