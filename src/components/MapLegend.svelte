@@ -34,7 +34,7 @@
   .map-legend {
     position: fixed;
     bottom: calc(28px + env(safe-area-inset-bottom));
-    left: calc(var(--spot-panel-offset, 0px) + 10px + env(safe-area-inset-left));
+    left: calc(max(var(--spot-panel-offset, 0px), env(safe-area-inset-left)) + 10px); /* the spot panel already covers the notch */
     transition: left 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
     z-index: 40;
     display: flex;

@@ -49,7 +49,7 @@
      bottom toolbar with the colour of any fixed element at the screen edge,
      even an off-screen one, which hid the map behind a white band (#99) -->
 {#if visible}
-<div class="comparison-tray" transition:fly={{ y: 180, duration: 300 }}>
+<div class="comparison-tray" transition:fly={{ y: 220, duration: 300 }}>
   <div class="tray-header">
     <span class="tray-title">
       Compare Spots

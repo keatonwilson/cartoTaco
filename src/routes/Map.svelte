@@ -494,10 +494,10 @@
 
 <style>
   .map-wrapper {
-    /* Fixed and 100lvh: the map runs on under Safari's floating toolbar
-       instead of stopping at it (100dvh) and leaving a white band (iOS 26).
-       Fixed so the extra height never makes the page scroll. */
-    position: fixed;
+    /* 100lvh: the map runs on under Safari's floating toolbar instead of
+       stopping at it (100dvh) and leaving a white band. Absolute, not fixed:
+       iOS 26 Safari won't draw fixed content below its toolbar (#99). */
+    position: absolute;
     top: 0;
     left: 0;
     right: 0;

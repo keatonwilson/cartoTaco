@@ -144,7 +144,7 @@
      bottom toolbar with the colour of any fixed element at the screen edge,
      even an off-screen one, which hid the map behind a white band (#99) -->
 {#if $trailModeActive}
-<div class="trail-tray" transition:fly={{ y: 300, duration: 300 }}>
+<div class="trail-tray" transition:fly={{ y: 360, duration: 300 }}>
   <!-- Header row -->
   <div class="tray-header">
     <span class="tray-title">

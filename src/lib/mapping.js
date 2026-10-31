@@ -55,7 +55,7 @@ let peekPendingId = null;
 function getSheetPadding() {
   if (typeof window === 'undefined') return 300;
   const landscape = window.innerWidth > window.innerHeight && window.innerHeight < 500;
-  return Math.round(window.innerHeight * (landscape ? 0.45 : 0.65));
+  return Math.round(window.innerHeight * (landscape ? 0.45 : 0.65)) + hiddenMapBottom();
 }
 
 function prefersReducedMotion() {
@@ -104,10 +104,30 @@ export function computeMapPadding({ panelOpen } = {}) {
   }
 
   if (!padding.bottom) {
-    if (get(trailModeActive)) padding.bottom = 280;
-    else if (get(comparisonActive)) padding.bottom = 160;
+    // The trays grow by the home-indicator inset (TrailTray/ComparisonTray)
+    if (get(trailModeActive)) padding.bottom = 280 + safeAreaBottom();
+    else if (get(comparisonActive)) padding.bottom = 160 + safeAreaBottom();
+    padding.bottom += hiddenMapBottom();
   }
   return padding;
+}
+
+/** The map canvas runs on under Safari's floating toolbar (100lvh); this is how far. */
+function hiddenMapBottom() {
+  if (typeof document === 'undefined') return 0;
+  const el = document.getElementById('map');
+  return el ? Math.max(0, el.clientHeight - window.innerHeight) : 0;
+}
+
+/** env(safe-area-inset-bottom) in px: 0 without a home indicator. */
+function safeAreaBottom() {
+  if (typeof document === 'undefined' || !document.body) return 0;
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;visibility:hidden;padding-bottom:env(safe-area-inset-bottom)';
+  document.body.appendChild(probe);
+  const inset = parseFloat(getComputedStyle(probe).paddingBottom) || 0;
+  probe.remove();
+  return inset;
 }
 
 /**
