@@ -112,7 +112,8 @@ export function computeMapPadding({ panelOpen } = {}) {
   return padding;
 }
 
-/** The map canvas runs on under Safari's floating toolbar (100lvh); this is how far. */
+/** How far the map runs on past the visible area: the iOS runway (runway.js), 0 elsewhere.
+ * ponytail: also counts the 1px runway offset at the top; too small to matter. */
 function hiddenMapBottom() {
   if (typeof document === 'undefined') return 0;
   const el = document.getElementById('map');

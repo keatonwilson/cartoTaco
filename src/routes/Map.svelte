@@ -21,6 +21,7 @@
 	import PeekCard from '../components/PeekCard.svelte';
 	import MapLegend from '../components/MapLegend.svelte';
 	import ChatPanel from '../components/ChatPanel.svelte';
+	import { startRunway } from '../lib/runway.js';
 	import { filterPanelOpen, mobileNavOpen, peekSite, chatOpen, CHAT_PANEL_WIDTH } from '../lib/uiStore.js';
 	import { tourActive } from '../lib/tourStore.js';
 	import 'mapbox-gl/dist/mapbox-gl.css';
@@ -155,8 +156,12 @@
 			}
 		});
 
+		// iOS: run the map on under Safari's toolbar (see runway.js)
+		const stopRunway = startRunway();
+
 		// Cleanup map on component unmount
 		return () => {
+			stopRunway();
 			resetListeners(map); // Remove event listeners before destroying map
 			if (map) map.remove();
 		};
@@ -494,15 +499,15 @@
 
 <style>
   .map-wrapper {
-    /* 100lvh: the map runs on under Safari's floating toolbar instead of
-       stopping at it (100dvh) and leaving a white band. Absolute, not fixed:
-       iOS 26 Safari won't draw fixed content below its toolbar (#99). */
+    /* Page content, not fixed, and on iOS taller than the visible area by the
+       runway (runway.js): Safari draws neither fixed content nor an unscrolled
+       page behind its toolbar (#99). The vars are 0 everywhere else. */
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     height: 100vh;
-    height: 100lvh;
+    height: calc(100dvh + var(--runway-top, 0px) + var(--runway-bottom, 0px));
   }
 
   #map {
@@ -524,11 +529,11 @@
     left: env(safe-area-inset-left) !important;
   }
 
-  /* The map runs under the toolbar (100lvh); its logo and credits stay above
-     it. lvh - dvh is the toolbar's height, 0 where there's none. */
+  /* The map runs on under the toolbar by the runway; its logo and credits
+     stay in the visible area, level with the other bottom overlays */
   :global(.mapboxgl-ctrl-bottom-left),
   :global(.mapboxgl-ctrl-bottom-right) {
-    bottom: calc(100lvh - 100dvh + env(safe-area-inset-bottom)) !important;
+    bottom: calc(var(--runway-bottom, 0px) + env(safe-area-inset-bottom)) !important;
   }
 
   .loading-container, .error-container {
