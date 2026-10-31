@@ -139,6 +139,19 @@
 	}
 }
 
+/* On the map page, the page background is the map's land colour. iOS sizes
+   the map (100lvh) for its collapsed toolbar, which still keeps a strip at
+   the bottom; Safari shows the page background there, so it blends into the
+   map under the frosted toolbar instead of reading as a white band (#99).
+   Light: Mapbox Standard land, sampled on an iPhone. Dark: approximates dark-v11. */
+html:has(main.map-page) {
+	background-color: #f3efee;
+}
+
+html.dark:has(main.map-page) {
+	background-color: #262626;
+}
+
 /* Hero-number treatment: big stats wear the display face with lining,
    tabular figures so columns of numbers align. */
 .stat-number {
