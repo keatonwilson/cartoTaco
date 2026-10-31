@@ -494,11 +494,15 @@
 
 <style>
   .map-wrapper {
-    width: 100%;
-    /* dvh = dynamic viewport height: excludes the iOS Safari address bar,
-       preventing the map from overflowing under it. Falls back to vh. */
-    height: 100dvh;
-    position: relative;
+    /* Fixed and 100lvh: the map runs on under Safari's floating toolbar
+       instead of stopping at it (100dvh) and leaving a white band (iOS 26).
+       Fixed so the extra height never makes the page scroll. */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100vh;
+    height: 100lvh;
   }
 
   #map {
@@ -520,9 +524,11 @@
     left: env(safe-area-inset-left) !important;
   }
 
+  /* The map runs under the toolbar (100lvh); its logo and credits stay above
+     it. lvh - dvh is the toolbar's height, 0 where there's none. */
   :global(.mapboxgl-ctrl-bottom-left),
   :global(.mapboxgl-ctrl-bottom-right) {
-    bottom: env(safe-area-inset-bottom) !important;
+    bottom: calc(100lvh - 100dvh + env(safe-area-inset-bottom)) !important;
   }
 
   .loading-container, .error-container {
