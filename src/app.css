@@ -127,6 +127,18 @@
 	}
 }
 
+/* iOS Safari zooms in when a field under 16px takes focus and stays zoomed,
+   pushing everything pinned to the right edge (the concierge launcher, map
+   controls) off-screen (issue #99). Unlayered, and the :not()s outrank a
+   component's single class, so this wins over per-component font sizes. */
+@media (pointer: coarse) {
+	input:not([type='range']):not([type='checkbox']):not([type='radio']),
+	textarea,
+	select {
+		font-size: max(16px, 1em);
+	}
+}
+
 /* Hero-number treatment: big stats wear the display face with lining,
    tabular figures so columns of numbers align. */
 .stat-number {
