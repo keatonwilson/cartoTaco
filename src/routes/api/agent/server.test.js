@@ -6,8 +6,11 @@ vi.mock('$lib/server/catalog.js', () => ({ getCatalog: async () => [] }));
 const runConcierge = vi.fn();
 vi.mock('$lib/server/agent/concierge.js', () => ({ runConcierge: (a) => runConcierge(a) }));
 vi.mock('$lib/server/agent/models.js', () => ({ DEFAULT_MODELS: { escalation: 'sonnet' } }));
+const createFeedback = vi.fn(async () => ({}));
+vi.mock('langsmith', () => ({ Client: class { createFeedback(...a) { return createFeedback(...a); } } }));
 
 import { POST } from './+server.js';
+import { env } from '$env/dynamic/private';
 
 // A Supabase client stub: today's usage row, favorites, and a recorded rpc
 function fakeSupabase({ usage = null, usageError = null } = {}) {
@@ -76,5 +79,18 @@ describe('POST /api/agent', () => {
     expect(runConcierge.mock.calls[1][0].rulesOnly).toBe('unavailable');
     expect(res.status).toBe(200);
     expect(supabase.rpc).toHaveBeenCalledWith('record_ai_usage', expect.objectContaining({ p_input_tokens: 300 }));
+  });
+
+  it('reports each food the knowledgebase had no entry for once, as kb_miss feedback', async () => {
+    env.LANGSMITH_API_KEY = 'k';
+    runConcierge.mockResolvedValueOnce({ ...result, calls: [], kb_lookups: [
+      { name: 'tlayuda', slug: null }, { name: 'tlayuda', slug: null }, { name: 'gringa', slug: 'gringa' }
+    ] });
+    createFeedback.mockClear().mockRejectedValueOnce(new Error('LangSmith down'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const res = await post({ query: 'what is a tlayuda?' }, signedIn(fakeSupabase()));
+    delete env.LANGSMITH_API_KEY;
+    expect(createFeedback.mock.calls).toEqual([['r1', 'kb_miss', { value: 'tlayuda' }]]);
+    expect(res.status).toBe(200); // a LangSmith failure never costs the reply
   });
 });

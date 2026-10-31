@@ -9,6 +9,7 @@ import { runConcierge } from '$lib/server/agent/concierge.js';
 import { DEFAULT_MODELS } from '$lib/server/agent/models.js';
 import { getCatalog } from '$lib/server/catalog.js';
 import { getKb } from '$lib/server/kb.js';
+import { Client } from 'langsmith';
 
 export const config = { maxDuration: 60 };
 
@@ -80,6 +81,16 @@ export async function POST({ request, locals }) {
       p_cost_usd: calls.reduce((n, c) => n + c.cost, 0)
     });
     if (err) console.error('record_ai_usage', err.message);
+  }
+
+  // Foods the knowledgebase has no entry for, as LangSmith feedback `kb_miss` on the trace,
+  // which cocina's gap filler reads and researches. Feedback, not run metadata: on Vercel
+  // some traces never receive their final update, while feedback is its own awaited call
+  const misses = new Set((result.kb_lookups ?? []).filter((l) => !l.slug).map((l) => l.name));
+  if (misses.size && result.run_id && env.LANGSMITH_API_KEY) {
+    const ls = new Client({ apiKey: env.LANGSMITH_API_KEY });
+    await Promise.all([...misses].map((name) => ls.createFeedback(result.run_id, 'kb_miss', { value: name })))
+      .catch((err) => console.error('kb_miss feedback', err.message));
   }
 
   return json({ reply: result.reply, actions: result.actions, tier: result.tier, run_id: result.run_id ?? null });

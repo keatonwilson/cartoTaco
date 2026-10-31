@@ -194,18 +194,20 @@ async function agentLoop(model, modelId, toolNames, ctx, messages, calls, maxSte
  * @param {false|'budget'|'unavailable'} [p.rulesOnly] - answer from T0 only, and say why on a miss
  * @param {object[]} [p.calls] - collects each model call; pass one in to read usage even if this throws
  * @returns {Promise<{ reply: string, actions: object[], tier: string, route: object|null,
- *   escalation_reason: string|null, calls: object[], cost: number, run_id?: string }>}
+ *   escalation_reason: string|null, calls: object[], cost: number, kb_lookups: object[], run_id?: string }>}
  */
 async function concierge({
   query, history = [], catalog, now = new Date(), user = {}, kb = { version: null, cards: [] },
   models = DEFAULT_MODELS, llm = {}, allowEscalation = true, rulesOnly = false, calls = []
 }) {
-  const ctx = { catalog, now, user, kb };
+  // Every describe_dish across tiers; /api/agent reports the misses for cocina's gap filler
+  const ctx = { catalog, now, user, kb, lookups: [] };
   const done = (tier, reply, actions = [], route = null, escalation_reason = null) => {
     const run = getCurrentRunTree(true);
     const result = {
       reply, actions, tier, route, escalation_reason, calls,
       cost: calls.reduce((sum, c) => sum + c.cost, 0),
+      kb_lookups: ctx.lookups,
       run_id: run?.id
     };
     if (run?.extra) {

@@ -432,4 +432,12 @@ describe('describe_dish (cocina knowledgebase)', () => {
     }, { kb });
     expect(r.actions.filter((a) => a.type === 'sources')).toHaveLength(1);
   });
+
+  it('records each lookup, a miss as a null slug, for the gap filler', async () => {
+    const r = await run('what is a tlayuda?', {
+      router: fakeRouter({ ...dishRoute, dish_name: 'tlayuda' }),
+      agent: fakeModel({ calls: [call('describe_dish', { name: 'chavindeca' })] }, { text: 'No entry for tlayuda yet.' })
+    }, { kb });
+    expect(r.kb_lookups).toEqual([{ name: 'tlayuda', slug: null }, { name: 'chavindeca', slug: 'chavindeca' }]);
+  });
 });
