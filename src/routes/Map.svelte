@@ -21,6 +21,7 @@
 	import PeekCard from '../components/PeekCard.svelte';
 	import MapLegend from '../components/MapLegend.svelte';
 	import ChatPanel from '../components/ChatPanel.svelte';
+	import { startRunway } from '../lib/runway.js';
 	import { filterPanelOpen, mobileNavOpen, peekSite, chatOpen, CHAT_PANEL_WIDTH } from '../lib/uiStore.js';
 	import { tourActive } from '../lib/tourStore.js';
 	import 'mapbox-gl/dist/mapbox-gl.css';
@@ -155,8 +156,12 @@
 			}
 		});
 
+		// iOS: run the map on under Safari's toolbar (see runway.js)
+		const stopRunway = startRunway();
+
 		// Cleanup map on component unmount
 		return () => {
+			stopRunway();
 			resetListeners(map); // Remove event listeners before destroying map
 			if (map) map.remove();
 		};
@@ -494,11 +499,15 @@
 
 <style>
   .map-wrapper {
-    width: 100%;
-    /* dvh = dynamic viewport height: excludes the iOS Safari address bar,
-       preventing the map from overflowing under it. Falls back to vh. */
-    height: 100dvh;
-    position: relative;
+    /* Page content, not fixed, and on iOS taller than the visible area by the
+       runway (runway.js): Safari draws neither fixed content nor an unscrolled
+       page behind its toolbar (#99). The vars are 0 everywhere else. */
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100vh;
+    height: calc(100dvh + var(--runway-top, 0px) + var(--runway-bottom, 0px));
   }
 
   #map {
@@ -513,7 +522,18 @@
 
   :global(.mapboxgl-ctrl-top-right),
   :global(.mapboxgl-ctrl-bottom-right) {
-    right: var(--chat-panel-offset, 0px) !important;
+    right: calc(var(--chat-panel-offset, 0px) + env(safe-area-inset-right)) !important;
+  }
+
+  :global(.mapboxgl-ctrl-bottom-left) {
+    left: env(safe-area-inset-left) !important;
+  }
+
+  /* The map runs on under the toolbar by the runway; its logo and credits
+     stay in the visible area, level with the other bottom overlays */
+  :global(.mapboxgl-ctrl-bottom-left),
+  :global(.mapboxgl-ctrl-bottom-right) {
+    bottom: calc(var(--runway-bottom, 0px) + env(safe-area-inset-bottom)) !important;
   }
 
   .loading-container, .error-container {
@@ -685,7 +705,7 @@
     /* Prevent scroll from propagating to the map at top/bottom boundaries */
     overscroll-behavior: contain;
     /* Bottom padding accounts for the home-indicator bar on iPhone X+ */
-    padding: 0 18px max(24px, env(safe-area-inset-bottom));
+    padding: 0 calc(18px + env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) calc(18px + env(safe-area-inset-left));
     /* iOS Safari: force this scroll container onto its own persistent GPU
        compositing layer. Without this, iOS caches the scroll layer as a
        stale texture and won't repaint text-color changes (e.g. compare

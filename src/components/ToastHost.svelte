@@ -37,7 +37,7 @@
 <style>
 	.toast-host {
 		position: fixed;
-		bottom: 1rem;
+		bottom: calc(1rem + env(safe-area-inset-bottom));
 		left: 50%;
 		transform: translateX(-50%);
 		display: flex;

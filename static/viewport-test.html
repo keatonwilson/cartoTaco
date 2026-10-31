@@ -1,0 +1,103 @@
+<!doctype html>
+<!--
+  iOS Safari viewport probe for issue #99. Not linked from the app.
+  ?mode=fixed   stage is position: fixed, 100lvh
+  ?mode=flow    stage is page content, 100lvh, page never scrolls
+  ?mode=runway  stage is page content, 100dvh + offset + bleed, scrolled to offset on load
+  &offset=N     runway scroll offset in px (default 1)
+  &bleed=N      runway extra height below the visible area (default: screen height - innerHeight)
+  The stage is a grid with a ruler counting px up from the stage's bottom edge,
+  so a screenshot shows how far Safari draws page content behind its toolbar.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="robots" content="noindex" />
+<title>Viewport probe</title>
+<style>
+  html { background: #ff00ff; } /* magenta = Safari is showing the root background, not content */
+  body { margin: 0; font: 13px/1.35 -apple-system, system-ui, sans-serif; }
+  .stage {
+    left: 0; right: 0; top: 0;
+    background:
+      linear-gradient(#0000 calc(100% - 2px), #0003 0) 0 0 / 100% 40px,
+      linear-gradient(90deg, #0000 calc(100% - 2px), #0003 0) 0 0 / 40px 100%,
+      linear-gradient(#7fd3ff, #7fffa0);
+  }
+  .fixed .stage { position: fixed; height: 100lvh; }
+  .flow .stage { position: absolute; height: 100lvh; }
+  .runway .stage { position: absolute; }
+  .ruler { position: absolute; left: 0; right: 0; bottom: 0; height: 200px; }
+  .ruler div {
+    position: absolute; left: 0; right: 0; height: 10px;
+    border-top: 1px solid #000; font: 600 9px monospace; padding-left: 4px;
+  }
+  .ruler div:nth-child(odd) { background: #ffd54a; }
+  .ruler div:nth-child(even) { background: #ff8a3d; }
+  .hud {
+    position: fixed; top: 50%; left: 12px; right: 12px; transform: translateY(-50%);
+    background: #fffffff0; border-radius: 10px; padding: 10px 12px; z-index: 2;
+    box-shadow: 0 2px 12px #0004; white-space: pre; font: 12px/1.4 monospace; overflow: hidden;
+  }
+  .hud a { margin-right: 10px; font: 600 14px -apple-system, sans-serif; }
+  .marker {
+    position: fixed; bottom: 0; right: 0; width: 60px; height: 6px; background: #d00; z-index: 3;
+  }
+  .probe { position: fixed; visibility: hidden; top: 0; left: 0; width: 1px; }
+</style>
+</head>
+<body>
+<div class="stage"><div class="ruler" id="ruler"></div></div>
+<div class="marker" title="fixed bottom:0"></div>
+<div class="hud" id="hud"></div>
+<div class="probe" id="svh" style="height:100svh"></div>
+<div class="probe" id="dvh" style="height:100dvh"></div>
+<div class="probe" id="lvh" style="height:100lvh"></div>
+<div class="probe" id="inset" style="padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)"></div>
+<script>
+  const q = new URLSearchParams(location.search);
+  const mode = q.get('mode') || 'runway';
+  document.body.className = mode;
+  const stage = document.querySelector('.stage');
+  const ruler = document.getElementById('ruler');
+  for (let i = 0; i < 20; i++) {
+    const d = document.createElement('div');
+    d.style.bottom = i * 10 + 'px';
+    d.textContent = i * 10;
+    ruler.append(d);
+  }
+  const portraitScreenH = () => {
+    const long = Math.max(screen.width, screen.height), short = Math.min(screen.width, screen.height);
+    return innerWidth < innerHeight ? long : short;
+  };
+  const offset = Number(q.get('offset') ?? 1);
+  const bleed = q.has('bleed') ? Number(q.get('bleed')) : Math.max(0, portraitScreenH() - innerHeight);
+  if (mode === 'runway') {
+    stage.style.height = `calc(100dvh + ${offset + bleed}px)`;
+    requestAnimationFrame(() => scrollTo({ top: offset, behavior: 'instant' }));
+  }
+  const h = (id) => Math.round(document.getElementById(id).getBoundingClientRect().height);
+  function render() {
+    const cs = getComputedStyle(document.getElementById('inset'));
+    const vv = visualViewport;
+    document.getElementById('hud').innerHTML =
+      ['fixed', 'flow', 'runway'].map((m) => `<a href="?mode=${m}">${m}</a>`).join('') + '\n' +
+      `mode=${mode} offset=${mode === 'runway' ? offset : '-'} bleed=${mode === 'runway' ? bleed : '-'}\n` +
+      `${navigator.userAgent.match(/OS [\d_]+|Version\/[\d.]+/g)?.join(' ')}\n` +
+      `screen ${screen.width}x${screen.height}  dpr ${devicePixelRatio}\n` +
+      `inner ${innerWidth}x${innerHeight}  client ${document.documentElement.clientHeight}\n` +
+      `visualViewport h=${Math.round(vv.height)} top=${Math.round(vv.offsetTop)}\n` +
+      `svh ${h('svh')}  dvh ${h('dvh')}  lvh ${h('lvh')}\n` +
+      `inset t${cs.paddingTop} r${cs.paddingRight} b${cs.paddingBottom} l${cs.paddingLeft}\n` +
+      `scrollY ${Math.round(scrollY)}  docH ${document.documentElement.scrollHeight}\n` +
+      `stage ${Math.round(stage.getBoundingClientRect().top)}..${Math.round(stage.getBoundingClientRect().bottom)}`;
+  }
+  addEventListener('scroll', render);
+  addEventListener('resize', render);
+  visualViewport.addEventListener('resize', render);
+  setInterval(render, 500);
+  render();
+</script>
+</body>
+</html>

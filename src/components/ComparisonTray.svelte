@@ -1,4 +1,5 @@
 <script>
+  import { fly } from 'svelte/transition';
   import { goto } from '$app/navigation';
   import {
     comparisonSites,
@@ -44,7 +45,11 @@
   $: visible = $comparisonActive && !$trailModeActive && !cardOpen;
 </script>
 
-<div class="comparison-tray" class:visible aria-hidden={!visible}>
+<!-- Mounted only while open, not parked off-screen: Safari 26 paints its
+     bottom toolbar with the colour of any fixed element at the screen edge,
+     even an off-screen one, which hid the map behind a white band (#99) -->
+{#if visible}
+<div class="comparison-tray" transition:fly={{ y: 220, duration: 300 }}>
   <div class="tray-header">
     <span class="tray-title">
       Compare Spots
@@ -92,6 +97,7 @@
     </button>
   </div>
 </div>
+{/if}
 
 <style>
   .comparison-tray {
@@ -106,13 +112,8 @@
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
     display: flex;
     flex-direction: column;
-    height: 160px;
-    transform: translateY(100%);
-    transition: transform 0.3s ease;
-  }
-
-  .comparison-tray.visible {
-    transform: translateY(0);
+    height: calc(160px + env(safe-area-inset-bottom));
+    padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
 
   :global(.dark) .comparison-tray {

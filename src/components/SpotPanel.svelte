@@ -78,6 +78,8 @@
     display: flex;
     flex-direction: column;
     max-width: 100vw;
+    padding-left: env(safe-area-inset-left);
+    padding-bottom: env(safe-area-inset-bottom);
     background: var(--surface-1);
     border-right: 1px solid var(--line-1);
     box-shadow: 8px 0 28px -16px rgba(0, 0, 0, 0.35);

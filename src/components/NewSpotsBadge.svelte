@@ -287,6 +287,7 @@
     border-radius: 1rem 1rem 0 0;
     height: 80vh;
     max-height: 80vh;
+    padding-bottom: env(safe-area-inset-bottom);
     display: flex;
     flex-direction: column;
     z-index: 10000;
