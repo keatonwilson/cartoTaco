@@ -242,7 +242,7 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 Pure k-NN taste recommendations shared by `tasteProfileStore` and the concierge's `recommend_for_me`: `buildFeatureVector`, `centroid`, `knnRecommend`, and `recommendFor(catalog, favIds, { favouriteSalsas, k })` (skips pending/closed spots and the favorites themselves; null without usable favorites).
 
 ### Site Model (src/lib/siteModel.js)
-The pure logic behind the stores, with no stores or Supabase client, so the server and offline evals can share it (see `docs/AI_CONCIERGE_PLAN.md`): `processSite(row)` / `processSites(rows)` (the body of `processedTacoData`), `computeSummaryStats`, `computeDistributionPool`, `computeDistributionStats`, `hasValidCoordinates`, `isOpenNow(hours, now)`, `matchesFilters(site, cfg, favIds, now)` (the `filteredTacoData` predicate), `salsaNames(site)` (catalog styles, house names, named varieties as "Salsa Verde", other salsas; searched by both `searchSpots` and the text filter), and `defaultFilterConfig()` (the `filterConfig` starting value). `stores.js` derives from these and re-exports `hasValidCoordinates`/`isOpenNow`. Change the logic here, not in the stores.
+The pure logic behind the stores, with no stores or Supabase client, so the server and offline evals can share it (see `docs/AI_CONCIERGE_PLAN.md`): `processSite(row)` / `processSites(rows)` (the body of `processedTacoData`), `computeSummaryStats`, `computeDistributionPool`, `computeDistributionStats`, `hasValidCoordinates`, `isOpenNow(hours, now)`, `matchesFilters(site, cfg, favIds, now)` (the `filteredTacoData` predicate), `salsaNames(site)` (catalog styles, house names, named varieties as "Salsa Verde", other salsas; searched by both `searchSpots` and the text filter), and `defaultFilterConfig()` (the `filterConfig` starting value), and `computeCensus(sites, now)` (the body of `censusStats`). `stores.js` derives from these and re-exports `hasValidCoordinates`/`isOpenNow`. Change the logic here, not in the stores.
 
 ### Key Pattern
 Data flows: Raw DB → Store → Derived/Processed → Components. Components rarely transform data; they consume pre-processed values from derived stores.
@@ -415,6 +415,7 @@ and `flyToSite()`.
 - `src/routes/Map.svelte` - Map component with filter integration and trail mode support
 
 #### Public Routes
+- `src/routes/api/census/+server.js` - The census as public JSON (CORS open, edge-cached 5 min) plus the spots open right now on Tucson's clock, for other sites to draw; prosopis.studio builds its CartoTaco charts from it. `_publicCensus` drops per-spot history (growth becomes `spotsOverTime` counts) and ids
 - `src/routes/census/+page.svelte` - Tucson Taco Census: public city-wide stats dashboard (hero tiles, menu prevalence, protein leaderboard, heat histogram, tortilla split, 7×24 open-hours grid, growth timeline), all client-side from `censusStats` (`src/lib/censusStore.js`). The growth timeline is the one figure built from open/close *events* over all vetted spots, closed included — it describes history, so it must not be recomputed from today's survivors or every closure retroactively erases the spot's past (issue #62)
 - `src/routes/compare/+page.svelte` - Side-by-side comparison of up to 3 spots (shareable via `?ids=1,2,3` query params). Desktop renders Menu/Protein as single overlaid radars with shared axes. Sticky command bar (+ mobile spot tabs) and a sticky spot-name header row keep navigation reachable at any scroll depth; an "at a glance" verdict strip (leader per metric with margin) sits above the grid. NOTE: `overflow-x` on these pages must stay `clip`, never `hidden` — hidden creates a scrollport that silently breaks the sticky positioning
 - `src/routes/compare/+page.js` - Route config for comparison page
@@ -482,6 +483,7 @@ Test files are co-located in src/lib/:
 - `src/lib/intentRules.test.js` - Filter parsing (English/Spanish, negation, hot dog vs heat, remainder)
 - `src/lib/voice.test.js` - Voice session lifecycle against a fake SpeechRecognition (missing `end` events, stale events, start failures, watchdog)
 - `src/lib/agentStore.test.js` - Chat store: filters applied and undone, spots opened, trail/compare/summit actions applied, history sent, errors kept out of history
+- `src/routes/api/census/server.test.js` - Public census: open-now list on Tucson time, closed spots excluded, per-spot history dropped
 - `src/routes/api/agent/server.test.js` - Endpoint: 401/400, client-supplied fields dropped, favorites passed, usage recorded, rules-only over budget and on model failure
 - `src/lib/server/agent/concierge.test.js` - Concierge tier routing with scripted fake models (T0 hits, router handlers, tool loop, escalation reasons) and tool behaviour, against the eval fixture. No API calls
 
