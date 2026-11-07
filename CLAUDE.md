@@ -108,6 +108,7 @@ Historical order, as originally applied:
 38. `038_create_user_favorite_salsas.sql` - `user_favorite_salsas` (user_id, style_id) with own-rows-only RLS, for favouriting salsas from the atlas
 39. `039_salsa_field_sightings.sql` - Field sightings and draft styles: `site_salsas` gains `photo_url`/`palette`/`observed_at` (written by cartoTacoMenuExtract's Salsa Field Notes page) and `synced` (backfilled true for links to keyed styles); `salsa_styles` gains `status` (`draft`/`published`, public reads see published only); `sync_site_salsas()` now removes only links it created and keeps those carrying curated data; view exposes the sighting fields
 40. `040_ai_usage.sql` - `ai_usage` (user_id, Tucson day, requests, tokens, escalations, cost_usd) with own-rows SELECT, and SECURITY DEFINER `record_ai_usage(...)` (authenticated only; adds to the caller's row, negatives clamped) for the concierge's per-user daily budget
+41. `041_fix_salsa_resync_safeupdate.sql` - `resync_site_salsas_on_style_change()` gains `WHERE true`: pg_safeupdate rejected its bare `UPDATE public.salsa`, so inserting a `salsa_styles` row through the API (a new style from Salsa Field Notes) failed
 
 ### Data Health (self-healing)
 Migration 034 makes the database repair specialty links itself. Cards only show specials whose `spec_id_N` FK is set; cartoTacoMenuExtract promotion writes the spec *name* into `specialty_item_N` / `protein_spec_N` / `salsa_spec_N` (re-added by that repo's migration 009 after 017 dropped them, so they exist in production) and links the id.
