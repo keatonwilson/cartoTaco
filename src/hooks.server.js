@@ -20,6 +20,10 @@ for (const [key, value] of Object.entries(env)) {
 export async function handle({ event, resolve }) {
   const url = event.url.pathname;
 
+  // The public census is the same for everyone and cached at the edge: no
+  // session lookup, so no refreshed auth cookie can land on a shared response
+  if (url === '/api/census') return resolve(event);
+
   // Try to set up Supabase auth; if credentials are missing the app
   // should still render public pages (map, login, signup).
   try {
