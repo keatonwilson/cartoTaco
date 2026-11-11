@@ -4,7 +4,11 @@ vi.mock('$env/dynamic/private', () => ({ env: { AI_DAILY_TOKENS: '1000' } }));
 vi.mock('$app/environment', () => ({ dev: false }));
 vi.mock('$lib/server/catalog.js', () => ({ getCatalog: async () => [] }));
 const runConcierge = vi.fn();
-vi.mock('$lib/server/agent/concierge.js', () => ({ runConcierge: (a) => runConcierge(a) }));
+const flush = vi.fn(async () => {});
+vi.mock('$lib/server/agent/concierge.js', () => ({
+  runConcierge: (a) => runConcierge(a),
+  traceClient: { awaitPendingTraceBatches: () => flush() }
+}));
 vi.mock('$lib/server/agent/models.js', () => ({ DEFAULT_MODELS: { escalation: 'sonnet' } }));
 const createFeedback = vi.fn(async () => ({}));
 vi.mock('langsmith', () => ({ Client: class { createFeedback(...a) { return createFeedback(...a); } } }));
@@ -61,6 +65,7 @@ describe('POST /api/agent', () => {
     expect(await res.json()).toEqual({ reply: 'ok', actions: [], tier: 't2', run_id: 'r1' });
     expect(supabase.rpc).toHaveBeenCalledWith('record_ai_usage',
       { p_input_tokens: 300, p_output_tokens: 40, p_escalated: false, p_cost_usd: 0.002 });
+    expect(flush).toHaveBeenCalled(); // the trace is sent before the function can freeze
   });
 
   it('goes rules-only over budget or when usage can’t be read', async () => {
