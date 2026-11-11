@@ -91,6 +91,8 @@
     flex-direction: column;
     width: 100%;
     box-sizing: border-box;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 
   /* Map page needs absolute positioning to render behind the transparent header */
@@ -100,5 +102,6 @@
     left: 0;
     right: 0;
     bottom: 0;
+    padding: 0; /* the map runs under the notch; its overlays inset themselves */
   }
 </style>

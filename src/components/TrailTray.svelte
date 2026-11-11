@@ -1,4 +1,5 @@
 <script>
+  import { fly } from 'svelte/transition';
   import {
     trailModeActive,
     trailStops,
@@ -139,7 +140,11 @@
   $: canAct = $trailStopCount >= 2;
 </script>
 
-<div class="trail-tray" class:visible={$trailModeActive} aria-hidden={!$trailModeActive}>
+<!-- Mounted only while open, not parked off-screen: Safari 26 paints its
+     bottom toolbar with the colour of any fixed element at the screen edge,
+     even an off-screen one, which hid the map behind a white band (#99) -->
+{#if $trailModeActive}
+<div class="trail-tray" transition:fly={{ y: 360, duration: 300 }}>
   <!-- Header row -->
   <div class="tray-header">
     <span class="tray-title">
@@ -270,6 +275,7 @@
     </button>
   </div>
 </div>
+{/if}
 
 <style>
   .trail-tray {
@@ -284,13 +290,8 @@
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
     display: flex;
     flex-direction: column;
-    height: 280px;
-    transform: translateY(100%);
-    transition: transform 0.3s ease;
-  }
-
-  .trail-tray.visible {
-    transform: translateY(0);
+    height: calc(280px + env(safe-area-inset-bottom));
+    padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
 
   :global(.dark) .trail-tray {

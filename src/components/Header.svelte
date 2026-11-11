@@ -347,6 +347,10 @@
     max-width: 1400px;
     margin: 0 auto;
     padding: 0.75rem 1rem;
+    /* viewport-fit=cover: keep the bar's contents clear of the notch */
+    padding-top: calc(0.75rem + env(safe-area-inset-top));
+    padding-left: calc(1rem + env(safe-area-inset-left));
+    padding-right: calc(1rem + env(safe-area-inset-right));
     display: flex;
     align-items: center;
     justify-content: space-between;
