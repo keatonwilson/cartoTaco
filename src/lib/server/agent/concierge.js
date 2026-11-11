@@ -51,7 +51,7 @@ export const RouterSchema = z.object({
   needs_agent: z.boolean(),
   language: z.enum(['en', 'es']),
   spot_name: z.string().optional().describe('The spot named, if any'),
-  dish_name: z.string().optional().describe('The food asked about, if any'),
+  dish_names: z.array(z.string()).optional().describe('Each food asked about, one per item'),
   filters: FilterArgs.optional()
 });
 
@@ -292,19 +292,18 @@ async function concierge({
    * it saves a step. Returns the lookup's actions too (describe_dish's sources).
    */
   function seed(route, toolNames) {
-    const [name, args] = route?.intent === 'dish_info' && route.dish_name && toolNames.includes('describe_dish')
-      ? ['describe_dish', { name: route.dish_name }]
+    const calls = route?.intent === 'dish_info' && route.dish_names?.length && toolNames.includes('describe_dish')
+      ? route.dish_names.map((name) => ['describe_dish', { name }])
       : route?.spot_name && toolNames.includes('search_spots')
-        ? ['search_spots', { query: route.spot_name, limit: 3 }]
+        ? [['search_spots', { query: route.spot_name, limit: 3 }]]
         : [];
-    if (!name) return { messages: [], actions: [] };
+    if (!calls.length) return { messages: [], actions: [] };
     const { fns, actions } = makeTools(ctx);
-    const out = fns[name](args);
-    const id = `seeded_${name}`;
+    const ran = calls.map(([name, args], i) => ({ id: `seeded_${name}_${i}`, name, args, out: fns[name](args) }));
     return {
       messages: [
-        new AIMessage({ content: '', tool_calls: [{ id, name, args, type: 'tool_call' }] }),
-        new ToolMessage({ content: JSON.stringify(out), tool_call_id: id })
+        new AIMessage({ content: '', tool_calls: ran.map(({ id, name, args }) => ({ id, name, args, type: 'tool_call' })) }),
+        ...ran.map(({ id, out }) => new ToolMessage({ content: JSON.stringify(out), tool_call_id: id }))
       ],
       actions
     };

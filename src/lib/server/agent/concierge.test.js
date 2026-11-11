@@ -364,7 +364,7 @@ describe('describe_dish (cocina knowledgebase)', () => {
       ]
     }]
   };
-  const dishRoute = { intent: 'dish_info', dish_name: 'chavindeca', needs_agent: true };
+  const dishRoute = { intent: 'dish_info', dish_names: ['chavindeca'], needs_agent: true };
 
   it('finds a food by a typo or an alias and names the spots that serve it', () => {
     const { fns, actions } = makeTools({ catalog, now, kb });
@@ -435,9 +435,17 @@ describe('describe_dish (cocina knowledgebase)', () => {
 
   it('records each lookup, a miss as a null slug, for the gap filler', async () => {
     const r = await run('what is a tlayuda?', {
-      router: fakeRouter({ ...dishRoute, dish_name: 'tlayuda' }),
+      router: fakeRouter({ ...dishRoute, dish_names: ['tlayuda'] }),
       agent: fakeModel({ calls: [call('describe_dish', { name: 'chavindeca' })] }, { text: 'No entry for tlayuda yet.' })
     }, { kb });
     expect(r.kb_lookups).toEqual([{ name: 'tlayuda', slug: null }, { name: 'chavindeca', slug: 'chavindeca' }]);
+  });
+
+  it('looks up each food of a two-food question, so each miss is its own', async () => {
+    const r = await run('what are tlacoyo and chilate?', {
+      router: fakeRouter({ ...dishRoute, dish_names: ['tlacoyo', 'chilate'] }),
+      agent: fakeModel({ text: 'No entry for either yet.' })
+    }, { kb });
+    expect(r.kb_lookups).toEqual([{ name: 'tlacoyo', slug: null }, { name: 'chilate', slug: null }]);
   });
 });

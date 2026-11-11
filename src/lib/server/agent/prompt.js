@@ -2,7 +2,7 @@
 // System prompts for the concierge. Bump PROMPT_VERSION on any wording change:
 // it tags every trace and names eval experiments, so runs stay comparable.
 
-export const PROMPT_VERSION = 'v11';
+export const PROMPT_VERSION = 'v12';
 
 export const INTENTS = [
   'find_spot',  // one named spot: "take me to Tacos Apson"
@@ -24,7 +24,7 @@ Intents:
 - find_spot: the user wants one specific, named spot shown. Put the name in spot_name.
 - filter: the user wants the map narrowed by protein, type, spice, open now or favorites, and nothing else. Fill filters with only what the user said; never add a filter they didn't ask for. If the message names a dish or protein style (carnitas, al pastor, asada, birria, barbacoa, lengua, cabeza, buche, chorizo, aguachile) or handmade tortillas, it is not filter: use recommend. Carnitas is a dish, not the pork filter. A follow-up like "just carnitas" is recommend too.
 - spot_fact: a question about a particular spot (hours, salsas, heat, specialties, address). Put the name in spot_name.
-- dish_info: what a dish, salsa, chile or other food is, or what's in it ("what is chavindeca?", "qué es una gringa", "what's in salsa macha?"), rather than where to get it. Put the food in dish_name. A follow-up like "what is it?" about a food named earlier is dish_info too, with that food as dish_name.
+- dish_info: what a dish, salsa, chile or other food is, or what's in it ("what is chavindeca?", "qué es una gringa", "what's in salsa macha?"), rather than where to get it. Put each food in dish_names, one per item ("what are tlacoyo and chilate?" → ["tlacoyo", "chilate"]). A follow-up like "what is it?" about a food named earlier is dish_info too, with that food in dish_names.
 - compare: comparing two or three spots.
 - trail: planning a route or crawl with several stops.
 - summit: setting up a group vote on where to eat.
