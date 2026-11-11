@@ -5,7 +5,7 @@
 import { json, error } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
-import { runConcierge } from '$lib/server/agent/concierge.js';
+import { runConcierge, traceClient } from '$lib/server/agent/concierge.js';
 import { DEFAULT_MODELS } from '$lib/server/agent/models.js';
 import { getCatalog } from '$lib/server/catalog.js';
 import { getKb } from '$lib/server/kb.js';
@@ -92,6 +92,10 @@ export async function POST({ request, locals }) {
     await Promise.all([...misses].map((name) => ls.createFeedback(result.run_id, 'kb_miss', { value: name })))
       .catch((err) => console.error('kb_miss feedback', err.message));
   }
+
+  // Traces left `pending` with no output (#92): the closing update was still queued when the
+  // function froze. Waiting here costs one batch send, after the reply is already built
+  await traceClient.awaitPendingTraceBatches().catch((err) => console.error('trace flush', err.message));
 
   return json({ reply: result.reply, actions: result.actions, tier: result.tier, run_id: result.run_id ?? null });
 }

@@ -12,6 +12,7 @@
 import { z } from 'zod';
 import { SystemMessage, HumanMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
 import { traceable, getCurrentRunTree } from 'langsmith/traceable';
+import { Client } from 'langsmith';
 import { parseIntent } from '../../intentRules.js';
 import { searchSpots, normalize, editDistance } from '../../search.js';
 import { DEFAULT_MODELS, chatModel, callCost } from './models.js';
@@ -343,7 +344,11 @@ async function concierge({
   }
 }
 
+// Its own client, so /api/agent can wait for the trace to send before Vercel freezes the function
+export const traceClient = new Client();
+
 export const runConcierge = traceable(concierge, {
   name: 'concierge',
+  client: traceClient,
   metadata: { prompt_version: PROMPT_VERSION, env: process.env.VERCEL_ENV || 'dev', git_sha: process.env.VERCEL_GIT_COMMIT_SHA }
 });
