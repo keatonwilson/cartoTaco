@@ -66,16 +66,16 @@ function canHover() {
   return typeof window !== 'undefined' && !!window.matchMedia?.('(hover: hover)').matches;
 }
 
-/**
- * Width (px) of the desktop/tablet spot panel. SpotPanel renders at this
- * width and the camera pads by it, so the two can't drift apart.
- */
 /** The trail tray's height, as TrailTray.svelte's CSS sets it. */
 export function trailTrayHeight(viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1280,
   viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 800) {
   return viewportWidth < 768 ? 280 : Math.min(420, Math.round(viewportHeight / 2));
 }
 
+/**
+ * Width (px) of the desktop/tablet spot panel. SpotPanel renders at this
+ * width and the camera pads by it, so the two can't drift apart.
+ */
 export function spotPanelWidth(viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1280) {
   return Math.round(Math.min(560, Math.max(360, viewportWidth * 0.38)));
 }
