@@ -70,6 +70,12 @@ function canHover() {
  * Width (px) of the desktop/tablet spot panel. SpotPanel renders at this
  * width and the camera pads by it, so the two can't drift apart.
  */
+/** The trail tray's height, as TrailTray.svelte's CSS sets it. */
+export function trailTrayHeight(viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1280,
+  viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 800) {
+  return viewportWidth < 768 ? 280 : Math.min(420, Math.round(viewportHeight / 2));
+}
+
 export function spotPanelWidth(viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1280) {
   return Math.round(Math.min(560, Math.max(360, viewportWidth * 0.38)));
 }
@@ -104,7 +110,7 @@ export function computeMapPadding({ panelOpen } = {}) {
   }
 
   if (!padding.bottom) {
-    if (get(trailModeActive)) padding.bottom = 280;
+    if (get(trailModeActive)) padding.bottom = trailTrayHeight();
     else if (get(comparisonActive)) padding.bottom = 160;
   }
   return padding;
@@ -916,12 +922,14 @@ export function flyToSite(map, site) {
 }
 
 /**
- * Create or update the trail stop markers (numbered orange circles) on the map.
+ * Create or update the trail stop markers (numbered, coral-ringed badges) on the map.
  * @param {object} map - Mapbox GL map instance
  * @param {object[]} stops - Ordered array of processedSite objects
  */
 export function updateTrailLayers(map, stops) {
-  if (!map || !map.loaded()) return;
+  if (!map) return;
+  // Still loading tiles (a shared ?trail= link restores mid-load): draw once it settles, or nothing redraws
+  if (!map.loaded()) return void map.once('idle', () => updateTrailLayers(map, stops));
 
   const geojson = {
     type: 'FeatureCollection',
@@ -950,11 +958,12 @@ export function updateTrailLayers(map, stops) {
     id: 'trail-stop-circles',
     type: 'circle',
     source: 'trail-stops',
+    // A ringed badge, not a filled coral circle: clusters are those, and "2" read as either
     paint: {
-      'circle-color': '#FE795D',
-      'circle-radius': 14,
-      'circle-stroke-width': 2,
-      'circle-stroke-color': '#fff'
+      'circle-color': '#ffffff',
+      'circle-radius': 13,
+      'circle-stroke-width': 4,
+      'circle-stroke-color': '#FE795D'
     }
   });
 
@@ -968,7 +977,7 @@ export function updateTrailLayers(map, stops) {
       'text-size': 12
     },
     paint: {
-      'text-color': '#ffffff'
+      'text-color': '#c2410c'
     }
   });
 }
@@ -980,7 +989,8 @@ export function updateTrailLayers(map, stops) {
  * @param {object|null} routeGeojson - GeoJSON LineString geometry or null
  */
 export function updateTrailRoute(map, routeGeojson) {
-  if (!map || !map.loaded()) return;
+  if (!map) return;
+  if (!map.loaded()) return void map.once('idle', () => updateTrailRoute(map, routeGeojson));
 
   const geojson = {
     type: 'FeatureCollection',
