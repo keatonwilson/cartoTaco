@@ -25,6 +25,7 @@
   import { comparisonActive } from '$lib/comparisonStore';
   import { selectedSite, processedTacoData } from '$lib/stores';
   import { isMobile } from '$lib/deviceDetection';
+  import { trailTrayHeight } from '$lib/mapping';
   import { listen, speechSupported, describeVoiceError } from '$lib/voice';
 
   const EXAMPLES = ['Spicy pork open now', 'Where can I get birria from a truck?', 'A walking trail near Tacos Apson', 'Pick a spot for me'];
@@ -32,9 +33,10 @@
   let input = '';
   let inputEl;
   let scroller;
+  let vw, vh;
 
   // Sit above whichever tray is open, like the map padding does
-  $: launcherBottom = $trailModeActive ? 296 : $comparisonActive ? 176 : 32;
+  $: launcherBottom = $trailModeActive ? trailTrayHeight(vw, vh) + 16 : $comparisonActive ? 176 : 32;
   // On phones the launcher would cover the spot's bottom sheet
   $: showLauncher = !$chatOpen && !($isMobile && $selectedSite);
 
@@ -129,6 +131,8 @@
     }
   }
 </script>
+
+<svelte:window bind:innerWidth={vw} bind:innerHeight={vh} />
 
 {#if showLauncher}
   <button class="chat-launcher" style="bottom: {launcherBottom}px" on:click={open} aria-label="Ask the concierge">
