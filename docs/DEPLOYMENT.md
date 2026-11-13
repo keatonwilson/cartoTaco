@@ -39,12 +39,13 @@ forward — that's how it got abandoned the first time.
 ### Preview deployments do not get their own database
 
 A Vercel preview builds the PR's **code** against whichever Supabase project is
-set in Vercel's Preview environment. There is no per-branch database and
-If you suspect the two databases have drifted apart, run `schema-parity.yml`.
+set in Vercel's Preview environment. There is no per-branch database, and
+`migrate.yml` does not run for PR branches.
 
-`migrate.yml` does not run for PR branches. A PR that adds a migration will show
+A PR that adds a migration will show
 a preview that errors against the un-migrated schema until it merges to
 `staging`. That is expected; test it on staging, not on the preview.
+If you suspect the two databases have drifted apart, run `schema-parity.yml`.
 
 ---
 
