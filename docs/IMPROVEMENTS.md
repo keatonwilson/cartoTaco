@@ -12,12 +12,12 @@ This document outlines potential improvements to enhance CartoTaco's functionali
 6. **User Location Submissions** - Community-driven submission system with geocoding, interactive map picker, and admin review workflow
 7. **Dark Mode** - Theme toggle with light/dark/auto modes and time-based automatic switching (6am-8pm light, else dark)
 8. **User Favorites System** - Heart icon favorites with filtering, dedicated favorites page, and map integration
-9. **Vercel Deployment** - Configured adapter-vercel with Node 20, SSR guards in stores
+9. **Vercel Deployment** - Configured adapter-vercel with Node 24, SSR guards in stores
 10. **Directions Deep-Link** - `DirectionsButton.svelte` detects iOS/Android/desktop and deep-links to Apple Maps, Google Maps intent, or Google Maps web respectively
-11. **Taco Trail Route Builder** - Multi-stop route planning with walking/driving directions via Mapbox Directions API, stop reordering, and trail visualization on map
+11. **Taco Trail Route Builder** - Multi-stop route planning with walking/cycling/driving directions via Mapbox Directions API, stop reordering, and trail visualization on map
 12. **Spot Comparison Mode** - Compare up to 3 establishments side-by-side at `/compare` with shareable URLs (`?ids=1,2,3`), winner highlighting across metrics, and mobile carousel view
 13. **Taste Profile & Personalization** - k-NN based taste profile derived from favorites with 13 archetypes (Heat Seeker, Salsa Explorer, The Purist, etc.), scatter plot visualization, protein affinities, and recommendation engine
-14. **Onboarding Tour System** - 7-step guided tour with targeted tooltips, localStorage persistence, and restartable from help button
+14. **Onboarding Tour System** - 11-step guided tour with targeted tooltips, localStorage persistence, and restartable from help button
 15. **New Spots Badge** - Notification badge for recently added establishments with localStorage-based "seen" tracking and map fly-to on click
 16. **Bottom Sheet Mobile UX** - Mobile-optimized card display with bottom sheet pattern, swipe-to-dismiss, and iOS Safari compatibility fixes
 17. **Anti-Review Vibe Votes (C6)** - Four binary emoji chips per Card (Heat Legit, Authentic, Value, Vibe) replacing star ratings. Phosphor icons, optimistic toggle, aggregate counts public. Tour step explains the system.

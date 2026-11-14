@@ -1,5 +1,7 @@
 # User Submission Feature - Design Document
 
+> **Status: shipped.** The `/submit` route, `src/lib/submissions.js`, and the `location_submissions` table (migration `004_create_location_submissions.sql`) implement this design. Approval is still the manual database process described below; the admin dashboard and Phase 2/3 items are not built. The schema in the "Migration Script" section is the original proposal; the migration file is authoritative (it uses `gen_random_uuid()`, enum types, and a `user_id` column).
+
 ## Overview
 Allow end-users to submit new taco locations to CartoTaco. Submissions go through a moderation queue where they can be reviewed and approved in the database before publishing to the live site.
 
@@ -283,7 +285,7 @@ Could add `/admin/submissions` page with:
 ## Migration Script
 
 ```sql
--- migrations/003_create_submissions_table.sql
+-- Original proposal (shipped as supabase/migrations/..._004_create_location_submissions.sql)
 
 -- Enable UUID extension if not already enabled
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -382,5 +384,4 @@ COMMENT ON TABLE location_submissions IS 'User-submitted taco locations pending 
 ---
 
 **Last Updated**: 2026-02-11
-**Status**: Planning/Design Phase
-**Ready for Implementation**: Pending final approval
+**Status**: Shipped (see note at top)
