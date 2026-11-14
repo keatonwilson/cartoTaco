@@ -7,6 +7,8 @@ import { processedTacoData, summaryStats } from './stores';
 import { favoriteSalsas } from './salsaFavoritesStore';
 import { AXES, flavourVector } from './salsa';
 import { buildFeatureVector, centroid, knnRecommend } from './recommend';
+import { similarityIndex } from './similarityStore';
+import { textAffinities } from './similarity';
 
 
 // ─── Data-driven thresholds ───────────────────────────────────────────────────
@@ -172,8 +174,8 @@ const ARCHETYPES = [
 // ─── Main derived store ───────────────────────────────────────────────────────
 
 export const tasteProfile = derived(
-	[favoriteIds, processedTacoData, summaryStats, favoriteSalsas],
-	([$favoriteIds, $allTacoData, $summaryStats, $favoriteSalsas]) => {
+	[favoriteIds, processedTacoData, summaryStats, favoriteSalsas, similarityIndex],
+	([$favoriteIds, $allTacoData, $summaryStats, $favoriteSalsas, $similarityIndex]) => {
 		// Pending (unvetted) spots have all-zero feature vectors and closed spots
 		// must never be recommended — exclude both from favorites math,
 		// thresholds, k-NN candidates, and the scatter plot
@@ -236,7 +238,10 @@ export const tasteProfile = derived(
 
 		// k-NN recommendations
 		const nonFavSites   = $processedTacoData.filter(s => !$favoriteIds.has(s.est_id));
-		const recommendations = knnRecommend(userVector, nonFavSites, maxSalsa, $favoriteSalsas);
+		// Description similarity, once loaded (similarityStore), adds "reads like
+		// one of your favourites" as one more axis
+		const textAffinity = textAffinities($similarityIndex, favSites, nonFavSites);
+		const recommendations = knnRecommend(userVector, nonFavSites, maxSalsa, $favoriteSalsas, undefined, { textAffinity });
 
 		// Salsa taste: the centre of the user's favourite salsas on each flavour
 		// axis (0–10), or null if they haven't favourited any
@@ -271,6 +276,7 @@ export const tasteProfile = derived(
 			runnerUp,
 			thresholds,
 			recommendations,
+			usesDescriptions: textAffinity.size > 0,
 			salsaTaste,
 			favoriteSalsasCount: $favoriteSalsas.length,
 			scatterPoints,

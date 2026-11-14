@@ -43,29 +43,42 @@ export function centroid(vectors) {
 // Each favourited salsa a spot actually serves pulls it this much closer (up to two)
 const SERVES_FAVOURITE_PULL = 0.85;
 
+// How much description similarity counts: the text affinity joins the
+// distance as one more axis of this length (0 = closest of the candidates to
+// one of your favourites, TEXT_WEIGHT = furthest). Tuning knob.
+export const TEXT_WEIGHT = 0.6;
+
 /**
  * Nearest spots to the user's taste. With favourite salsas, the 7 spot
  * dimensions are joined by how close the spot's salsas come to the user's
  * salsa taste (see salsaAffinity), and serving a favourite outright pulls a
  * spot closer still. Without any, this is the original 7-dimension k-NN.
+ *
+ * With `textAffinity` (from similarity.js textAffinities), how closely a
+ * spot's description reads like one of the favourites' joins as one more
+ * axis, and the favourite it reads like comes back as `because`. Spots
+ * without a score (not yet computed) sit at the far end of that axis.
  */
-export function knnRecommend(targetVector, candidates, maxSalsa, favouriteSalsas, k = K) {
+export function knnRecommend(targetVector, candidates, maxSalsa, favouriteSalsas, k = K, { textAffinity = null } = {}) {
 	const withSalsas = favouriteSalsas.length > 0;
-	const MAX_DIST = Math.sqrt(withSalsas ? 7 + AXES.length : 7);
+	const withText = textAffinity?.size > 0;
+	const MAX_DIST = Math.sqrt((withSalsas ? 7 + AXES.length : 7) + (withText ? TEXT_WEIGHT ** 2 : 0));
 	return candidates
 		.map(site => {
 			const fv = buildFeatureVector(site, maxSalsa);
 			let dist = euclideanDistance(targetVector, fv);
+			const text = withText ? textAffinity.get(site.est_id) : null;
+			if (withText) dist = Math.hypot(dist, TEXT_WEIGHT * (1 - (text?.score ?? 0)));
 			const affinity = salsaAffinity(site.salsaStyles, favouriteSalsas);
 			if (affinity) {
 				dist = Math.hypot(dist, affinity.distance) * SERVES_FAVOURITE_PULL ** Math.min(affinity.matched.length, 2);
 			}
 			const similarity = Math.round(Math.max(0, (1 - dist / MAX_DIST)) * 100);
-			return { site, dist, similarity, matchedSalsas: affinity?.matched ?? [] };
+			return { site, dist, similarity, matchedSalsas: affinity?.matched ?? [], because: text?.because ?? null };
 		})
 		.sort((a, b) => a.dist - b.dist)
 		.slice(0, k)
-		.map(({ site, similarity, matchedSalsas }) => ({ ...site, similarity, matchedSalsas }));
+		.map(({ site, similarity, matchedSalsas, because }) => ({ ...site, similarity, matchedSalsas, because }));
 }
 
 /**
