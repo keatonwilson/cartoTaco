@@ -2,7 +2,7 @@
   // The spot card body, the same on the desktop panel and the mobile sheet.
   // The name, status and actions live in SpotHeader above it. One reading
   // column: hours and the description first, then the at-a-glance tiles,
-  // what they serve, vibe votes, and the specialties carousel. Components
+  // what they serve, vibe votes, the specialties carousel, and similar spots. Components
   // are sized to fill the column so numbers and labels read at a glance.
   import RadarChart from "./RadarChart.svelte";
   import HoursOpen from "./HoursOpen.svelte";
@@ -11,6 +11,7 @@
   import VibeFingerprint from "./VibeFingerprint.svelte";
   import ClosedBanner from "./ClosedBanner.svelte";
   import SpotStats from "./SpotStats.svelte";
+  import SimilarSpots from "./SimilarSpots.svelte";
   import { selectedSite } from "$lib/stores";
   import { radarMax } from "$lib/chartTheme";
   import { todayHours, minuteClock } from "$lib/hours";
@@ -145,6 +146,10 @@
         <p class="card-note">No specialty information for this spot yet.</p>
       {/if}
     </section>
+
+    {#key $selectedSite.est_id}
+      <SimilarSpots estId={$selectedSite.est_id} closed={isClosed} />
+    {/key}
   </div>
 {/if}
 

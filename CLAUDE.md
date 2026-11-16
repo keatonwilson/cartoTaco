@@ -109,16 +109,23 @@ Historical order, as originally applied:
 39. `039_salsa_field_sightings.sql` - Field sightings and draft styles: `site_salsas` gains `photo_url`/`palette`/`observed_at` (written by cartoTacoMenuExtract's Salsa Field Notes page) and `synced` (backfilled true for links to keyed styles); `salsa_styles` gains `status` (`draft`/`published`, public reads see published only); `sync_site_salsas()` now removes only links it created and keeps those carrying curated data; view exposes the sighting fields
 40. `040_ai_usage.sql` - `ai_usage` (user_id, Tucson day, requests, tokens, escalations, cost_usd) with own-rows SELECT, and SECURITY DEFINER `record_ai_usage(...)` (authenticated only; adds to the caller's row, negatives clamped) for the concierge's per-user daily budget
 41. `041_fix_salsa_resync_safeupdate.sql` - `resync_site_salsas_on_style_change()` gains `WHERE true`: pg_safeupdate rejected its bare `UPDATE public.salsa`, so inserting a `salsa_styles` row through the API (a new style from Salsa Field Notes) failed
+42. `042_create_site_similarity.sql` - Description similarity (see below): `site_similarity` (every pair, `est_id_a < est_id_b`, cosine `score`; public SELECT), `site_similarity_sources` (per-spot `source_hash`/`model`, service role only), `description_hash()`, the atomic `replace_site_similarity(model, sources, pairs)` RPC, and a `similarity_stale` check in `data_health_report()`
 
 ### Data Health (self-healing)
 Migration 034 makes the database repair specialty links itself. Cards only show specials whose `spec_id_N` FK is set; cartoTacoMenuExtract promotion writes the spec *name* into `specialty_item_N` / `protein_spec_N` / `salsa_spec_N` (re-added by that repo's migration 009 after 017 dropped them, so they exist in production) and links the id.
 - `normalize_spec_name()` / `resolve_spec_id()` - one matching rule (lowercase, trimmed, collapsed whitespace; link only on exactly one match). Mirrored in cartoTacoMenuExtract `src/spec_tables.py`; keep them in sync
 - BEFORE INSERT/UPDATE triggers on `menu`/`protein`/`salsa` fill an empty `spec_id_N` from its name slot; AFTER triggers on the spec tables run `heal_spec_links()` so creating/renaming a spec back-links existing spots. Healing only fills empty links, never overwrites or clears one. To unlink a special, clear its name slot too, or the trigger re-links it
 - `heal_log` - every automatic fix (service role only)
-- `data_health_report()` - read-only checks needing a human (unlinked/ambiguous specs, yes-vs-share mismatches, missing child rows/heat, bad coordinates, half-set hours, duplicate spots, stale pending/staging); severities `error`/`warn`/`info`
+- `data_health_report()` - read-only checks needing a human (unlinked/ambiguous specs, yes-vs-share mismatches, missing child rows/heat, bad coordinates, half-set hours, duplicate spots, stale pending/staging, stale description similarity); severities `error`/`warn`/`info`
 - `.github/workflows/data-health.yml` - nightly sweep + report into the job summary (uses `SUPABASE_DB_URL_PROD`); the same report is browsable in cartoTacoMenuExtract's Data Health page
 - `.github/workflows/schema-parity.yml` - manual `pg_dump` diff of the prod and staging `public` schemas; catches hand-edits in the Supabase editor that leave no migration-history row. Staging legitimately runs ahead of prod mid-release, so a failure means "look at this", not "broken"
 - All functions are revoked from `anon`/`authenticated`
+
+### Description Similarity
+Migration 042. cartoTacoMenuExtract's `src/similarity.py` (`python3 -m src.similarity`, or the Data Health page) embeds each spot's hand-written short + long descriptions, with the spot's own name and street address taken out, and writes every pairwise cosine score through `replace_site_similarity()`, which replaces the whole matrix in one transaction. Only the scores reach the database; there's no pgvector. With ~30 spots it's a few hundred rows, so the app fetches it all.
+- `description_hash(short, long)` = md5 of `short || '\n' || long` (NULL as ''). Mirrored by `description_hash()` in that repo's `src/similarity.py`; keep them in sync
+- `similarity_stale` (data health) flags spots whose descriptions changed since the last run, or that have no scores yet. Re-run the script; it always recomputes everything
+- Raw scores from one author's prose sit in a narrow band, so nothing shows them as a percentage. See `similarity.js` below
 
 ### Salsa Atlas (salsa catalog)
 Migrations 036/037/039. `salsa_styles` is the catalog behind `/salsa`; `site_salsas` says which spot serves which style.
@@ -240,7 +247,11 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 - Functions: `ask(query)` (POSTs `{ query, history }` to `/api/agent`, last 12 non-error turns), `applyActions(actions)` (`show_spot` → `flyToTarget`; `apply_filters` → replaces `filterConfig` from `defaultFilterConfig()`, exactly as the server counted, and returns the config to restore; `plan_trail` → replaces the trail stops/mode and enters trail mode; `compare` → refills the Compare tray; `start_summit` → `goto('/vote/new?ids=…&title=…')`. Spots, trails and compares close the chat sheet on phones), `undoMessage(id)`, `sendFeedback(id, 0|1)`, `clearChat()` (also drops any reply still in flight)
 
 ### Recommender (src/lib/recommend.js)
-Pure k-NN taste recommendations shared by `tasteProfileStore` and the concierge's `recommend_for_me`: `buildFeatureVector`, `centroid`, `knnRecommend`, and `recommendFor(catalog, favIds, { favouriteSalsas, k })` (skips pending/closed spots and the favorites themselves; null without usable favorites).
+Pure k-NN taste recommendations shared by `tasteProfileStore` and the concierge's `recommend_for_me`: `buildFeatureVector`, `centroid`, `knnRecommend`, and `recommendFor(catalog, favIds, { favouriteSalsas, k })` (skips pending/closed spots and the favorites themselves; null without usable favorites). `knnRecommend(..., k, { textAffinity })` takes description similarity as one more axis of length `TEXT_WEIGHT` (the tuning knob) and returns the favourite a pick reads like as `because`. `tasteProfileStore` passes it; the concierge's `recommendFor` doesn't yet, since the server doesn't load `site_similarity`.
+
+### Similarity (src/lib/similarity.js, src/lib/similarityStore.js)
+- `similarityIndex` - `Map<est_id, Map<est_id, score>>` from `site_similarity`, fetched once by `loadSimilarity()` (called by `SimilarSpots` and `TasteProfile`). Null if the fetch fails, empty before the first run; both features then hide
+- `buildSimilarityIndex(rows)`, `similarSpots(index, estId, catalog, k)` (open, vetted, placeable spots only; a closed spot works as the starting point), `textAffinities(index, favourites, candidates)` (each favourite's row min-max rescaled over the candidates, then the best favourite per candidate, so mixed tastes don't average into mush)
 
 ### Site Model (src/lib/siteModel.js)
 The pure logic behind the stores, with no stores or Supabase client, so the server and offline evals can share it (see `docs/AI_CONCIERGE_PLAN.md`): `processSite(row)` / `processSites(rows)` (the body of `processedTacoData`), `computeSummaryStats`, `computeDistributionPool`, `computeDistributionStats`, `hasValidCoordinates`, `isOpenNow(hours, now)`, `matchesFilters(site, cfg, favIds, now)` (the `filteredTacoData` predicate), `salsaNames(site)` (catalog styles, house names, named varieties as "Salsa Verde", other salsas; searched by both `searchSpots` and the text filter), and `defaultFilterConfig()` (the `filterConfig` starting value), and `computeCensus(sites, now)` (the body of `censusStats`). `stores.js` derives from these and re-exports `hasValidCoordinates`/`isOpenNow`. Change the logic here, not in the stores.
@@ -363,7 +374,7 @@ and `flyToSite()`.
 ## Component Organization
 
 ### Main Components (src/components/)
-- `Card.svelte` - Spot card body, identical on the desktop panel and the mobile sheet (`SpotHeader` sits above it). One column, sized to fill it: Hours (`HoursOpen size="lg"` + a "Today" line) and About first, then `SpotStats` tiles, What they serve (the radar, large, with per-axis percentages, Menu/Protein toggle), Vibe check, and Specialties (`SpecCarousel`, cards at 85% of the column) last. Sections are labelled bands split by hairlines with a staggered entrance
+- `Card.svelte` - Spot card body, identical on the desktop panel and the mobile sheet (`SpotHeader` sits above it). One column, sized to fill it: Hours (`HoursOpen size="lg"` + a "Today" line) and About first, then `SpotStats` tiles, What they serve (the radar, large, with per-axis percentages, Menu/Protein toggle), Vibe check, Specialties (`SpecCarousel`, cards at 85% of the column), and `SimilarSpots` last. Sections are labelled bands split by hairlines with a staggered entrance
 - `SpotHeader.svelte` - Shared card header: mono kicker (type · region), Fraunces name with the restaurant/stand/truck icons, Tucson-time status + address, with Favorite + Compare grouped beside them, then Directions / Call / Website / socials as their own group of pill buttons. Each group wraps as a unit. Closed spots drop Directions and Compare; pending spots drop Compare. `showClose={false}` in the mobile sheet (its drag bar has the ×)
 - `SpotStats.svelte` - At-a-glance tiles: Heat (48px number, full-width 10-notch ladder, city percentile, `ContextStrip`), Salsas (number, bar against the city max with an average tick, `SalsaLineup`), Tortillas (spans the row). Two columns when the column fits two 220px tiles, stacked otherwise
 - `SpotPanel.svelte` - Desktop/tablet spot panel docked left under the header, full height, own scroll, with `SpotHeader` fixed at the top. Renders `Card` or `PendingSpotCard hideHeader`, keyed by spot so swaps re-run the entrance. The mobile bottom sheet (in Map.svelte) renders the same `SpotHeader` + `Card` inside its scroll area
@@ -393,6 +404,7 @@ and `flyToSite()`.
 - `SalsaMap.svelte` - Scatter on a salsa's page: every salsa as a dot (in its own colour) on two reader-picked axes from `AXES` (heat + the five flavour columns), this salsa and its four nearest relatives labelled and joined, hover/focus tooltip, and a table of the same numbers. Opens on the two axes that spread the group widest
 - `SalsaArt.svelte` - Generated stand-in for a salsa photo: top-down bowl drawn from the palette, seeded by slug so SSR and client match
 - `SpecCarousel.svelte` & `SpecCard.svelte` - Specialty item displays
+- `SimilarSpots.svelte` - Card's last section: the 3 open spots whose descriptions read most like this one's (titled "If you miss this one" on a closed spot); click flies to the spot. Renders nothing without similarity data
 - `SpiceGauge.svelte` - Heat Ladder: 10-notch sequential-coral meter with hero number and optional city-percentile context line (pure Svelte/CSS, no chart lib)
 - `ThemeToggle.svelte` - Dark/light mode toggle button
 - `TrailTray.svelte` - Taco trail builder interface (stop list, reordering, transport mode, route display)
@@ -476,6 +488,7 @@ Test files are co-located in src/lib/:
 - `src/lib/pendingSpots.test.js` - Tests for pending-spot processing/filtering
 - `src/lib/closedSpots.test.js` - Tests for closed-spot processing/filtering/map styling
 - `src/lib/mapping.test.js` - Tests for map layer/GeoJSON helpers, coordinate validation, and the spot panel's fly-to/close camera
+- `src/lib/similarity.test.js` - Tests for the similarity index, similar spots, text affinities and the k-NN text axis
 - `src/lib/hours.test.js` - Tests for Tucson-time open status and today's hours (uses UTC instants so it passes in any runner time zone)
 - `src/lib/directions.test.js` - Tests for the per-platform directions link
 - `src/lib/salsa.test.js` - Tests for Salsa Atlas helpers (contrast on every seeded palette colour, sorting, spot lists)

@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { tasteProfile } from '$lib/tasteProfileStore';
+  import { loadSimilarity } from '$lib/similarityStore';
   import { shortName } from '$lib/salsa';
   import { processedTacoData } from '$lib/stores';
   import { isAuthenticated } from '$lib/authStore';
@@ -10,6 +11,9 @@
   import { seriesColors, withAlpha, chartInk, tooltipStyle, baseTextStyle, STAR_PATH } from '$lib/chartTheme';
   import RadarChart from './RadarChart.svelte';
   import SpiceGauge from './SpiceGauge.svelte';
+
+  // Description similarity joins the recommendations once it arrives
+  onMount(() => { loadSimilarity(); });
 
   function goToSpot(site) {
     goto(`/?location=${site.est_id}`);
@@ -369,7 +373,7 @@
       <div class="profile-section">
         <h3 class="section-title">Recommended for You</h3>
         <p class="section-subtitle">
-          Closest matches to your taste profile via k-NN{#if $tasteProfile.salsaTaste}, weighted by your favourite salsas{/if}
+          Closest matches to your taste profile via k-NN{#if $tasteProfile.usesDescriptions}, plus spots whose descriptions read like your favourites{/if}{#if $tasteProfile.salsaTaste}, weighted by your favourite salsas{/if}
         </p>
         <div class="rec-list">
           {#each $tasteProfile.recommendations as site}
@@ -378,7 +382,8 @@
                 <span class="rec-name">{site.name}</span>
                 <span class="rec-type">
                   {site.type}{#if site.matchedSalsas.length > 0}
-                    · serves your {site.matchedSalsas.map((s) => shortName(s.name)).join(' & ')}{/if}
+                    · serves your {site.matchedSalsas.map((s) => shortName(s.name)).join(' & ')}{/if}{#if site.because}
+                    · reads like {site.because.name}{/if}
                 </span>
               </div>
               <div class="rec-right">
