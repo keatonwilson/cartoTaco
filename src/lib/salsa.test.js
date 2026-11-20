@@ -7,6 +7,7 @@ import {
   shortName,
   spotsForStyle,
   spotCounts,
+  isSighting,
   sortStyles,
   neighbours,
   seededRandom,
@@ -94,6 +95,13 @@ describe('spotsForStyle / spotCounts', () => {
     expect(counts.get('verde')).toBe(2);
     expect(counts.get('rojo')).toBe(1);
     expect(counts.has('pico')).toBe(false);
+  });
+
+  it('treats a link with a photo or a visit date as a sighting', () => {
+    expect(isSighting({ photo_url: 'https://x/a.jpg' })).toBe(true);
+    expect(isSighting({ observed_at: '2026-10-23' })).toBe(true);
+    expect(isSighting({ heat: 6, house_name: 'La Brava', note: 'smoky', palette: ['#aa0000'] })).toBe(false);
+    expect(isSighting({ photo_url: null, observed_at: null })).toBe(false);
   });
 });
 
