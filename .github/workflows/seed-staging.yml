@@ -13,13 +13,18 @@ name: Seed Staging from Prod
 
 on:
   workflow_dispatch:
+    inputs:
+      discard_staging_atlas:
+        description: Replace salsa styles and curated links that prod doesn't have (they are lost)
+        type: boolean
+        default: false
 
 env:
   # Content tables only. User-generated data (favorites, vibe votes, profiles,
   # submissions, summit sessions) stays whatever staging already had — those
-  # rows reference auth.users, which we don't copy. The Salsa Atlas catalog is
-  # curated on prod, so it is content too; its spot links (site_salsas) are
-  # dumped on their own, see below.
+  # rows reference auth.users, which we don't copy. The Salsa Atlas is curated
+  # on prod, so it is content too. Description similarity is computed from the
+  # descriptions being copied, so it comes along with them.
   CONTENT_TABLES: >-
     public.sites
     public.descriptions
@@ -31,6 +36,9 @@ env:
     public.protein_spec
     public.salsa_spec
     public.salsa_styles
+    public.site_salsas
+    public.site_similarity
+    public.site_similarity_sources
 
 jobs:
   seed:
@@ -53,9 +61,7 @@ jobs:
           pg_dump --data-only --no-owner --no-acl \
             $(for t in $CONTENT_TABLES; do printf -- '-t %s ' "$t"; done) \
             -d "$PROD_DB_URL" -f data.sql
-          pg_dump --data-only --no-owner --no-acl -t public.site_salsas \
-            -d "$PROD_DB_URL" -f links.sql
-          echo "dump: $(wc -l < data.sql) + $(wc -l < links.sql) lines"
+          echo "dump: $(wc -l < data.sql) lines"
         env:
           PROD_DB_URL: ${{ secrets.SUPABASE_DB_URL_PROD }}
 
@@ -67,33 +73,73 @@ jobs:
       #     users' rows. They're set aside by slug, because style ids differ
       #     between prod and staging, and put back on prod's ids. A favourite
       #     whose style prod doesn't have is dropped.
-      # Loading salsa and salsa_styles fires the atlas sync triggers, which
-      # create synced links of their own. They're deleted and prod's links
-      # loaded in their place. All in one transaction (-1): a failure anywhere
-      # leaves staging as it was.
+      # Staging's atlas is replaced, so the run stops if that would lose a style
+      # or a curated link (sighting, hand-set detail, hand-made link) prod
+      # doesn't have, unless discard_staging_atlas is set.
+      # The atlas sync triggers are off while data.sql loads: prod's links are
+      # in the dump, and links the triggers made would collide with them.
+      # All in one transaction (-1): a failure anywhere leaves staging as it was.
       - name: Replace staging content
         run: |
           cat > seed.sql <<'SQL'
           CREATE TEMP TABLE bak_favs AS
             SELECT f.user_id, s.slug, f.created_at
               FROM public.user_favorite_salsas f JOIN public.salsa_styles s ON s.id = f.style_id;
+          CREATE TEMP TABLE bak_slugs AS SELECT slug FROM public.salsa_styles;
+          CREATE TEMP TABLE bak_curated AS
+            SELECT l.est_id, s.slug FROM public.site_salsas l JOIN public.salsa_styles s ON s.id = l.style_id
+             WHERE NOT l.synced OR l.photo_url IS NOT NULL OR l.palette IS NOT NULL OR l.observed_at IS NOT NULL
+                OR l.heat IS NOT NULL OR l.house_name IS NOT NULL OR l.note IS NOT NULL;
+          ALTER TABLE public.salsa DISABLE TRIGGER salsa_sync_site_salsas;
+          ALTER TABLE public.salsa_styles DISABLE TRIGGER salsa_styles_resync_insert;
           SQL
           echo "TRUNCATE $(echo $CONTENT_TABLES | tr ' ' ',') CASCADE;" >> seed.sql
           cat >> seed.sql <<'SQL'
           \i data.sql
           -- data.sql empties search_path, so everything below is schema-qualified.
-          DELETE FROM public.site_salsas;
-          \i links.sql
+          ALTER TABLE public.salsa ENABLE TRIGGER salsa_sync_site_salsas;
+          ALTER TABLE public.salsa_styles ENABLE TRIGGER salsa_styles_resync_insert;
+
+          \if :discard
+          \else
+          DO $$
+          DECLARE styles int; links int;
+          BEGIN
+            SELECT count(*) INTO styles FROM pg_temp.bak_slugs b
+             WHERE b.slug NOT IN (SELECT slug FROM public.salsa_styles);
+            SELECT count(*) INTO links FROM pg_temp.bak_curated b
+             WHERE NOT EXISTS (SELECT 1 FROM public.site_salsas l JOIN public.salsa_styles s ON s.id = l.style_id
+                                WHERE l.est_id = b.est_id AND s.slug = b.slug);
+            IF styles + links > 0 THEN
+              RAISE EXCEPTION '% salsa style(s) and % curated link(s) on staging are not in prod. Nothing was changed. Promote them to prod, or rerun with discard_staging_atlas to drop them.', styles, links;
+            END IF;
+          END $$;
+          \endif
+
           INSERT INTO public.user_favorite_salsas (user_id, style_id, created_at)
           SELECT b.user_id, s.id, b.created_at
             FROM pg_temp.bak_favs b JOIN public.salsa_styles s ON s.slug = b.slug;
-          -- Re-sync so keyed links follow the salsa rows. Prod's links already
-          -- do, so this should change nothing; it's the safety net.
+
+          -- Re-sync with staging's own sync_site_salsas(), and say if that moved
+          -- staging's links away from prod's (e.g. staging's sync is newer).
+          CREATE TEMP TABLE prod_links AS SELECT est_id, style_id FROM public.site_salsas;
           UPDATE public.salsa SET est_id = est_id;
+          DO $$
+          DECLARE added int; removed int;
+          BEGIN
+            SELECT count(*) INTO added FROM (SELECT est_id, style_id FROM public.site_salsas
+                                             EXCEPT SELECT * FROM pg_temp.prod_links) x;
+            SELECT count(*) INTO removed FROM (SELECT * FROM pg_temp.prod_links
+                                               EXCEPT SELECT est_id, style_id FROM public.site_salsas) x;
+            IF added + removed > 0 THEN
+              RAISE WARNING 'Re-sync added % and removed % salsa link(s), so staging differs from prod', added, removed;
+            END IF;
+          END $$;
           SQL
-          psql -v ON_ERROR_STOP=1 -1 -d "$STAGING_DB_URL" -f seed.sql
+          psql -v ON_ERROR_STOP=1 -v discard="$DISCARD" -1 -d "$STAGING_DB_URL" -f seed.sql
         env:
           STAGING_DB_URL: ${{ secrets.SUPABASE_DB_URL_STAGING }}
+          DISCARD: ${{ inputs.discard_staging_atlas }}
 
       - name: Report row counts
         run: |
@@ -105,6 +151,7 @@ jobs:
              UNION ALL SELECT 'salsa_styles', count(*) FROM public.salsa_styles
              UNION ALL SELECT 'site_salsas', count(*) FROM public.site_salsas
              UNION ALL SELECT 'user_favorite_salsas', count(*) FROM public.user_favorite_salsas
+             UNION ALL SELECT 'site_similarity', count(*) FROM public.site_similarity
              UNION ALL SELECT 'sites_complete', count(*) FROM public.sites_complete;"
         env:
           STAGING_DB_URL: ${{ secrets.SUPABASE_DB_URL_STAGING }}

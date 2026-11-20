@@ -73,19 +73,23 @@ summary and a CSV artifact. Findings never fail the job; a SQL error does.
 **Trigger**: manual only.
 
 Copies the **content tables** (sites, menu, hours, salsa, protein, descriptions,
-spec tables, and the Salsa Atlas's `salsa_styles` and `site_salsas`) from
-production into staging. Deliberately not a whole-database
-dump: Supabase owns the auth/storage/realtime schemas and restores into them
-fail. User-generated rows (favorites, votes, profiles, submissions) stay as
-staging had them, since they reference `auth.users`.
+spec tables, the Salsa Atlas's `salsa_styles` and `site_salsas`, and the
+description similarity matrix) from production into staging. Deliberately not a
+whole-database dump: Supabase owns the auth/storage/realtime schemas and
+restores into them fail. Profiles, submissions and summit sessions stay as
+staging had them. Spot favorites and vibe votes are wiped, since they point at
+the spots being replaced.
 
 The Salsa Atlas is curated on prod (Salsa Field Notes), and staging is seeded
 from it: the catalog and every spot link, sightings included, replace staging's.
 Sighting photos keep their prod storage URLs. `user_favorite_salsas` belongs to
 staging users, so it is set aside and put back by style slug (style ids differ
 between the two databases); a favourite whose style prod lacks is dropped.
-`site_salsas` is loaded on its own after the atlas triggers have run, then the
-keyed links are re-synced. It all runs in one transaction.
+The atlas sync triggers are off while the dump loads, and the keyed links are
+re-synced afterwards (a warning says if that changed any). It all runs in one
+transaction. If staging has a style or a curated link (sighting, hand-set
+detail, hand-made link) that prod doesn't, the job fails and changes nothing;
+promote it to prod first, or run with `discard_staging_atlas` to drop it.
 
 Run it after a big data-entry session in production, not routinely.
 
