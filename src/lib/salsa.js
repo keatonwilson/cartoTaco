@@ -82,6 +82,10 @@ export function spotsForStyle(sites, slug) {
     .sort((a, b) => a.site.isClosed - b.site.isClosed || a.site.name.localeCompare(b.site.name));
 }
 
+// A link someone confirmed in person (a field sighting: photo or visit date),
+// as opposed to one known only from the menu survey or entered by hand
+export const isSighting = (link) => !!(link?.photo_url || link?.observed_at);
+
 // Map<slug, number of open vetted spots serving it>
 export function spotCounts(sites) {
   const counts = new Map();

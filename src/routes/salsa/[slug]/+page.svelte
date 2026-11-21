@@ -6,7 +6,7 @@
   import MapTrifold from 'phosphor-svelte/lib/MapTrifold';
   import { processedTacoData, isLoading, hasError, isOpenNow } from '$lib/stores';
   import { toast } from '$lib/toastStore';
-  import { FAMILIES, inkFor, sortStyles, spotsForStyle, neighbours, shortName } from '$lib/salsa';
+  import { FAMILIES, inkFor, sortStyles, spotsForStyle, neighbours, shortName, isSighting } from '$lib/salsa';
   import SalsaHex from '../../../components/SalsaHex.svelte';
   import SalsaArt from '../../../components/SalsaArt.svelte';
   import SalsaMap from '../../../components/SalsaMap.svelte';
@@ -31,6 +31,15 @@
   $: loaded = !$isLoading && $processedTacoData.length > 0;
   $: spots = spotsForStyle($processedTacoData, style.slug);
   $: openSpots = spots.filter((r) => !r.site.isClosed);
+  // Confirmed on a visit vs only implied by the menu survey's markings
+  $: spotGroups = [
+    { title: 'Seen here', rows: spots.filter((r) => isSighting(r.link)) },
+    { title: 'Listed on the menu survey', rows: spots.filter((r) => !isSighting(r.link)) }
+  ].filter((g) => g.rows.length > 0);
+
+  // observed_at is a plain date; format it in UTC so it never shifts a day
+  const seenOn = (date) =>
+    new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 
   const HEAT_STEPS = Array.from({ length: 10 }, (_, i) => i + 1);
 
@@ -166,40 +175,43 @@
         <a href="/submit">tell us where</a>.
       </p>
     {:else}
-      <ul class="spot-list">
-        {#each spots as { site, link } (site.est_id)}
-          <li class="reveal" class:closed={site.isClosed}>
-            {#if link.photo_url}
-              <img class="spot-photo" src={link.photo_url} alt="{style.name} at {site.name}" loading="lazy" />
-            {/if}
-            <a class="spot-main" href="/?location={site.est_id}">
-              <span class="spot-name">{site.name}</span>
-              <span class="spot-detail">
-                {#if link.house_name}“{link.house_name}” · {/if}{site.type || 'Taco spot'}{#if link.note}
-                  · {link.note}{/if}
-              </span>
-            </a>
-            <span class="spot-side">
-              {#if link.palette?.length}
-                <span class="spot-palette" title="Colours sampled from this spot's version">
-                  {#each link.palette as hex}<span style="background:{hex}"></span>{/each}
+      {#each spotGroups as group (group.title)}
+        <h3 class="spot-group reveal">{group.title}</h3>
+        <ul class="spot-list">
+          {#each group.rows as { site, link } (site.est_id)}
+            <li class="reveal" class:closed={site.isClosed}>
+              {#if link.photo_url}
+                <img class="spot-photo" src={link.photo_url} alt="{style.name} at {site.name}" loading="lazy" />
+              {/if}
+              <a class="spot-main" href="/?location={site.est_id}">
+                <span class="spot-name">{site.name}</span>
+                <span class="spot-detail">
+                  {#if link.observed_at}Seen {seenOn(link.observed_at)} · {/if}{#if link.house_name}“{link.house_name}” · {/if}{site.type || 'Taco spot'}{#if link.note}
+                    · {link.note}{/if}
                 </span>
-              {/if}
-              {#if link.heat != null}
-                <span class="spot-heat" title="This spot's version: heat {link.heat}/10">{link.heat}/10</span>
-              {/if}
-              {#if site.isClosed}
-                <span class="status">Closed</span>
-              {:else if isOpenNow(site.rawData?.hours)}
-                <span class="status open">Open now</span>
-              {/if}
-              {#if !site.isClosed}
-                <FavoriteButton estId={site.est_id} size="sm" />
-              {/if}
-            </span>
-          </li>
-        {/each}
-      </ul>
+              </a>
+              <span class="spot-side">
+                {#if link.palette?.length}
+                  <span class="spot-palette" title="Colours sampled from this spot's version">
+                    {#each link.palette as hex}<span style="background:{hex}"></span>{/each}
+                  </span>
+                {/if}
+                {#if link.heat != null}
+                  <span class="spot-heat" title="This spot's version: heat {link.heat}/10">{link.heat}/10</span>
+                {/if}
+                {#if site.isClosed}
+                  <span class="status">Closed</span>
+                {:else if isOpenNow(site.rawData?.hours)}
+                  <span class="status open">Open now</span>
+                {/if}
+                {#if !site.isClosed}
+                  <FavoriteButton estId={site.est_id} size="sm" />
+                {/if}
+              </span>
+            </li>
+          {/each}
+        </ul>
+      {/each}
     {/if}
   </section>
 
@@ -588,6 +600,20 @@
   .spots-note a {
     color: var(--ink-1);
     text-underline-offset: 0.16em;
+  }
+
+  .spot-group {
+    margin: 0 0 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+
+  .spot-list + .spot-group {
+    margin-top: clamp(22px, 3vw, 32px);
   }
 
   .spot-list {
