@@ -25,11 +25,19 @@
   }
   $: [xKey, yKey] = widestAxes([style, ...related]);
 
-  // Plot box inside the 640×420 viewBox
-  const BOX = { left: 56, right: 618, top: 22, bottom: 356 };
+  // The viewBox is as wide as the plot (up to 640), so on a phone the chart
+  // narrows instead of scrolling while its text stays full size
+  let width = 0;
+  let settled = false;
+  $: W = width ? Math.max(280, Math.min(640, width)) : 640;
+  // Dots glide when the axes change, not when the first measurement lands
+  $: if (width && !settled) setTimeout(() => (settled = true), 50);
+
+  // Plot box inside the W×420 viewBox
+  $: BOX = { left: 56, right: W - 22, top: 22, bottom: 356 };
   const TICKS = [0, 5, 10];
-  const toX = (v) => BOX.left + (v / 10) * (BOX.right - BOX.left);
-  const toY = (v) => BOX.bottom - (v / 10) * (BOX.bottom - BOX.top);
+  $: toX = (v) => BOX.left + (v / 10) * (BOX.right - BOX.left);
+  $: toY = (v) => BOX.bottom - (v / 10) * (BOX.bottom - BOX.top);
 
   $: xAxis = AXES.find((a) => a.key === xKey);
   $: yAxis = AXES.find((a) => a.key === yKey);
@@ -104,9 +112,8 @@
     </label>
   </div>
 
-  <div class="scroll">
-  <div class="plot">
-    <svg viewBox="0 0 640 420" role="group" aria-label="{style.name} and the other salsas by {xAxis.label} and {yAxis.label}">
+  <div class="plot" class:settled bind:clientWidth={width}>
+    <svg viewBox="0 0 {W} 420" role="group" aria-label="{style.name} and the other salsas by {xAxis.label} and {yAxis.label}">
       <!-- Grid and axes: recessive -->
       {#each TICKS as t}
         <line class="grid" x1={toX(t)} x2={toX(t)} y1={BOX.top} y2={BOX.bottom} />
@@ -148,9 +155,9 @@
           {#if p.role !== 'other'}
             <text
               class="name"
-              x={p.x > 500 ? -(p.r + 7) : p.r + 7}
+              x={p.x > W - 140 ? -(p.r + 7) : p.r + 7}
               y={4 + (labelShift.get(p.style.slug) || 0)}
-              text-anchor={p.x > 500 ? 'end' : 'start'}
+              text-anchor={p.x > W - 140 ? 'end' : 'start'}
             >
               {shortName(p.style.name)}
             </text>
@@ -160,12 +167,11 @@
     </svg>
 
     {#if hovered}
-      <div class="tip" style="left:{(hovered.x / 640) * 100}%;top:{(hovered.y / 420) * 100}%">
+      <div class="tip" style="left:{(hovered.x / W) * 100}%;top:{(hovered.y / 420) * 100}%">
         <strong><span class="chip" style="background:{hovered.style.palette[0]}"></span>{hovered.style.name}</strong>
         <span>{xAxis.label} {fmt(axisValue(hovered.style, xKey))} · {yAxis.label} {fmt(axisValue(hovered.style, yKey))}</span>
       </div>
     {/if}
-  </div>
   </div>
 
   <div class="table-wrap">
@@ -232,17 +238,8 @@
     outline-offset: 2px;
   }
 
-  /* On a phone the chart keeps a readable size and scrolls sideways. The top
-     padding is room for the tooltip, which a scroll container would clip. */
-  .scroll {
-    margin-top: -56px;
-    padding-top: 56px;
-    overflow-x: auto;
-  }
-
   .plot {
     position: relative;
-    min-width: 540px;
     max-width: 780px;
   }
 
@@ -281,8 +278,11 @@
   }
 
   .mark {
-    transition: transform 0.6s cubic-bezier(0.3, 0.9, 0.25, 1);
     outline: none;
+  }
+
+  .settled .mark {
+    transition: transform 0.6s cubic-bezier(0.3, 0.9, 0.25, 1);
   }
 
   /* Surface-coloured ring separates overlapping dots; the hairline keeps pale
@@ -429,7 +429,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .mark {
+    .settled .mark {
       transition: none;
     }
   }

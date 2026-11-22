@@ -136,7 +136,9 @@ Migrations 036/037/039. `salsa_styles` is the catalog behind `/salsa`; `site_sal
 - `region` is a coarse bucket (`north`/`west`/`central`/`south`/`everywhere`) used only to cluster the atlas; `origin` is the display text
 - `palette` is 3–5 lowercase hex codes, first one definitive (CHECK-enforced). Any palette colour can become a page background; `inkFor()` picks black or white text, and `salsa.test.js` asserts 4.5:1 against every seeded colour
 - Curation happens in cartoTacoMenuExtract's Salsa Field Notes page (service role): the Sightings tab turns a photo with a grey card into a `site_salsas` sighting (photo, white-balanced palette, date); the Catalog tab edits a style's text, ingredients, flavour scores, palette, hero photo (`img_url` + `img_credit`) and `status`. New styles start as drafts, hidden from the public API (and from the view, which is security_invoker) until published. Until a style has a photo, `SalsaArt.svelte` draws a bowl from the palette
+- Curation happens on **prod**; `seed-staging.yml` copies `salsa_styles` and `site_salsas` from prod into staging like the other content tables (staging's salsa favourites are kept, re-pointed by slug). Curating on staging is wasted: the next seed replaces it
 - The 036 seed is only the starting text; edits made in Field Notes live in the database, not in migrations
+- A link with a `photo_url` or `observed_at` is a sighting (`isSighting()` in `src/lib/salsa.js`). A salsa's page lists "Seen here" (with the visit date) apart from "Listed on the menu survey"; hex counts still count every link
 
 ### Schema Management
 - **`schema/sites_complete_view.sql`** is the single source of truth for the `sites_complete` view definition
