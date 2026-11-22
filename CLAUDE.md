@@ -28,12 +28,17 @@ Full detail in `docs/DEPLOYMENT.md`.
 - `pnpm check:watch` - Run type checking in watch mode
 - `pnpm test` - Run unit tests (vitest)
 - `pnpm test:watch` - Run tests in watch mode
+- `pnpm eval` - Run the concierge golden set (needs `ANTHROPIC_API_KEY`; `--limit`, `--category`, `--judge`, `--matrix`, `--local`). With `LANGSMITH_API_KEY` it syncs the golden file to the LangSmith dataset and runs each config as an experiment
+- `pnpm eval:sync` - Sync `evals/golden/concierge.jsonl` to the LangSmith dataset without running anything
+- `pnpm agent:chat` - Concierge REPL against the eval fixture (`--fan` signs in a user with favorites)
+- `pnpm eval:fixture` - Refresh `evals/fixtures/sites_snapshot.json` from Supabase
+- `pnpm eval:kb-fixture kb-YYYY.MM.DD` - Pin the knowledgebase snapshot the evals use: replaces `evals/fixtures/kb-*.jsonl` with that cocina release (commit it; moving the pin is a deliberate PR)
 
-CI (`.github/workflows/ci.yml`) runs check, test, and build on every PR. Node 24 (`.nvmrc`, CI, and the Vercel runtime agree).
+CI (`.github/workflows/ci.yml`) runs check, test, and build on every PR. `agent-evals.yml` runs `pnpm eval --judge` on PRs touching the concierge (needs the `ANTHROPIC_API_KEY` secret; see `docs/DEPLOYMENT.md`). Node 24 (`.nvmrc`, CI, and the Vercel runtime agree).
 
 ## Environment Setup
 
-Required environment variables in `.env`:
+Required environment variables in `.env` (`.env.example` also lists the optional concierge keys: `ANTHROPIC_API_KEY`, `LANGSMITH_*`, per-tier model overrides):
 ```
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
@@ -51,6 +56,7 @@ The application uses Supabase with a critical performance optimization:
 ### Supporting Tables
 - `item_spec`, `protein_spec`, `salsa_spec` - Specialty item information
 - `summaries` - Dropped in migration 019 (summary stats now computed client-side from `processedTacoData`)
+- `salsa_styles` / `site_salsas` - Salsa catalog and spot↔salsa links (see Salsa Atlas below)
 
 ### Running Migrations
 Migrations live in `supabase/migrations/` as `<timestamp>_<NNN>_<name>.sql` and are
@@ -97,16 +103,40 @@ Historical order, as originally applied:
 33. `033_add_closed_at_to_view.sql` - Rebuilds `sites_complete` view exposing `closed_at` in the site jsonb
 34. `034_spec_link_healing.sql` - Self-healing specialty links + data health report (see Data Health below); backfills existing rows on apply
 35. `035_widen_tucson_bounds.sql` - Widens the `bad_coordinates` box south to 31.8 so Green Valley is in scope
+36. `036_create_salsa_styles.sql` - Salsa Atlas backend: `salsa_styles` catalog (ingredients, history, palette of hex codes, optional photo), `site_salsas` join table (per-spot heat/house name/note, no cap), `sync_site_salsas()` trigger, `salsas` storage bucket, and the seed of ~20 styles
+37. `037_add_salsa_styles_to_view.sql` - Rebuilds `sites_complete` exposing `salsa.styles` (`[{slug, name, color, heat, house_name, note}]` plus the style's flavour scores, so the taste profile can match on them)
+38. `038_create_user_favorite_salsas.sql` - `user_favorite_salsas` (user_id, style_id) with own-rows-only RLS, for favouriting salsas from the atlas
+39. `039_salsa_field_sightings.sql` - Field sightings and draft styles: `site_salsas` gains `photo_url`/`palette`/`observed_at` (written by cartoTacoMenuExtract's Salsa Field Notes page) and `synced` (backfilled true for links to keyed styles); `salsa_styles` gains `status` (`draft`/`published`, public reads see published only); `sync_site_salsas()` now removes only links it created and keeps those carrying curated data; view exposes the sighting fields
+40. `040_ai_usage.sql` - `ai_usage` (user_id, Tucson day, requests, tokens, escalations, cost_usd) with own-rows SELECT, and SECURITY DEFINER `record_ai_usage(...)` (authenticated only; adds to the caller's row, negatives clamped) for the concierge's per-user daily budget
+41. `041_fix_salsa_resync_safeupdate.sql` - `resync_site_salsas_on_style_change()` gains `WHERE true`: pg_safeupdate rejected its bare `UPDATE public.salsa`, so inserting a `salsa_styles` row through the API (a new style from Salsa Field Notes) failed
+42. `042_create_site_similarity.sql` - Description similarity (see below): `site_similarity` (every pair, `est_id_a < est_id_b`, cosine `score`; public SELECT), `site_similarity_sources` (per-spot `source_hash`/`model`, service role only), `description_hash()`, the atomic `replace_site_similarity(model, sources, pairs)` RPC, and a `similarity_stale` check in `data_health_report()`
 
 ### Data Health (self-healing)
 Migration 034 makes the database repair specialty links itself. Cards only show specials whose `spec_id_N` FK is set; cartoTacoMenuExtract promotion writes the spec *name* into `specialty_item_N` / `protein_spec_N` / `salsa_spec_N` (re-added by that repo's migration 009 after 017 dropped them, so they exist in production) and links the id.
 - `normalize_spec_name()` / `resolve_spec_id()` - one matching rule (lowercase, trimmed, collapsed whitespace; link only on exactly one match). Mirrored in cartoTacoMenuExtract `src/spec_tables.py`; keep them in sync
 - BEFORE INSERT/UPDATE triggers on `menu`/`protein`/`salsa` fill an empty `spec_id_N` from its name slot; AFTER triggers on the spec tables run `heal_spec_links()` so creating/renaming a spec back-links existing spots. Healing only fills empty links, never overwrites or clears one. To unlink a special, clear its name slot too, or the trigger re-links it
 - `heal_log` - every automatic fix (service role only)
-- `data_health_report()` - read-only checks needing a human (unlinked/ambiguous specs, yes-vs-share mismatches, missing child rows/heat, bad coordinates, half-set hours, duplicate spots, stale pending/staging); severities `error`/`warn`/`info`
+- `data_health_report()` - read-only checks needing a human (unlinked/ambiguous specs, yes-vs-share mismatches, missing child rows/heat, bad coordinates, half-set hours, duplicate spots, stale pending/staging, stale description similarity); severities `error`/`warn`/`info`
 - `.github/workflows/data-health.yml` - nightly sweep + report into the job summary (uses `SUPABASE_DB_URL_PROD`); the same report is browsable in cartoTacoMenuExtract's Data Health page
 - `.github/workflows/schema-parity.yml` - manual `pg_dump` diff of the prod and staging `public` schemas; catches hand-edits in the Supabase editor that leave no migration-history row. Staging legitimately runs ahead of prod mid-release, so a failure means "look at this", not "broken"
 - All functions are revoked from `anon`/`authenticated`
+
+### Description Similarity
+Migration 042. cartoTacoMenuExtract's `src/similarity.py` (`python3 -m src.similarity`, or the Data Health page) embeds each spot's hand-written short + long descriptions, with the spot's own name and street address taken out, and writes every pairwise cosine score through `replace_site_similarity()`, which replaces the whole matrix in one transaction. Only the scores reach the database; there's no pgvector. With ~30 spots it's a few hundred rows, so the app fetches it all.
+- `description_hash(short, long)` = md5 of `short || '\n' || long` (NULL as ''). Mirrored by `description_hash()` in that repo's `src/similarity.py`; keep them in sync
+- `similarity_stale` (data health) flags spots whose descriptions changed since the last run, or that have no scores yet. Re-run the script; it always recomputes everything
+- Raw scores from one author's prose sit in a narrow band, so nothing shows them as a percentage. See `similarity.js` below
+
+### Salsa Atlas (salsa catalog)
+Migrations 036/037/039. `salsa_styles` is the catalog behind `/salsa`; `site_salsas` says which spot serves which style.
+- A style is tied to legacy data by `variety_key` (`verde` → `salsa.verde_yes`) or `spec_id` (→ `salsa_spec`). Styles with neither are hand-curated
+- The `salsa` row is still what cartoTacoMenuExtract writes. `sync_site_salsas()` (AFTER trigger on `salsa`) adds `site_salsas` rows for keyed styles (marked `synced`) and removes only synced rows the salsa row no longer implies, and only while they carry no curated data (sighting photo/palette/date or a hand-set `heat`/`house_name`/`note`). Hand-made links (`synced = false`) are never touched. To add a salsa to a spot that has no boolean or spec for it, insert the `site_salsas` row directly
+- Inserting or re-keying a style re-syncs every spot (statement trigger on `salsa_styles`), so a new keyed style picks up existing spots by itself
+- `smoke`/`acid`/`sweet`/`chunk`/`rich` are 0–10 flavour scores (editorial estimates). With typical heat they are the six `AXES` in `src/lib/salsa.js`: they place a salsa on `SalsaMap` and `neighbours()` ranks relatives by distance across them
+- `region` is a coarse bucket (`north`/`west`/`central`/`south`/`everywhere`) used only to cluster the atlas; `origin` is the display text
+- `palette` is 3–5 lowercase hex codes, first one definitive (CHECK-enforced). Any palette colour can become a page background; `inkFor()` picks black or white text, and `salsa.test.js` asserts 4.5:1 against every seeded colour
+- Curation happens in cartoTacoMenuExtract's Salsa Field Notes page (service role): the Sightings tab turns a photo with a grey card into a `site_salsas` sighting (photo, white-balanced palette, date); the Catalog tab edits a style's text, ingredients, flavour scores, palette, hero photo (`img_url` + `img_credit`) and `status`. New styles start as drafts, hidden from the public API (and from the view, which is security_invoker) until published. Until a style has a photo, `SalsaArt.svelte` draws a bowl from the palette
+- The 036 seed is only the starting text; edits made in Field Notes live in the database, not in migrations
 
 ### Schema Management
 - **`schema/sites_complete_view.sql`** is the single source of truth for the `sites_complete` view definition
@@ -132,6 +162,7 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 ### UI State Stores
 - `selectedSite` - Currently selected establishment (drives the side panel on desktop/tablet and the bottom sheet on mobile)
 - `filterConfig` - User's active filters: `{ searchText, proteins, types, spiceLevel, openNow, showFavoritesOnly, showPending, showClosed }`
+  - `salsaStyle` (a `salsa_styles` slug, default `null`) is set from `/?salsa=<slug>` by the Salsa Atlas's "Show on the map"; `processedTacoData` sites carry `salsaStyles` from the view
 
 ### Authentication Store (src/lib/authStore.js)
 - `authStore` - User, session, loading, and error state
@@ -153,6 +184,11 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 - `VIBE_DIMENSIONS` - `['heat_legit', 'authentic', 'value', 'vibe']`
 - Functions: `loadUserVibeVotes()`, `loadVibeCounts(estId, { force })`, `toggleVibeVote(estId, dimension)`, `hasVoted(estId, dimension)`
 - Optimistic UI: toggle flips the user state and bumps the count immediately, reverting on DB failure
+
+### Salsa Favorites Store (src/lib/salsaFavoritesStore.js)
+- `favoriteSalsas` - Array of favourited `salsa_styles` rows (with flavour scores), newest first; `favoriteSalsaSlugs` (derived Set)
+- Functions: `loadSalsaFavorites()`, `toggleSalsaFavorite(style)` (optimistic, reverts with a toast on failure)
+- Feeds `tasteProfile`: with favourite salsas, k-NN adds `salsaAffinity()` (distance from the user's salsa taste to a spot's closest salsa) to the 7 spot dimensions, pulls spots serving a favourite closer, and returns `salsaTaste` plus `matchedSalsas` on each recommendation. Without any, recommendations are unchanged. A profile still needs at least one favourite *spot*
 
 ### Trail Store (src/lib/trailStore.js)
 - `trailModeActive` - Whether trail building mode is active
@@ -203,6 +239,22 @@ The app uses Svelte stores (src/lib/stores.js) for centralized state:
 - `filterPanelOpen` - Whether the FilterBar filter panel is expanded
 - `mobileNavOpen` - Whether the mobile navigation menu is open
 - `peekSite` - `{ site, lngLat } | null`: the spot the peek card is showing (set by mapping.js on pin hover, or first tap on touch tablets)
+- `quickSearchOpen` - Whether the QuickSearch palette is open (header search button, ⌘K/Ctrl+K, or `/`)
+- `chatOpen` - Whether the concierge `ChatPanel` is open (adds right map padding on desktop/tablet); `CHAT_PANEL_WIDTH` its docked width
+
+### Concierge Chat Store (src/lib/agentStore.js)
+- `chatMessages` - `[{ id, role, content, tier?, run_id?, feedback?, undo?, error?, sources? }]` (`sources`: a dish answer's credits, from its `sources` actions, shown under the reply); `chatPending`
+- Functions: `ask(query)` (POSTs `{ query, history }` to `/api/agent`, last 12 non-error turns), `applyActions(actions)` (`show_spot` → `flyToTarget`; `apply_filters` → replaces `filterConfig` from `defaultFilterConfig()`, exactly as the server counted, and returns the config to restore; `plan_trail` → replaces the trail stops/mode and enters trail mode; `compare` → refills the Compare tray; `start_summit` → `goto('/vote/new?ids=…&title=…')`. Spots, trails and compares close the chat sheet on phones), `undoMessage(id)`, `sendFeedback(id, 0|1)`, `clearChat()` (also drops any reply still in flight)
+
+### Recommender (src/lib/recommend.js)
+Pure k-NN taste recommendations shared by `tasteProfileStore` and the concierge's `recommend_for_me`: `buildFeatureVector`, `centroid`, `knnRecommend`, and `recommendFor(catalog, favIds, { favouriteSalsas, k })` (skips pending/closed spots and the favorites themselves; null without usable favorites). `knnRecommend(..., k, { textAffinity })` takes description similarity as one more axis of length `TEXT_WEIGHT` (the tuning knob) and returns the favourite a pick reads like as `because`. `tasteProfileStore` passes it; the concierge's `recommendFor` doesn't yet, since the server doesn't load `site_similarity`.
+
+### Similarity (src/lib/similarity.js, src/lib/similarityStore.js)
+- `similarityIndex` - `Map<est_id, Map<est_id, score>>` from `site_similarity`, fetched once by `loadSimilarity()` (called by `SimilarSpots` and `TasteProfile`). Null if the fetch fails, empty before the first run; both features then hide
+- `buildSimilarityIndex(rows)`, `similarSpots(index, estId, catalog, k)` (open, vetted, placeable spots only; a closed spot works as the starting point), `textAffinities(index, favourites, candidates)` (each favourite's row min-max rescaled over the candidates, then the best favourite per candidate, so mixed tastes don't average into mush)
+
+### Site Model (src/lib/siteModel.js)
+The pure logic behind the stores, with no stores or Supabase client, so the server and offline evals can share it (see `docs/AI_CONCIERGE_PLAN.md`): `processSite(row)` / `processSites(rows)` (the body of `processedTacoData`), `computeSummaryStats`, `computeDistributionPool`, `computeDistributionStats`, `hasValidCoordinates`, `isOpenNow(hours, now)`, `matchesFilters(site, cfg, favIds, now)` (the `filteredTacoData` predicate), `salsaNames(site)` (catalog styles, house names, named varieties as "Salsa Verde", other salsas; searched by both `searchSpots` and the text filter), and `defaultFilterConfig()` (the `filterConfig` starting value), and `computeCensus(sites, now)` (the body of `censusStats`). `stores.js` derives from these and re-exports `hasValidCoordinates`/`isOpenNow`. Change the logic here, not in the stores.
 
 ### Key Pattern
 Data flows: Raw DB → Store → Derived/Processed → Components. Components rarely transform data; they consume pre-processed values from derived stores.
@@ -235,7 +287,7 @@ The map implementation (src/lib/mapping.js) uses Mapbox GL with clustering:
 - `flyToSite(map, site)` - Fly to a spot and open its card on arrival (side panel on desktop/tablet, bottom sheet on mobile)
 - `openSpot(map, site)` - Open a spot's card from outside the map handlers (the peek card)
 - `closeSpot(map)` - Close the open spot and give the map back its full width (see Interaction)
-- `computeMapPadding()` / `syncMapPadding(map)` - Camera padding for whatever covers the map (mobile sheet, spot panel, trail/comparison tray). Every overlay-aware camera move uses it; Map.svelte re-syncs on store/resize changes, skipping mid-animation
+- `computeMapPadding()` / `syncMapPadding(map)` - Camera padding for whatever covers the map (mobile sheet, spot panel, concierge panel, trail/comparison tray). Every overlay-aware camera move uses it; Map.svelte re-syncs on store/resize changes, skipping mid-animation
 - `spotPanelWidth(vw)` - The panel's width (360–560px, 38vw). SpotPanel renders at it and the camera pads by it
 - `updateTrailLayers(map, stops)` - Render numbered trail stops
 - `updateTrailRoute(map, routeGeojson)` - Render dashed route line from Mapbox Directions API
@@ -263,6 +315,28 @@ Located in src/lib/dataWrangling.js:
 - `percentageOfMaxArray(arr)` - Convert array values to percentages of max
 - `convertHoursData(startTimes, endTimes)` - Transform hours data into component-ready format (Mon–Sun order with abbreviations)
 - `describeHeat(value)` - Words for a 0–10 heat level ("Medium-Hot"), shared by `SpiceGauge` and `SpotStats`
+
+## Search & Intent (model-free)
+
+The free first tier of the planned AI concierge (`docs/AI_CONCIERGE_PLAN.md`). No model and no network.
+- `src/lib/search.js` - `searchSpots(query, sites, { limit })` → `[{ site, score, matchedOn: { field, label } }]`. Accent-insensitive (`normalize()`), typo-tolerant (Damerau `editDistance()`; 1 typo from 4 letters, 2 from 7, none below), weighted by field (name > specialty > protein style/salsa/protein > menu > region/type > address > description), with Spanish protein synonyms. Every query word must match something; a one-letter word matches only a whole word, unless it's the last word and may still be being typed; `{ complete: true }` (the concierge's `search_spots`) drops that exception, so "U of A" doesn't match every "unique". Closed spots rank after open ones and unplaceable spots are skipped. Field text is cached per spot object in a WeakMap
+- `src/lib/intentRules.js` - `parseIntent(query)` → `{ filters, extras, matched, remainder, covered }`: proteins, types (with negation: "no trucks" selects every other type), spice ("spicy" 7+, "very spicy" 8+, "mild"/"not spicy" ≤4; "hot dog" protected), open now, favorites, plus `extras.handmadeTortillas` / `extras.near`. English and Spanish. `covered` means no words were left over. `applyIntentFilters(cfg, filters)` merges the parsed filters into a filterConfig
+- `src/lib/voice.js` - Web Speech API wrapper: `speechSupported()`, `listen({ onResult, onEnd, onError, lang })` → stop fn, `describeVoiceError(code)`. There is no Firefox support, so callers hide the mic. `speechSupported()` is also false on iPhone/iPad (`isAppleMobile()`, which also catches iPadOS posing as a Mac via `maxTouchPoints`): WebKit there records once, then every later `start()` goes deaf with no result, error or end (open WebKit bug), so QuickSearch points people at the keyboard's dictation mic instead. One session at a time (a new `listen()` aborts the old one), and a session ends on our side, with `onEnd` exactly once, on its final result, an error, a stop, or a 15s watchdog. Never wait on the browser's `end` event: Safari often doesn't send it, which once left the mic stuck after one use
+
+## AI Concierge
+
+`src/lib/server/agent/` is the server-only harness; `/api/agent` and `ChatPanel` ship it (phase 3), and phase 4 lets it drive Trail, Compare, Summit and taste recommendations. Plan and deviations in `docs/AI_CONCIERGE_PLAN.md` → "Phase 2/3/4 as built".
+- `src/routes/api/agent/+server.js` - `POST { query, history }` → `{ reply, actions, tier, run_id }`. Signed-in only (401), query 1–500 chars (400), history trimmed to 12 `user`/`assistant` turns of ≤2000 chars (anything else the client sends is dropped). Loads the catalog and the user's favorite spots and salsas, checks today's `ai_usage` against `AI_DAILY_TOKENS` (default 200k; an unreadable row fails closed except in dev) and runs `runConcierge` with `rulesOnly: 'budget'` when over. A failed model call (e.g. an outage, or the Anthropic workspace spend limit, the global kill switch) retries with `rulesOnly: 'unavailable'`. Records usage via `record_ai_usage` from a `calls` array it shares with `runConcierge`, so calls made before a failure still count. Each food the knowledgebase had no entry for goes to LangSmith as feedback `kb_miss` (value: the name) on the trace, for cocina's gap filler; feedback rather than run metadata because on Vercel some traces never receive their final update (they stay `pending`), while feedback is its own awaited call. `maxDuration` 60. JSON, not SSE (replies take ~2 s)
+- `src/routes/api/agent/feedback/+server.js` - `POST { run_id, score: 0|1 }` → LangSmith feedback `user_score` on the trace; no-op without `LANGSMITH_API_KEY`
+- `src/lib/server/catalog.js` - `getCatalog(supabase)`: `sites_complete` → `processSites`, cached 5 minutes per server instance
+- `src/lib/server/kb.js` - `getKb()`: every published card from the culinary knowledgebase (cocina, a separate repo and Supabase project; `KB_URL`/`KB_ANON_KEY`) plus `kb_version`, cached 5 minutes. On an outage it keeps the last good copy (or none), so only dish answers suffer. `src/lib/kb.js` is the pure side shared with the evals: `findEntry(cards, name)` (name or alias, typo-tolerant like `searchSpots`), `describeEntry(card)` (facts pointing at numbered sources), `credits(card)`, `parseSnapshot(text)`, `writeupIndex(cards)` / `writeupFor(index, name)` (a card's reviewed writeup, matched by exact normalized name or alias, never fuzzy, credited to the works behind the claims it cites). `GET /api/kb` serves that index (edge-cached 5 min); `src/lib/kbStore.js` loads it once, and `SpecCarousel` swaps a specialty's spec text for its writeup when one exists (old text otherwise). `src/components/Sources.svelte` is the one-per-line credits list shared by chat answers and spot cards
+- `hooks.server.js` copies `ANTHROPIC_*`/`LANGSMITH_*`/`AGENT_*` from `$env/dynamic/private` into `process.env`, since LangChain/LangSmith read `process.env` and Vite's dev server doesn't fill it from `.env`
+- `concierge.js` - `runConcierge({ query, history, catalog, kb, now, user, models, llm, allowEscalation, rulesOnly })` → `{ reply, actions, tier, route, escalation_reason, calls, cost, kb_lookups, run_id }`. `rulesOnly` (`'budget'` or `'unavailable'`) stops after T0 with a reply saying why; `calls` can be passed in to collect usage. When the router names a spot, T2/T3 start with that `search_spots` already run (a seeded tool call); a `dish_info` route with a `dish_name` starts with `describe_dish` run instead, and its `sources` action is kept (once per food). `kb.version` goes on the trace as `kb_version`. `kb_lookups` lists every `describe_dish` lookup (`[{ name, slug }]`, slug null on a miss). `cleanReply()` strips leading/trailing "Let me show you…" narration (never a sentence citing a spot) and `**bold**` from each turn, and text written alongside a read-tool call is dropped. Tiers: T0 rules (`parseIntent` fully covers the query, or the query is a spot name) → T1 Haiku router (structured output) with deterministic handlers for chitchat/off_topic/find_spot/filter → T2 Haiku tool loop (intent-scoped tools, 4 steps) → T3 Sonnet when T2 hits the cap, replies empty, or cites an `[#est_id]` no tool returned. Wrapped in LangSmith `traceable`; the tier/route go on the run's metadata
+- `tools.js` - `makeTools({ catalog, now, user, kb, lookups })` → `{ fns, tools, actions }`: `search_spots` (its `total` counts every match, not just the rows returned; `near_est_id` sorts by distance with `km_away` and drops the total), `get_spot`, `city_stats`, `recommend_for_me` (read; k-NN from `recommend.js`, needs a signed-in user with favorites), `show_spot`, `apply_filters`, `plan_trail` (2–8 stops, reordered nearest-first), `compare_spots` (2–3), `start_summit` (2–6), `describe_dish` (what a food is, from the knowledgebase: facts with numbered sources and the spots whose specialties/styles/salsas/menu name it; no entry → `found: false` and the prompt forbids describing it from memory; records a `sources` action, the credits the chat shows) (record actions; unknown est_ids throw `ToolError`, as do closed spots, and pending ones for compare/summit; `dish` sets the map's `searchText`, which `matchesFilters` also checks against protein styles and salsa names). `fns` are the plain functions, `tools` the LangChain wrappers. `INTENT_TOOLS` scopes them per routed intent
+- `prompt.js` - router/agent system prompts and `PROMPT_VERSION` (bump on any wording change). `models.js` - model ids per tier (env-overridable) and `callCost()`
+- Replies cite spots as `Name [#est_id]`; evals and the T2 check parse that
+- `evals/` - `run.js` (runner + evaluators; Sonnet judge, whose evidence is the cited spots, the user's favorites and taste picks, and `describe_dish` for each credited food; a `sources` check for dish examples; LangSmith `evaluate()` when keyed, local loop otherwise), `sync-dataset.js` (upserts the golden file into the `cartotaco-concierge-golden` dataset by golden id, category as split; the repo file is the source of truth), `chat.js`, `refresh-fixture.js`, `golden/concierge.jsonl` (one example per line: `query`, `category`, optional `user`/`now`/`history` (prior `{role, content}` turns), `expect.{tiers,intent (string or list of accepted intents),actions,must_ids,must_any_ids,must_not_ids,reply_matches}`, `rubric`), `fixtures/sites_snapshot.json`, `fixtures/kb-<tag>.jsonl` (the pinned knowledgebase snapshot, loaded by `kb-fixture.js`; the `dish` examples need it). Results in `evals/results/` (gitignored)
+- The harness imports `siteModel`/`search`/`intentRules`/`hours`/`dataWrangling` from plain Node, so imports among those use explicit `.js` extensions; keep it that way or `pnpm eval` breaks
 
 ## Coordinate Validation
 
@@ -300,7 +374,7 @@ and `flyToSite()`.
 ## Component Organization
 
 ### Main Components (src/components/)
-- `Card.svelte` - Spot card body, identical on the desktop panel and the mobile sheet (`SpotHeader` sits above it). One column, sized to fill it: Hours (`HoursOpen size="lg"` + a "Today" line) and About first, then `SpotStats` tiles, What they serve (the radar, large, with per-axis percentages, Menu/Protein toggle), Vibe check, and Specialties (`SpecCarousel`, cards at 85% of the column) last. Sections are labelled bands split by hairlines with a staggered entrance
+- `Card.svelte` - Spot card body, identical on the desktop panel and the mobile sheet (`SpotHeader` sits above it). One column, sized to fill it: Hours (`HoursOpen size="lg"` + a "Today" line) and About first, then `SpotStats` tiles, What they serve (the radar, large, with per-axis percentages, Menu/Protein toggle), Vibe check, Specialties (`SpecCarousel`, cards at 85% of the column), and `SimilarSpots` last. Sections are labelled bands split by hairlines with a staggered entrance
 - `SpotHeader.svelte` - Shared card header: mono kicker (type · region), Fraunces name with the restaurant/stand/truck icons, Tucson-time status + address, with Favorite + Compare grouped beside them, then Directions / Call / Website / socials as their own group of pill buttons. Each group wraps as a unit. Closed spots drop Directions and Compare; pending spots drop Compare. `showClose={false}` in the mobile sheet (its drag bar has the ×)
 - `SpotStats.svelte` - At-a-glance tiles: Heat (48px number, full-width 10-notch ladder, city percentile, `ContextStrip`), Salsas (number, bar against the city max with an average tick, `SalsaLineup`), Tortillas (spans the row). Two columns when the column fits two 220px tiles, stacked otherwise
 - `SpotPanel.svelte` - Desktop/tablet spot panel docked left under the header, full height, own scroll, with `SpotHeader` fixed at the top. Renders `Card` or `PendingSpotCard hideHeader`, keyed by spot so swaps re-run the entrance. The mobile bottom sheet (in Map.svelte) renders the same `SpotHeader` + `Card` inside its scroll area
@@ -324,8 +398,13 @@ and `flyToSite()`.
 - `PendingSpotCard.svelte` - Lightweight preliminary card for pending (unvetted) spots: pending badge, info panel, scraped hours/contact if present, source link, vetting CTA. Dashed `--pending` border; no radar/heat/salsa/vibe/compare. `hideHeader` (panel and sheet) also drops its contact block, since `SpotHeader` carries those actions
 - `RadarChart.svelte` - Menu/protein radar (ECharts), the app's signature chart: keep it. Supports multi-series overlays via `seriesList` (categorical palette + legend), used by `/compare` and TasteProfile. `labelSize` sets the axis label size; `showValues` (single series) prints each axis's percentage under its name and sizes the radar from its box so the two-line labels never clip
 - `SalsaCount.svelte` - Salsa count bullet bar (ECharts): value bar over city-max track with an average tick
-- `SalsaLineup.svelte` - Per-salsa chip row: named varieties (Verde, Rojo, …) plus the spot's "other" house salsas with individual heat dots and tap-to-reveal descriptions. Data comes from `salsaVarieties`/`otherSalsas` on `processedTacoData`
+- `SalsaLineup.svelte` - Per-salsa chip row: catalog styles as colour-dotted links to `/salsa/[slug]` (falling back to the named varieties on a database without `salsa.styles`) plus the spot's "other" house salsas with individual heat dots and tap-to-reveal descriptions. Data comes from `salsaVarieties`/`otherSalsas` on `processedTacoData`
+- `SalsaHex.svelte` - One salsa as a hexagon (definitive colour, lower tip in colours 2 and 3, hatched when no Tucson spot serves it). Must sit in a `.hex-cell` inside `.honeycomb > .comb`; those layout styles are global-under-`.salsa-atlas` in `src/routes/salsa/+layout.svelte`
+- `SalsaFavoriteButton.svelte` - Heart for a salsa style on its atlas page (signed-out users go to login); colours come from `currentColor`
+- `SalsaMap.svelte` - Scatter on a salsa's page: every salsa as a dot (in its own colour) on two reader-picked axes from `AXES` (heat + the five flavour columns), this salsa and its four nearest relatives labelled and joined, hover/focus tooltip, and a table of the same numbers. Opens on the two axes that spread the group widest
+- `SalsaArt.svelte` - Generated stand-in for a salsa photo: top-down bowl drawn from the palette, seeded by slug so SSR and client match
 - `SpecCarousel.svelte` & `SpecCard.svelte` - Specialty item displays
+- `SimilarSpots.svelte` - Card's last section: the 3 open spots whose descriptions read most like this one's (titled "If you miss this one" on a closed spot); click flies to the spot. Renders nothing without similarity data
 - `SpiceGauge.svelte` - Heat Ladder: 10-notch sequential-coral meter with hero number and optional city-percentile context line (pure Svelte/CSS, no chart lib)
 - `ThemeToggle.svelte` - Dark/light mode toggle button
 - `TrailTray.svelte` - Taco trail builder interface (stop list, reordering, transport mode, route display)
@@ -336,7 +415,9 @@ and `flyToSite()`.
 - `VibeVotes.svelte` - Anti-review chip row on each Card: 🔥 Heat Legit · 🌮 Authentic · 💸 Value · 🎭 Vibe. Click toggles your vote (anonymous users redirected to login); displays aggregate counts. Accepts `compact` prop for tight desktop layouts.
 - `VibeFingerprint.svelte` - Compact 4-bar profile of a spot's vibe votes (normalized to its own total) so vibe shapes compare across spots; hidden with no votes unless `showEmpty`. On Card beside the chips and as a `/compare` row.
 - `ContextStrip.svelte` - City-distribution dot strip: every spot as a faint dot on a shared scale with this spot highlighted (used in the `SpotStats` heat tile).
+- `QuickSearch.svelte` - ⌘K / `/` command palette, mounted once in `+layout.svelte`. Results from `searchSpots` update on every keystroke, each showing type, Tucson-time status and why it matched. A "Filter the map" row appears when `parseIntent` finds filters: its results are the remainder searched within the matching spots, and choosing it sets `filterConfig` and opens the filter panel. A mic button appears where speech recognition works (not iPhone/iPad, whose placeholder points at the keyboard's 🎤). Picking a spot sets `flyToTarget` on the map page, or goes to `/?location=<id>` elsewhere. Esc is handled on the dialog so it never also closes the open spot. On phones it's a full-screen sheet
 - `EmptyState.svelte` - Shared empty state (emoji + headline + message + optional CTA); used by favorites, compare, and census.
+- `ChatPanel.svelte` - The concierge chat, mounted in Map.svelte. An "Ask" launcher bottom right (above an open trail/comparison tray, hidden on phones while a spot sheet is up) opens a full-height panel docked right under the header on desktop/tablet (the mirror of `SpotPanel`, `CHAT_PANEL_WIDTH` = 380px; `--chat-panel-offset` on `:root` moves the FilterBar, Mapbox controls and trays left of it), or a 70dvh bottom sheet on phones. Signed-out users get a sign-in link. Replies turn `Name [#est_id]` into a link on the name that opens the spot; trail/compare/summit replies open the Trail tray, the Compare tray or the Summit page; filter replies get "Undo filters"; traced replies get 👍/👎; a "New chat" button in the header clears the conversation; mic where `speechSupported()` (a final result sends). Example prompts when empty
 - `ToastHost.svelte` - Renders the `toasts` store as a stack of dismissable notifications, mounted once in `+layout.svelte`. Uses Phosphor `CheckCircle/WarningCircle/Info/X` icons.
 
 ### Routes
@@ -347,10 +428,12 @@ and `flyToSite()`.
 - `src/routes/Map.svelte` - Map component with filter integration and trail mode support
 
 #### Public Routes
+- `src/routes/api/census/+server.js` - The census as public JSON (CORS open, edge-cached 5 min) plus the spots open right now on Tucson's clock, for other sites to draw; prosopis.studio builds its CartoTaco charts from it. `_publicCensus` drops per-spot history (growth becomes `spotsOverTime` counts) and ids
 - `src/routes/census/+page.svelte` - Tucson Taco Census: public city-wide stats dashboard (hero tiles, menu prevalence, protein leaderboard, heat histogram, tortilla split, 7×24 open-hours grid, growth timeline), all client-side from `censusStats` (`src/lib/censusStore.js`). The growth timeline is the one figure built from open/close *events* over all vetted spots, closed included — it describes history, so it must not be recomputed from today's survivors or every closure retroactively erases the spot's past (issue #62)
 - `src/routes/compare/+page.svelte` - Side-by-side comparison of up to 3 spots (shareable via `?ids=1,2,3` query params). Desktop renders Menu/Protein as single overlaid radars with shared axes. Sticky command bar (+ mobile spot tabs) and a sticky spot-name header row keep navigation reachable at any scroll depth; an "at a glance" verdict strip (leader per metric with margin) sits above the grid. NOTE: `overflow-x` on these pages must stay `clip`, never `hidden` — hidden creates a scrollport that silently breaks the sticky positioning
 - `src/routes/compare/+page.js` - Route config for comparison page
-- `src/routes/vote/new/+page.svelte` - Taco Summit creation: pick 2–6 spots, set a title, creates a `group_sessions` row and redirects to the voting page
+- `src/routes/salsa/` - Salsa Atlas. `+layout.server.js` loads the whole `salsa_styles` catalog once (server-rendered); `+layout.svelte` scopes the Fraunces display face to these routes, holds the honeycomb CSS, and runs View Transitions between atlas pages. `+page.svelte` is the honeycomb index: `clusterStyles()` groups the salsas by the feature in `?by=` (family, colour, region, heat, in Tucson) and `honeycombLayout()` places each group as a blob on one shared hex lattice, at least one empty cell apart; hexagons are absolutely positioned so re-clustering animates with a CSS transform transition. The atlas re-points the surface/ink tokens to a corn-yellow theme (toasted corn in dark mode) inside `.salsa-atlas`. `[slug]/+page.svelte` is one salsa: hero, click-to-copy palette, ingredients, history, spots serving it (from `processedTacoData`), neighbours and ←/→ paging. Helpers in `src/lib/salsa.js`
+- `src/routes/vote/new/+page.svelte` - Taco Summit creation: pick 2–6 spots, set a title, creates a `group_sessions` row and redirects to the voting page. `?ids=1,2,3&title=…` prefill it (the concierge's `start_summit`); pending/closed ids are dropped
 - `src/routes/vote/[session_id]/+page.svelte` - Taco Summit voting/results page; states: ranked-choice ballot entry, post-vote waiting with live preview, locked results with `SummitResults`; uses Supabase Realtime for live vote counts and session lock detection; anonymous via `voter_token` UUID in localStorage; creator identified by `creator_token` in localStorage
 - `src/routes/u/[username]/+page.svelte` + `+page.server.js` - Public profile page; server load looks up `profiles` by username (404 if not found); renders avatar, display name, username, bio, member-since. Recent check-ins section is a placeholder until Phase 3 ships.
 
@@ -405,9 +488,18 @@ Test files are co-located in src/lib/:
 - `src/lib/pendingSpots.test.js` - Tests for pending-spot processing/filtering
 - `src/lib/closedSpots.test.js` - Tests for closed-spot processing/filtering/map styling
 - `src/lib/mapping.test.js` - Tests for map layer/GeoJSON helpers, coordinate validation, and the spot panel's fly-to/close camera
+- `src/lib/similarity.test.js` - Tests for the similarity index, similar spots, text affinities and the k-NN text axis
 - `src/lib/hours.test.js` - Tests for Tucson-time open status and today's hours (uses UTC instants so it passes in any runner time zone)
 - `src/lib/directions.test.js` - Tests for the per-platform directions link
+- `src/lib/salsa.test.js` - Tests for Salsa Atlas helpers (contrast on every seeded palette colour, sorting, spot lists)
 - `src/lib/authErrors.test.js` - Tests for auth error message mapping
+- `src/lib/search.test.js` - Quick Search golden queries (query → expected top spot), ranking and edge cases. Add a golden row when a real query ranks wrong
+- `src/lib/intentRules.test.js` - Filter parsing (English/Spanish, negation, hot dog vs heat, remainder)
+- `src/lib/voice.test.js` - Voice session lifecycle against a fake SpeechRecognition (missing `end` events, stale events, start failures, watchdog)
+- `src/lib/agentStore.test.js` - Chat store: filters applied and undone, spots opened, trail/compare/summit actions applied, history sent, errors kept out of history
+- `src/routes/api/census/server.test.js` - Public census: open-now list on Tucson time, closed spots excluded, per-spot history dropped
+- `src/routes/api/agent/server.test.js` - Endpoint: 401/400, client-supplied fields dropped, favorites passed, usage recorded, rules-only over budget and on model failure
+- `src/lib/server/agent/concierge.test.js` - Concierge tier routing with scripted fake models (T0 hits, router handlers, tool loop, escalation reasons) and tool behaviour, against the eval fixture. No API calls
 
 Run all tests with `pnpm test`.
 
@@ -418,3 +510,4 @@ Detailed feature documentation in docs/:
 - `IMPROVEMENTS.md` - Roadmap and planned features
 - `UNVETTED_SPOTS_PLAN.md` - Pending/unvetted spots plan (shipped in this repo; scraping pipeline lives in `cartoTacoMenuExtract`)
 - `USER_SUBMISSIONS.md` - Location submission design and the manual approval process
+- `AI_CONCIERGE_PLAN.md` - Cost-first AI concierge: tiered router (rules → Haiku router → Haiku agent → Sonnet escalation) on LangChain/LangGraph, LangSmith tracing, golden-dataset evals. Phase 1 (search/intent/voice) shipped; phase 2 harness and phase 3 chat built

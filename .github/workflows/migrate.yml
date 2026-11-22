@@ -24,7 +24,7 @@ jobs:
       - name: Migrate staging
         if: github.ref == 'refs/heads/staging'
         run: |
-          supabase db push --db-url "$SUPABASE_DB_URL"
+          supabase db push --yes --db-url "$SUPABASE_DB_URL"
           supabase migration list --db-url "$SUPABASE_DB_URL"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -33,7 +33,7 @@ jobs:
       - name: Migrate production
         if: github.ref == 'refs/heads/main'
         run: |
-          supabase db push --db-url "$SUPABASE_DB_URL"
+          supabase db push --yes --db-url "$SUPABASE_DB_URL"
           supabase migration list --db-url "$SUPABASE_DB_URL"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

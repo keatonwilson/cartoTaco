@@ -39,12 +39,13 @@ forward — that's how it got abandoned the first time.
 ### Preview deployments do not get their own database
 
 A Vercel preview builds the PR's **code** against whichever Supabase project is
-set in Vercel's Preview environment. There is no per-branch database and
-If you suspect the two databases have drifted apart, run `schema-parity.yml`.
+set in Vercel's Preview environment. There is no per-branch database, and
+`migrate.yml` does not run for PR branches.
 
-`migrate.yml` does not run for PR branches. A PR that adds a migration will show
+A PR that adds a migration will show
 a preview that errors against the un-migrated schema until it merges to
 `staging`. That is expected; test it on staging, not on the preview.
+If you suspect the two databases have drifted apart, run `schema-parity.yml`.
 
 ---
 
@@ -76,6 +77,12 @@ spec tables) from production into staging. Deliberately not a whole-database
 dump: Supabase owns the auth/storage/realtime schemas and restores into them
 fail. User-generated rows (favorites, votes, profiles, submissions) stay as
 staging had them, since they reference `auth.users`.
+
+The Salsa Atlas (`salsa_styles`, `site_salsas`, `user_favorite_salsas`) is
+curated on staging, so the seed keeps it: it copies those tables aside, replaces
+the content, and puts them back, all in one transaction. Keyed links are then
+re-synced to prod's salsa rows. If a recorded sighting belongs to a spot prod
+doesn't have, the job fails and changes nothing; add the spot to prod first.
 
 Run it after a big data-entry session in production, not routinely.
 
@@ -116,6 +123,19 @@ Caveats:
 > while the file exists only on `staging`. Nothing is misconfigured — ship it to
 > `main` first. The same applied to `data-health.yml` and `seed-staging.yml`.
 
+### `agent-evals.yml` — concierge eval gate
+
+**Trigger**: PRs and pushes to `staging` that touch the concierge
+(`src/lib/server/agent/`, `evals/`, `search.js`, `intentRules.js`,
+`siteModel.js`, `hours.js`, dependencies).
+
+Runs the golden set with the Haiku judge (`pnpm eval --judge`) and fails under
+the bars in `evals/run.js`. About $0.15 a run. PRs run with `--local`, so an
+unmerged golden file never rewrites the shared LangSmith dataset; a push to
+`staging` syncs the dataset and records an experiment. Skipped with a notice
+when `ANTHROPIC_API_KEY` isn't set (fork PRs). Results are in the
+`eval-results` artifact.
+
 ### Repository secrets
 
 | Secret | Description |
@@ -123,6 +143,8 @@ Caveats:
 | `SUPABASE_ACCESS_TOKEN` | Supabase CLI personal access token |
 | `SUPABASE_DB_URL_STAGING` | Staging Postgres connection string |
 | `SUPABASE_DB_URL_PROD` | Production Postgres connection string |
+| `ANTHROPIC_API_KEY` | `agent-evals.yml` (use a separate, low-limit key from production's) |
+| `LANGSMITH_API_KEY` | `agent-evals.yml` experiments on `staging` |
 
 Use the **session pooler** string (port 5432), not the direct
 `db.<ref>.supabase.co` one:
@@ -184,6 +206,13 @@ Settings → Environment Variables, scoped per environment:
 | `VITE_SUPABASE_URL` | Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | Supabase anon key (public) |
 | `VITE_MAPBOX_KEY` | Mapbox public token |
+| `ANTHROPIC_API_KEY` | Concierge (`/api/agent`). Server-only. Give it its own Anthropic workspace with a monthly spend limit: that limit is the global kill switch, and when it trips the endpoint answers from the free rules tier |
+| `LANGSMITH_TRACING` | `true` to trace concierge runs |
+| `LANGSMITH_API_KEY` | LangSmith key (traces and 👍/👎 feedback) |
+| `LANGSMITH_PROJECT` | `cartotaco-staging` (Preview) / `cartotaco-production` (Production). Set it explicitly: the SDK ignores `LANGSMITH_AGENT_ENVIRONMENT` |
+| `LANGSMITH_TRACING_BACKGROUND` | `false`: serverless functions freeze after responding, so traces must flush before the response |
+| `AI_DAILY_TOKENS` | Optional per-user daily token budget (default 200000); over it the concierge goes rules-only |
+| `KB_URL` / `KB_ANON_KEY` | The culinary knowledgebase (cocina's Supabase project, its anon key): `describe_dish` answers "what is X?" from its published cards. Server-only. The same values serve Preview and Production, since consumers only ever see published knowledge. Unset, dish questions get "no entry yet" |
 
 ### Local
 

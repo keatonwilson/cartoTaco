@@ -5,6 +5,8 @@
 	import Heart from 'phosphor-svelte/lib/Heart';
 	import MapPin from 'phosphor-svelte/lib/MapPin';
 	import { favoriteIds, loadFavorites } from '$lib/favoritesStore';
+	import { favoriteSalsas } from '$lib/salsaFavoritesStore';
+	import { shortName } from '$lib/salsa';
 	import { processedTacoData } from '$lib/stores';
 	import FavoriteButton from '../../../components/FavoriteButton.svelte';
 	import EmptyState from '../../../components/EmptyState.svelte';
@@ -51,6 +53,21 @@
 				{favoriteLocations.length} {favoriteLocations.length === 1 ? 'location' : 'locations'} saved
 			</p>
 		</div>
+
+		<!-- Favourite salsas (from the Salsa Atlas) -->
+		{#if $favoriteSalsas.length > 0}
+			<section class="salsa-favs" aria-label="Favourite salsas">
+				<h2 class="salsa-favs-title">Favourite salsas</h2>
+				<div class="salsa-favs-list">
+					{#each $favoriteSalsas as salsa (salsa.slug)}
+						<a class="salsa-fav-chip" href="/salsa/{salsa.slug}">
+							<span class="salsa-fav-dot" style="background:{salsa.palette[0]}" aria-hidden="true"></span>
+							{shortName(salsa.name)}
+						</a>
+					{/each}
+				</div>
+			</section>
+		{/if}
 
 		<!-- Loading State -->
 		{#if loading}
@@ -129,6 +146,54 @@
 </div>
 
 <style>
+	.salsa-favs {
+		margin-bottom: 1.5rem;
+		padding: 1rem 1.25rem;
+		border: 1px solid var(--line-1);
+		border-radius: 12px;
+		background: var(--surface-1);
+	}
+
+	.salsa-favs-title {
+		margin: 0 0 0.6rem;
+		font-size: 0.8rem;
+		font-weight: 700;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+		color: var(--ink-2);
+	}
+
+	.salsa-favs-list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+	}
+
+	.salsa-fav-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 7px;
+		padding: 5px 12px 5px 8px;
+		border: 1px solid var(--line-1);
+		border-radius: 999px;
+		background: var(--surface-2);
+		color: var(--ink-1);
+		font-size: 13px;
+		font-weight: 500;
+		text-decoration: none;
+	}
+
+	.salsa-fav-chip:hover {
+		border-color: var(--ink-2);
+	}
+
+	.salsa-fav-dot {
+		width: 11px;
+		height: 11px;
+		border-radius: 50%;
+		box-shadow: 0 0 0 1px var(--line-2);
+	}
+
 	.favorites-container {
 		min-height: calc(100vh - 66px);
 		padding: 2rem 1rem;

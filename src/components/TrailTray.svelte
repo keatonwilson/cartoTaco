@@ -277,7 +277,7 @@
     bottom: 0;
     /* Starts beside the desktop spot panel when it's open (set by Map.svelte) */
     left: var(--spot-panel-offset, 0px);
-    right: 0;
+    right: var(--chat-panel-offset, 0px);
     z-index: 50;
     background: white;
     border-top: 1px solid #e5e7eb;
@@ -291,6 +291,13 @@
 
   .trail-tray.visible {
     transform: translateY(0);
+  }
+
+  /* Tablet/desktop: room for ~4 stops before the list scrolls. Keep in sync with trailTrayHeight() */
+  @media (min-width: 768px) {
+    .trail-tray {
+      height: min(420px, 50vh);
+    }
   }
 
   :global(.dark) .trail-tray {
@@ -419,6 +426,10 @@
 
   .loc-btn {
     flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     padding: 6px 10px;
     border: 1px solid #e5e7eb;
     border-radius: 6px;
@@ -620,6 +631,10 @@
 
   .action-btn {
     flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     padding: 9px 16px;
     border: none;
     border-radius: 8px;

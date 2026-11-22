@@ -11,7 +11,7 @@ vi.mock('./deviceDetection', async () => {
   return { deviceType: w('desktop'), isMobile: w(false) };
 });
 
-import { flyToSite, sitesToGeoJSON, closeSpot, spotPanelWidth } from './mapping.js';
+import { flyToSite, sitesToGeoJSON, closeSpot, spotPanelWidth, trailTrayHeight } from './mapping.js';
 import { hasValidCoordinates } from './stores.js';
 import { selectedSite } from './stores.js';
 import { deviceType } from './deviceDetection';
@@ -205,6 +205,9 @@ describe('spotPanelWidth', () => {
   it('scales with the viewport between 360 and 560px', () => {
     expect(spotPanelWidth(800)).toBe(360);
     expect(spotPanelWidth(1280)).toBe(486);
+    expect(trailTrayHeight(390, 844)).toBe(280);
+    expect(trailTrayHeight(1280, 1000)).toBe(420);
+    expect(trailTrayHeight(1280, 700)).toBe(350);
     expect(spotPanelWidth(1920)).toBe(560);
   });
 });

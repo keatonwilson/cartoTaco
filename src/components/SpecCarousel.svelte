@@ -1,8 +1,14 @@
 <script>
   import { onMount } from 'svelte';
   import SpecCard from './SpecCard.svelte';
+  import { writeups, loadWriteups } from '$lib/kbStore.js';
+  import { writeupFor } from '$lib/kb.js';
 
   export let specialties = [];
+
+  // A cocina writeup replaces the spec's own (unsourced) text where one exists
+  onMount(loadWriteups);
+  const nameOf = (s) => s.item_name || s.protein_name || s.salsa_name || s.name || '';
 
   let currentIndex = 0;
   let carouselContainer;
@@ -40,11 +46,13 @@
       on:scroll={handleScroll}
     >
       {#each specialties as specialty, index}
+        {@const kb = writeupFor($writeups, nameOf(specialty))}
         <div class="carousel-item">
           <SpecCard
-            itemName={specialty.item_name || specialty.protein_name || specialty.salsa_name || specialty.name || ''}
-            shortDescrip={specialty.short_descrip || specialty.description || ''}
-            longDescrip={specialty.long_descrip || ''}
+            itemName={nameOf(specialty)}
+            shortDescrip={kb ? kb.sentences[0] : specialty.short_descrip || specialty.description || ''}
+            longDescrip={kb ? kb.sentences.slice(1).join(' ') : specialty.long_descrip || ''}
+            sources={kb?.sources ?? []}
             cardType={specialty.type || 'Item'}
           />
         </div>

@@ -1,8 +1,15 @@
 <script>
   // The per-salsa lineup: named varieties as chips, plus the spot's own
   // "other" salsas with individual heat dots and tap-to-reveal descriptions.
+  import { shortName } from '$lib/salsa';
+
   export let salsaVarieties = [];
   export let otherSalsas = [];
+  // Catalog styles ({ slug, name, color, heat }) — each chip takes the salsa's
+  // definitive colour and links to its Salsa Atlas page.
+  // ponytail: salsaVarieties is only the fallback for a database that predates
+  // migration 037; drop it once 037 is on main.
+  export let styles = [];
 
   // est_id of the expanded other-salsa description (index-based key)
   let expandedIndex = null;
@@ -18,16 +25,36 @@
     return Math.max(1, Math.min(5, Math.round(h / 2)));
   }
 
-  $: hasAny = salsaVarieties.length > 0 || otherSalsas.length > 0;
+  $: hasAny = styles.length > 0 || salsaVarieties.length > 0 || otherSalsas.length > 0;
   $: expandedSalsa = expandedIndex !== null ? otherSalsas[expandedIndex] : null;
 </script>
 
 {#if hasAny}
   <div class="salsa-lineup">
     <div class="chips">
-      {#each salsaVarieties as variety}
-        <span class="salsa-chip">{variety.name}</span>
-      {/each}
+      {#if styles.length > 0}
+        {#each styles as style (style.slug)}
+          <a
+            class="salsa-chip style-chip"
+            href="/salsa/{style.slug}"
+            title={style.heat != null ? `${style.name} — heat ${style.heat}/10` : `About ${style.name}`}
+          >
+            <span class="swatch" style="background:{style.color}" aria-hidden="true"></span>
+            {style.house_name || shortName(style.name)}
+            {#if heatDots(style.heat) > 0}
+              <span class="dots" aria-label={`Heat ${style.heat} out of 10`}>
+                {#each Array(5) as _, d}
+                  <span class="dot" class:filled={d < heatDots(style.heat)}></span>
+                {/each}
+              </span>
+            {/if}
+          </a>
+        {/each}
+      {:else}
+        {#each salsaVarieties as variety}
+          <span class="salsa-chip">{variety.name}</span>
+        {/each}
+      {/if}
       {#each otherSalsas as salsa, i}
         <button
           type="button"
@@ -79,6 +106,28 @@
     background: var(--surface-2);
     color: var(--ink-2);
     white-space: nowrap;
+  }
+
+  /* Catalog styles link to their Salsa Atlas page */
+  .style-chip {
+    padding-left: 6px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .style-chip:hover,
+  .style-chip:focus-visible {
+    border-color: var(--ink-2);
+    color: var(--ink-1);
+  }
+
+  .swatch {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    /* hairline so pale and dark salsas both stay visible on either theme */
+    box-shadow: 0 0 0 1px var(--line-2);
   }
 
   /* House ("other") salsas are the spot's own — accent-tinted and tappable */

@@ -21,3 +21,4 @@ supabase_restore.sql
 
 # Supabase CLI scratch
 supabase/.temp/
+evals/results/

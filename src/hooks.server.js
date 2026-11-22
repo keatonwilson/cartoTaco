@@ -3,6 +3,13 @@
 
 import { createSupabaseServerClient, getSession } from '$lib/auth';
 import { redirect } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
+
+// ponytail: LangChain and LangSmith read process.env, which Vite's dev server
+// doesn't fill from .env (Vercel does). Copy the concierge's keys across.
+for (const [key, value] of Object.entries(env)) {
+  if (/^(ANTHROPIC|LANGSMITH|AGENT)_/.test(key)) process.env[key] ??= value;
+}
 
 /**
  * Server hook that runs on every request
@@ -12,6 +19,10 @@ import { redirect } from '@sveltejs/kit';
  */
 export async function handle({ event, resolve }) {
   const url = event.url.pathname;
+
+  // The public census is the same for everyone and cached at the edge: no
+  // session lookup, so no refreshed auth cookie can land on a shared response
+  if (url === '/api/census') return resolve(event);
 
   // Try to set up Supabase auth; if credentials are missing the app
   // should still render public pages (map, login, signup).

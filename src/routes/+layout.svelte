@@ -4,12 +4,14 @@
 	import { initTheme } from '$lib/theme.js';
 	import { loadFavorites } from '$lib/favoritesStore.js';
 	import { loadUserVibeVotes } from '$lib/vibeVotesStore.js';
+	import { loadSalsaFavorites } from '$lib/salsaFavoritesStore.js';
 	import { isAuthenticated } from '$lib/authStore.js';
 	import { initializeStores } from '$lib/stores.js';
 	import '../app.css';
 	import Header from '$lib/../components/Header.svelte';
 	import TourOverlay from '$lib/../components/TourOverlay.svelte';
 	import ToastHost from '$lib/../components/ToastHost.svelte';
+	import QuickSearch from '$lib/../components/QuickSearch.svelte';
 	import { shouldAutoStart, startTour } from '$lib/tourStore.js';
 
 	$: isMapPage = $page.url.pathname === '/';
@@ -25,6 +27,7 @@
 		if ($isAuthenticated) {
 			loadFavorites();
 			loadUserVibeVotes();
+			loadSalsaFavorites();
 		}
 
 		// Cleanup on unmount
@@ -55,6 +58,7 @@
 	$: if ($isAuthenticated) {
 		loadFavorites();
 		loadUserVibeVotes();
+		loadSalsaFavorites();
 	}
 </script>
 
@@ -62,6 +66,7 @@
   <Header />
   <TourOverlay />
   <ToastHost />
+  <QuickSearch />
   <main class:map-page={isMapPage}>
     <slot></slot>
   </main>

@@ -4,8 +4,12 @@
 import { derived } from 'svelte/store';
 import { favoriteIds } from './favoritesStore';
 import { processedTacoData, summaryStats } from './stores';
+import { favoriteSalsas } from './salsaFavoritesStore';
+import { AXES, flavourVector } from './salsa';
+import { buildFeatureVector, centroid, knnRecommend } from './recommend';
+import { similarityIndex } from './similarityStore';
+import { textAffinities } from './similarity';
 
-const K = 5; // number of k-NN recommendations
 
 // ─── Data-driven thresholds ───────────────────────────────────────────────────
 
@@ -167,61 +171,11 @@ const ARCHETYPES = [
 	}
 ];
 
-// ─── k-NN helpers ─────────────────────────────────────────────────────────────
-
-function buildFeatureVector(site, maxSalsa) {
-	const items = site.topFiveProteinItems || [];
-	const values = site.topFiveProteinValues || [];
-	const total = values.reduce((a, b) => a + b, 0) || 1;
-	const pmap = {};
-	for (let i = 0; i < items.length; i++) {
-		const key = items[i]?.toLowerCase();
-		if (key) pmap[key] = (values[i] || 0) / total;
-	}
-	return [
-		pmap.chicken || 0,
-		pmap.beef    || 0,
-		pmap.pork    || 0,
-		pmap.fish    || 0,
-		pmap.veg     || 0,
-		(site.heatOverall || 0) / 10,
-		maxSalsa > 0 ? (site.salsaCount || 0) / maxSalsa : 0
-	];
-}
-
-function euclideanDistance(a, b) {
-	let sum = 0;
-	for (let i = 0; i < a.length; i++) { const d = a[i] - b[i]; sum += d * d; }
-	return Math.sqrt(sum);
-}
-
-function centroid(vectors) {
-	if (vectors.length === 0) return [];
-	const dims = vectors[0].length;
-	const result = new Array(dims).fill(0);
-	for (const v of vectors) for (let i = 0; i < dims; i++) result[i] += v[i];
-	return result.map(x => x / vectors.length);
-}
-
-function knnRecommend(targetVector, candidates, maxSalsa) {
-	const MAX_DIST = Math.sqrt(7);
-	return candidates
-		.map(site => {
-			const fv = buildFeatureVector(site, maxSalsa);
-			const dist = euclideanDistance(targetVector, fv);
-			const similarity = Math.round(Math.max(0, (1 - dist / MAX_DIST)) * 100);
-			return { site, dist, similarity };
-		})
-		.sort((a, b) => a.dist - b.dist)
-		.slice(0, K)
-		.map(({ site, similarity }) => ({ ...site, similarity }));
-}
-
 // ─── Main derived store ───────────────────────────────────────────────────────
 
 export const tasteProfile = derived(
-	[favoriteIds, processedTacoData, summaryStats],
-	([$favoriteIds, $allTacoData, $summaryStats]) => {
+	[favoriteIds, processedTacoData, summaryStats, favoriteSalsas, similarityIndex],
+	([$favoriteIds, $allTacoData, $summaryStats, $favoriteSalsas, $similarityIndex]) => {
 		// Pending (unvetted) spots have all-zero feature vectors and closed spots
 		// must never be recommended — exclude both from favorites math,
 		// thresholds, k-NN candidates, and the scatter plot
@@ -284,7 +238,17 @@ export const tasteProfile = derived(
 
 		// k-NN recommendations
 		const nonFavSites   = $processedTacoData.filter(s => !$favoriteIds.has(s.est_id));
-		const recommendations = knnRecommend(userVector, nonFavSites, maxSalsa);
+		// Description similarity, once loaded (similarityStore), adds "reads like
+		// one of your favourites" as one more axis
+		const textAffinity = textAffinities($similarityIndex, favSites, nonFavSites);
+		const recommendations = knnRecommend(userVector, nonFavSites, maxSalsa, $favoriteSalsas, undefined, { textAffinity });
+
+		// Salsa taste: the centre of the user's favourite salsas on each flavour
+		// axis (0–10), or null if they haven't favourited any
+		const salsaTaste = $favoriteSalsas.length === 0 ? null : AXES.map((axis, i) => ({
+			...axis,
+			value: Math.round($favoriteSalsas.reduce((sum, s) => sum + flavourVector(s)[i], 0) / $favoriteSalsas.length * 100) / 10
+		}));
 
 		// Scatter data for visualization
 		const recIds = new Set(recommendations.map(r => r.est_id));
@@ -312,6 +276,9 @@ export const tasteProfile = derived(
 			runnerUp,
 			thresholds,
 			recommendations,
+			usesDescriptions: textAffinity.size > 0,
+			salsaTaste,
+			favoriteSalsasCount: $favoriteSalsas.length,
 			scatterPoints,
 			userHeat:  avgSpice,
 			userSalsa: avgSalsaCount

@@ -76,6 +76,11 @@ Each migration depends on the previous ones.
 | 033 | `033_add_closed_at_to_view.sql` | Exposes `closed_at` in the view |
 | 034 | `034_spec_link_healing.sql` | Self-healing specialty links (write-time triggers, `heal_spec_links()` sweep, `heal_log` audit table) + read-only `data_health_report()`; backfills existing rows |
 | 035 | `035_widen_tucson_bounds.sql` | Moves the `bad_coordinates` south edge from 31.9 to 31.8 so Green Valley is in scope (replaces `data_health_report()`; first migration applied by CI, so it carries a real timestamp) |
+| 036 | `036_create_salsa_styles.sql` | Salsa Atlas catalog (`salsa_styles`), spot links (`site_salsas`), `sync_site_salsas()` trigger, `salsas` bucket, seed |
+| 037 | `037_add_salsa_styles_to_view.sql` | Exposes `salsa.styles` in the view |
+| 038 | `038_create_user_favorite_salsas.sql` | `user_favorite_salsas` with own-rows RLS |
+| 039 | `039_salsa_field_sightings.sql` | Sighting columns + `synced` on `site_salsas`, draft `status` on `salsa_styles`, sync keeps curated links, view exposes sightings |
+| 042 | `042_create_site_similarity.sql` | `site_similarity` pairwise description scores (public read), `site_similarity_sources`, `description_hash()`, `replace_site_similarity()` RPC, `similarity_stale` health check |
 
 ## Rollback
 
@@ -84,6 +89,13 @@ To roll back the `sites_complete` view (migration 001):
 DROP VIEW IF EXISTS public.sites_complete;
 ```
 Then revert `src/lib/stores.js` to use the original 6 separate queries.
+
+To roll back description similarity (migration 042). Restore `data_health_report()`
+from migration 035 first, since 042's version reads the sources table:
+```sql
+DROP FUNCTION IF EXISTS public.replace_site_similarity(text, jsonb, jsonb), public.description_hash(text, text);
+DROP TABLE IF EXISTS public.site_similarity, public.site_similarity_sources;
+```
 
 To roll back the Taco Summit tables (migrations 021–022):
 ```sql

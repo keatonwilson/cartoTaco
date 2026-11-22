@@ -54,18 +54,59 @@ jobs:
         env:
           PROD_DB_URL: ${{ secrets.SUPABASE_DB_URL_PROD }}
 
-      # CASCADE also clears staging's user_favorites and vibe_votes, which
-      # reference sites (migration 030). Intended: those rows point at prod
-      # est_ids we're about to replace.
-      - name: Clear staging content
+      # The TRUNCATE CASCADE also reaches every table with a foreign key to a
+      # content table:
+      #   - user_favorites and vibe_votes (via sites, migration 030). Intended:
+      #     those rows point at est_ids we're about to replace.
+      #   - the Salsa Atlas: salsa_styles (via salsa_spec), and with it
+      #     site_salsas and user_favorite_salsas. NOT intended: the catalog text,
+      #     draft styles and field sightings are curated on staging, prod may
+      #     not have them, and nothing else can bring them back.
+      # So the atlas is copied aside, the content replaced, and the atlas put
+      # back, all in one transaction (-1): a failure anywhere leaves staging as
+      # it was. Rows are copied with SELECT *, so this works whichever atlas
+      # migrations staging has run.
+      - name: Replace staging content, keeping the Salsa Atlas
         run: |
-          psql -v ON_ERROR_STOP=1 -d "$STAGING_DB_URL" \
-            -c "TRUNCATE $(echo $CONTENT_TABLES | tr ' ' ',') CASCADE;"
-        env:
-          STAGING_DB_URL: ${{ secrets.SUPABASE_DB_URL_STAGING }}
+          cat > seed.sql <<'SQL'
+          CREATE TEMP TABLE bak_styles AS SELECT * FROM public.salsa_styles;
+          CREATE TEMP TABLE bak_links  AS SELECT * FROM public.site_salsas;
+          CREATE TEMP TABLE bak_favs   AS SELECT * FROM public.user_favorite_salsas;
+          SQL
+          echo "TRUNCATE $(echo $CONTENT_TABLES | tr ' ' ',') CASCADE;" >> seed.sql
+          cat >> seed.sql <<'SQL'
+          \i data.sql
+          -- data.sql empties search_path, so everything below is schema-qualified.
 
-      - name: Restore into staging
-        run: psql -v ON_ERROR_STOP=1 -d "$STAGING_DB_URL" -f data.sql
+          -- A link whose spot no longer exists can't come back. Losing a bare
+          -- link is fine (the spot is gone); losing recorded field work is not.
+          DO $$
+          DECLARE n int;
+          BEGIN
+            SELECT count(*) INTO n FROM pg_temp.bak_links b
+             WHERE b.est_id NOT IN (SELECT est_id FROM public.sites)
+               AND EXISTS (SELECT 1 FROM jsonb_each(to_jsonb(b)) e
+                            WHERE e.key IN ('photo_url', 'palette', 'observed_at', 'heat', 'house_name', 'note')
+                              AND e.value <> 'null'::jsonb);
+            IF n > 0 THEN
+              RAISE EXCEPTION '% salsa sighting(s) belong to spots that are not in prod. Nothing was changed. Add those spots to prod (or move the sightings) and run again.', n;
+            END IF;
+          END $$;
+
+          UPDATE pg_temp.bak_styles SET spec_id = NULL
+           WHERE spec_id NOT IN (SELECT id FROM public.salsa_spec);
+          -- Fires the resync trigger, which links styles to the new salsa rows;
+          -- those links are replaced by the saved ones just below.
+          INSERT INTO public.salsa_styles OVERRIDING SYSTEM VALUE SELECT * FROM pg_temp.bak_styles;
+          DELETE FROM public.site_salsas;
+          INSERT INTO public.site_salsas SELECT * FROM pg_temp.bak_links
+           WHERE est_id IN (SELECT est_id FROM public.sites);
+          INSERT INTO public.user_favorite_salsas SELECT * FROM pg_temp.bak_favs;
+          -- Re-sync so keyed links follow prod's salsa rows. Hand-made links
+          -- and recorded sightings are kept by the sync itself.
+          UPDATE public.salsa SET est_id = est_id;
+          SQL
+          psql -v ON_ERROR_STOP=1 -1 -d "$STAGING_DB_URL" -f seed.sql
         env:
           STAGING_DB_URL: ${{ secrets.SUPABASE_DB_URL_STAGING }}
 
@@ -76,6 +117,8 @@ jobs:
              UNION ALL SELECT 'menu', count(*) FROM public.menu
              UNION ALL SELECT 'salsa', count(*) FROM public.salsa
              UNION ALL SELECT 'protein', count(*) FROM public.protein
+             UNION ALL SELECT 'salsa_styles', count(*) FROM public.salsa_styles
+             UNION ALL SELECT 'site_salsas', count(*) FROM public.site_salsas
              UNION ALL SELECT 'sites_complete', count(*) FROM public.sites_complete;"
         env:
           STAGING_DB_URL: ${{ secrets.SUPABASE_DB_URL_STAGING }}
