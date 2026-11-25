@@ -5,8 +5,10 @@
 // - an anonymous client with no session, never the caller's cookie client, so
 //   the answer can't depend on who asks (hooks.server.js skips auth here too,
 //   so no Set-Cookie ever rides on a shared, edge-cached response);
-// - names, open labels and aggregates only: no ids, coordinates, addresses,
-//   pending or closed spots, or per-spot history;
+// - names, open labels and aggregates only: no coordinates, addresses,
+//   pending or closed spots, or per-spot history. An open spot carries one
+//   link, href, to its card on the map (/?location=<id>): the same link the
+//   map shares for every spot, so it shows nothing a visitor can't already see;
 // - CORS open for GET without credentials, and errors say nothing about why.
 import { error, json } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';
@@ -29,16 +31,16 @@ function anonClient() {
   return (anon ??= createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } }));
 }
 
-/** The census minus the per-spot growth events, and the spots open at `now`. */
-export function _publicCensus(sites, now = new Date()) {
+/** The census minus the per-spot growth events, and the spots open at `now`, each linked to its card under `origin`. */
+export function _publicCensus(sites, now = new Date(), origin = 'https://carto-taco.vercel.app') {
   const census = computeCensus(sites, now);
   if (!census) return null;
   const { growth, newest, ...rest } = census;
   const openSpots = sites
     .filter((s) => !s.isPending && !s.isClosed && hasValidCoordinates(s))
-    .map((s) => ({ name: s.name, ...getOpenStatus(s.rawData?.hours, now) }))
+    .map((s) => ({ name: s.name, id: s.est_id, ...getOpenStatus(s.rawData?.hours, now) }))
     .filter((s) => s.isOpen)
-    .map(({ name, state, label }) => ({ name, state, label }))
+    .map(({ name, id, state, label }) => ({ name, state, label, href: new URL(`/?location=${id}`, origin).href }))
     .sort((a, b) => a.name.localeCompare(b.name));
   return {
     generatedAt: now.toISOString(),
@@ -49,12 +51,12 @@ export function _publicCensus(sites, now = new Date()) {
   };
 }
 
-export async function GET() {
+export async function GET({ url }) {
   const db = anonClient();
   let body = null;
   if (db) {
     try {
-      body = _publicCensus(await getCatalog(db));
+      body = _publicCensus(await getCatalog(db), new Date(), url.origin);
     } catch (e) {
       console.error('census unavailable', e?.message);
     }
