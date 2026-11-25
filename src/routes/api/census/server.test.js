@@ -26,6 +26,12 @@ describe('publicCensus', () => {
     expect(body.openSpots[0].label).toBe('Open til 9 PM');
   });
 
+  it("links each open spot to its card on the map, under the site's own origin", () => {
+    const body = publicCensus(sites, new Date('2026-11-07T19:00:00Z'), 'https://preview.example');
+    expect(body.openSpots.map((s) => s.href)).toEqual(['https://preview.example/?location=1', 'https://preview.example/?location=3']);
+    expect(Object.keys(body.openSpots[0])).toEqual(['name', 'state', 'label', 'href']);
+  });
+
   it('keeps the aggregates and drops per-spot history', () => {
     const body = publicCensus(sites, new Date('2026-11-08T04:00:00Z')); // 9 PM: all closed
     expect(body.openSpots).toEqual([]);
@@ -45,12 +51,14 @@ describe('GET /api/census', () => {
     vi.stubEnv('VITE_SUPABASE_URL', 'http://db');
     vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon');
     const { GET } = await import('./+server.js');
-    const res = await GET();
+    const res = await GET({ url: new URL('https://carto-taco.vercel.app/api/census') });
     expect(res.headers.get('access-control-allow-origin')).toBe('*');
     expect(res.headers.get('cache-control')).toMatch(/^public/);
     expect(res.headers.get('set-cookie')).toBeNull();
     const body = await res.json();
     expect(JSON.stringify(body)).not.toMatch(/est_id|latitude|longitude|address|"id"/);
+    // the only per-spot reference is the map link
+    for (const s of body.openSpots) expect(s.href).toMatch(/^https:\/\/carto-taco\.vercel\.app\/\?location=\d+$/);
   });
 
   it('hides why the database failed', async () => {
@@ -60,7 +68,7 @@ describe('GET /api/census', () => {
     vi.stubEnv('VITE_SUPABASE_URL', 'http://db');
     vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon');
     const { GET } = await import('./+server.js');
-    const err = await GET().catch((e) => e);
+    const err = await GET({ url: new URL('https://carto-taco.vercel.app/api/census') }).catch((e) => e);
     expect(err.status).toBe(503);
     expect(JSON.stringify(err.body)).not.toMatch(/password|internal/);
   });
